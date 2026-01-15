@@ -402,8 +402,13 @@ class CTkSegmentedButton(CTkFrame):
     def get(self) -> str:
         return self._current_value
 
-    def index(self, value: str) -> int:
-        return self._value_list.index(value)
+    def index(self, value: Optional[str] = None) -> int:
+        """ returns index of selected value, raises ValueError if the value is missing
+        if the parameter is provided, returns the associated index or raises ValueError if no value is found """
+        if value is None:
+            return self._value_list.index(self._current_value)
+        else:
+            return self._value_list.index(value)
 
     def insert(self, index: int, value: str):
         if value not in self._buttons_dict:
@@ -425,6 +430,10 @@ class CTkSegmentedButton(CTkFrame):
                 raise ValueError(f"CTkSegmentedButton can not insert value ''")
         else:
             raise ValueError(f"CTkSegmentedButton can not insert value '{value}', already part of the values")
+        
+    def len(self) -> int:
+        """ returns the number of defined buttons """
+        return len(self._value_list)
 
     def move(self, new_index: int, value: str):
         if 0 <= new_index < len(self._value_list):

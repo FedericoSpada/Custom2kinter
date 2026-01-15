@@ -334,6 +334,10 @@ class CTkEntry(CTkBaseClass):
 
         return self._entry.insert(index, string)
 
+    def set(self, string: str):
+        self._entry.delete(0, tkinter.END)
+        self.insert(0, string)
+
     def get(self):
         if self._placeholder_text_active:
             return ""

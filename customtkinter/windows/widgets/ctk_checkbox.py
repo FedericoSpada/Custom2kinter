@@ -416,41 +416,28 @@ class CTkCheckBox(CTkBaseClass):
                 self.select(from_variable_callback=True)
             elif self._variable.get() == self._offvalue:
                 self.deselect(from_variable_callback=True)
+    
+    def set(self, state: bool, from_variable_callback=False):
+        self._check_state = state
+        self._draw()
+
+        if self._variable is not None and not from_variable_callback:
+            self._variable_callback_blocked = True
+            self._variable.set(self._onvalue if self._check_state is True else self._offvalue)
+            self._variable_callback_blocked = False
 
     def toggle(self, event=0):
         if self._state == tkinter.NORMAL:
-            if self._check_state is True:
-                self._check_state = False
-                self._draw()
-            else:
-                self._check_state = True
-                self._draw()
-
-            if self._variable is not None:
-                self._variable_callback_blocked = True
-                self._variable.set(self._onvalue if self._check_state is True else self._offvalue)
-                self._variable_callback_blocked = False
+            self.set(not self._check_state)
 
             if self._command is not None:
                 self._command()
 
     def select(self, from_variable_callback=False):
-        self._check_state = True
-        self._draw()
-
-        if self._variable is not None and not from_variable_callback:
-            self._variable_callback_blocked = True
-            self._variable.set(self._onvalue)
-            self._variable_callback_blocked = False
+        self.set(True, from_variable_callback)
 
     def deselect(self, from_variable_callback=False):
-        self._check_state = False
-        self._draw()
-
-        if self._variable is not None and not from_variable_callback:
-            self._variable_callback_blocked = True
-            self._variable.set(self._offvalue)
-            self._variable_callback_blocked = False
+        self.set(False, from_variable_callback)
 
     def get(self) -> Union[int, str]:
         return self._onvalue if self._check_state is True else self._offvalue

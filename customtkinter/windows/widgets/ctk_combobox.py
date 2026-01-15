@@ -396,6 +396,14 @@ class CTkComboBox(CTkBaseClass):
     def get(self) -> str:
         return self._entry.get()
 
+    def index(self, value: Optional[Any] = None) -> int:
+        """ returns index of selected value, raises ValueError if the value is missing
+        if the parameter is provided, returns the associated index or raises ValueError if no value is found """
+        if value is None:
+            return self._values.index(self.get())
+        else:
+            return self._values.index(value)
+
     def _clicked(self, event=None):
         if self._state is not tkinter.DISABLED and len(self._values) > 0:
             self._open_dropdown_menu()

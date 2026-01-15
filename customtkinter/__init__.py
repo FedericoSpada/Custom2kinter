@@ -87,6 +87,8 @@ def deactivate_automatic_dpi_awareness():
 
 def set_ctk_parent_class(ctk_parent_class):
     ctk_tk.CTK_PARENT_CLASS = ctk_parent_class
+
+
 def run_showroom() -> None:
     set_appearance_mode("Light")
 

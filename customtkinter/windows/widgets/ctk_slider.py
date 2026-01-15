@@ -379,9 +379,6 @@ class CTkSlider(CTkBaseClass):
         else:
             return value
 
-    def get(self) -> float:
-        return self._output_value
-
     def set(self, output_value, from_variable_callback=False):
         if self._from_ < self._to:
             if output_value > self._to:
@@ -403,6 +400,9 @@ class CTkSlider(CTkBaseClass):
             self._variable_callback_blocked = True
             self._variable.set(round(self._output_value) if isinstance(self._variable, tkinter.IntVar) else self._output_value)
             self._variable_callback_blocked = False
+
+    def get(self) -> float:
+        return self._output_value
 
     def _variable_callback(self, var_name, index, mode):
         if not self._variable_callback_blocked:
