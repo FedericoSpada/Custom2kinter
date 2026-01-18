@@ -163,19 +163,22 @@ class _Showroom(CTk):
         self.combobox_2.set("readonly")
         self.optionmenu = CTkOptionMenu(self.choices_frame, dynamic_resizing=False,
                                         values=["CTkOptionMenu", "Value 2", "Value 3"])
-        self.seg_button = CTkSegmentedButton(self.choices_frame, values=["CTkSegmentedButton", "Value 2", "Value 3"])
-        self.seg_button.set("CTkSegmentedButton")
+        self.seg_button1 = CTkSegmentedButton(self.choices_frame, values=["CTkSegmentedButton", "Value 2", "Value 3"])
+        self.seg_button1.set("CTkSegmentedButton")
+        self.seg_button2 = CTkSegmentedButton(self.choices_frame, values=["vertical", "Value 2", "Value 3"], orientation="vertical")
+        self.seg_button2.set("vertical")
 
         self.combobox_1.pack(padx=20, pady=(self.SPACING, 5))
         self.combobox_2.pack(padx=20, pady=(0, 5))
         self.optionmenu.pack(padx=20, pady=(self.SPACING, 5))
-        self.seg_button.pack(padx=20, pady=(self.SPACING, 5))
+        self.seg_button1.pack(padx=20, pady=(self.SPACING, 5))
+        self.seg_button2.pack(padx=20, pady=(0, 5))
 
         # text
         self.text_frame = self.main_tabview.add("Text")
         self.label = CTkLabel(self.text_frame, text="CTkLabel", height=1)
         self.entry = CTkEntry(self.text_frame, placeholder_text="CTkEntry")
-        self.textbox = CTkTextbox(self.text_frame, width=400)
+        self.textbox = CTkTextbox(self.text_frame, width=320)
         self.textbox.insert("0.0", "CTkTextbox\n\n" + "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.\n\n" * 20)
 
         self.label.pack(padx=20, pady=(self.SPACING, 5))
@@ -253,18 +256,20 @@ class _Showroom(CTk):
         self.frames_frame = self.main_tabview.add("Frames")
         self.scrollable_frame = CTkScrollableFrame(self.frames_frame, label_text="CTkScrollableFrame",
                                                    fg_color=ThemeManager.theme["CTk"]["fg_color"])
-        self.tabview = CTkTabview(self.frames_frame,
-                                  fg_color=ThemeManager.theme["CTk"]["fg_color"])
-        self.tabview.add("CTkTabview")
-        self.tabview.add("Tab 2")
-        self.tabview.add("Tab 3")
+        self.tabview = CTkTabview(self.frames_frame, fg_color=ThemeManager.theme["CTk"]["fg_color"])
+        tab1 = self.tabview.add("CTkTabview")
+        tab2 = self.tabview.add("Tab 2")
+        tab3 = self.tabview.add("Tab 3")
+        CTkButton(tab1, text="Widget on 1st Tab").pack()
+        CTkCheckBox(tab2, text="Widget on 2nd Tab").pack()
+        CTkSwitch(tab3, text="Widget on 3rd Tab").pack()
 
         for i in range(100):
             switch = CTkSwitch(self.scrollable_frame, text=f"CTkSwitch {i+1}")
             switch.pack(padx=20, pady=5)
 
-        self.scrollable_frame.pack(padx=20, pady=(self.SPACING, 5))
-        self.tabview.pack(padx=20, pady=(self.SPACING, 5))
+        self.scrollable_frame.pack(side=LEFT, padx=20, pady=(self.SPACING, 5))
+        self.tabview.pack(side=LEFT, padx=20, pady=(self.SPACING, 5))
 
         # windows
         self.windows_frame = self.main_tabview.add("Windows")

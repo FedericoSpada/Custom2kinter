@@ -12,7 +12,24 @@ ToDo:
 
 ## [Unreleased]
 ### Added
- - Added an option to CTkSegmentedButton to make it layout vertically instead of horizontally
+ - Showroom App, immediately available with the library installation
+ - Gold theme
+ - set(), index(), len() methods for those widgets that were suitable to use them
+ - Attribute to CTkSegmentedButton to make it vertically instead of horizontally
+ - Attribute to CTkTabview to configure the font for its CTkSegmentedButton
+ - Possibility to add a border to CTkLabel
+ - Mouse Wheel detection to CTkSlider and improved it on CTkScrollbar
+
+### Changed
+ - CTkButton triggers the command when the Mouse Button is released
+ - CTkEntry and CTkTextbox lose focus when you click somewhere else
+ - Clicking the Dropdown button again closes the menu for CTkComboBox and CTkOptionMenu
+ - Improved/fixed configure() and cget() methods for all widgets
+ - Improved Tab renaming for CTkTabview
+ - Improved drag behavior for CTkScrollbar
+ - Properly managed borders for CTkScrollableFrame
+ - Fixed a bug that prevented setting a custom Icon for CTkToplevel
+ - Fixed many bugs related to missing invocations or wrong names
 
 ## [5.2.0] - 2022-05-02
 ### Added
