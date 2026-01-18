@@ -72,7 +72,7 @@ class CTkEntry(CTkBaseClass):
         if isinstance(self._font, CTkFont):
             self._font.add_size_configure_callback(self._update_font)
 
-        if not (self._textvariable is None or self._textvariable == ""):
+        if self._textvariable is not None and self._textvariable != "":
             self._textvariable_callback_name = self._textvariable.trace_add("write", self._textvariable_callback)
 
         self._canvas = CTkCanvas(master=self,
@@ -145,6 +145,9 @@ class CTkEntry(CTkBaseClass):
         self._canvas.grid(column=0, row=0, sticky="nswe")
 
     def destroy(self):
+        if self._textvariable is not None:
+            self._textvariable.trace_remove("write", self._textvariable_callback_name)
+
         if isinstance(self._font, CTkFont):
             self._font.remove_size_configure_callback(self._update_font)
 
@@ -219,8 +222,12 @@ class CTkEntry(CTkBaseClass):
             require_redraw = True
 
         if "textvariable" in kwargs:
+            if self._textvariable is not None and self._textvariable != "":
+                self._textvariable.trace_remove("write", self._textvariable_callback_name)  # remove old variable callback
             self._textvariable = kwargs.pop("textvariable")
             self._entry.configure(textvariable=self._textvariable)
+            if self._textvariable is not None and self._textvariable != "":
+                self._textvariable_callback_name = self._textvariable.trace_add("write", self._textvariable_callback)
 
         if "placeholder_text" in kwargs:
             self._placeholder_text = kwargs.pop("placeholder_text")

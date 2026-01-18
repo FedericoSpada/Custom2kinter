@@ -225,6 +225,7 @@ class CTkButton(CTkBaseClass):
                 self._text_label = tkinter.Label(master=self,
                                                  font=self._apply_font_scaling(self._font),
                                                  text=self._text,
+                                                 anchor=self._anchor,
                                                  padx=0,
                                                  pady=0,
                                                  borderwidth=1,
@@ -261,7 +262,7 @@ class CTkButton(CTkBaseClass):
         if self._image is not None:
 
             if self._image_label is None:
-                self._image_label = tkinter.Label(master=self)
+                self._image_label = tkinter.Label(master=self, anchor=self._anchor)
                 self._update_image()  # set image
                 self._create_grid()
 
@@ -439,6 +440,10 @@ class CTkButton(CTkBaseClass):
 
         if "anchor" in kwargs:
             self._anchor = kwargs.pop("anchor")
+            if self._text_label is not None:
+                self._text_label.configure(anchor=self._anchor)
+            if self._image_label is not None:
+                self._image_label.configure(anchor=self._anchor)
             self._create_grid()
             require_redraw = True
 
