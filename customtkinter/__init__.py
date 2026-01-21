@@ -1,4 +1,4 @@
-__version__ = "5.2.2"
+__version__ = "5.3.0"
 
 from typing import Optional
 import os
