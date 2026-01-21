@@ -10,7 +10,7 @@ ToDo:
  - set icon (self.call("wm", "iconphoto", self._w, tkinter.PhotoImage(file="test_images/CustomTkinter_logo_single.png")))
  - add option to change label position for checkbox, switch, radiobutton #628
 
-## [Unreleased]
+## [5.3.0] - 2026-01-21
 ### Added
  - Showroom App, immediately available with the library installation
  - Gold theme

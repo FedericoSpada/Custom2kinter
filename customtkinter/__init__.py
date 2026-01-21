@@ -91,14 +91,13 @@ def set_ctk_parent_class(ctk_parent_class):
 
 def run_showroom() -> None:
     set_appearance_mode("Light")
+    set_default_color_theme("blue")
 
-    new_theme: Optional[str] = "blue"
-    while new_theme:
-        set_default_color_theme(new_theme)
-
+    new_instance: bool = True
+    while new_instance:
         app = _Showroom()
         app.mainloop()
-        new_theme = app.new_theme
+        new_instance = app.new_instance_requested
 
 
 class _Showroom(CTk):
@@ -110,7 +109,7 @@ class _Showroom(CTk):
         # configure window
         self.title("CustomTkinter Showroom")
 
-        self.new_theme: Optional[str] = None
+        self.new_instance_requested: bool = False
 
         # create sidebar frame with widgets
         self.sidebar_frame = CTkFrame(self, width=140, corner_radius=0)
@@ -126,7 +125,12 @@ class _Showroom(CTk):
         self.scaling_label = CTkLabel(self.sidebar_frame, text="UI Scaling:", anchor="w")
         self.scaling_optionmenu = CTkOptionMenu(self.sidebar_frame, values=["80%", "90%", "100%", "110%", "120%"],
                                                 command=self._change_scaling_event)
-        self.scaling_optionmenu.set("100%")
+        widget_scaling = round(ScalingTracker.widget_scaling*100)
+        self.scaling_optionmenu.set(f"{widget_scaling}%")
+        self.drawing_label = CTkLabel(self.sidebar_frame, text="Drawing method:", anchor="w")
+        self.drawing_optionmenu = CTkOptionMenu(self.sidebar_frame, values=DrawEngine.DRAWING_METHODS,
+                                                command=self._change_drawing_event)
+        self.drawing_optionmenu.set(DrawEngine.preferred_drawing_method)
 
         self.sidebar_frame.pack(side="left", fill="y")
         self.logo_label.pack(side="top", fill="x", padx=5, pady=5)
@@ -136,6 +140,8 @@ class _Showroom(CTk):
         self.appearance_mode_optionemenu.pack(side="top", fill="x", padx=20, pady=(0, 10))
         self.scaling_label.pack(side="top", fill="x", padx=20, pady=(20, 5))
         self.scaling_optionmenu.pack(side="top", fill="x", padx=20, pady=(0, 10))
+        self.drawing_label.pack(side="top", fill="x", padx=20, pady=(20, 5))
+        self.drawing_optionmenu.pack(side="top", fill="x", padx=20, pady=(0, 10))
 
         # create main tabview
         self.main_tabview = CTkTabview(self)
@@ -298,5 +304,11 @@ class _Showroom(CTk):
         set_widget_scaling(new_scaling_float)
 
     def _change_theme_event(self, new_theme: str) -> None:
-        self.new_theme = new_theme
+        set_default_color_theme(new_theme)
+        self.new_instance_requested = True
+        self.destroy()
+
+    def _change_drawing_event(self, new_drawing_method: str) -> None:
+        DrawEngine.preferred_drawing_method = new_drawing_method
+        self.new_instance_requested = True
         self.destroy()

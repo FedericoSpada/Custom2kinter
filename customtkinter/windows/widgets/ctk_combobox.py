@@ -216,9 +216,9 @@ class CTkComboBox(CTkBaseClass):
                                         fill=self._apply_appearance_mode(self._text_color))
 
     def _open_dropdown_menu(self):
-        self._close_on_next_click = True
         self._dropdown_menu.open(self.winfo_rootx(),
                                  self.winfo_rooty() + self._apply_widget_scaling(self._current_height + 0))
+        self._close_on_next_click = True
 
     def configure(self, require_redraw=False, **kwargs):
         if "corner_radius" in kwargs:

@@ -274,9 +274,7 @@ class CTkScrollbar(CTkBaseClass):
             #empty space is divided in 20 steps
             delta = (1 - self._end_value + self._start_value) / 20
             #condition for both Linux and others OS
-            if event.delta < 0 or event.num == 5:
-                delta = -delta
-            if self._orientation == "vertical":
+            if event.delta > 0 or event.num == 4:
                 delta = -delta
 
             if self._start_value + delta < 0.0:

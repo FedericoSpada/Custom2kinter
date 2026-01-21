@@ -76,7 +76,10 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
         self.bind('<Configure>', self._update_dimensions_event)
         self.bind('<FocusIn>', self._focus_in_event)
         #allows CTkEntry and CTkTextbox to lose focus
-        self.bind_all("<Button-1>", lambda event: event.widget.focus_set(), add=True)
+        def set_focus(event: tkinter.Event):
+            if hasattr(event.widget, "focus_set"):
+                event.widget.focus_set()
+        self.bind_all("<Button-1>", set_focus, add=True)
 
     def destroy(self):
         self._disable_macos_dark_title_bar()

@@ -26,7 +26,8 @@ class DrawEngine:
 
     """
 
-    preferred_drawing_method: str = None  # 'polygon_shapes', 'font_shapes', 'circle_shapes'
+    DRAWING_METHODS: list[str] = ["polygon_shapes", "font_shapes", "circle_shapes"]
+    preferred_drawing_method: str = None
 
     def __init__(self, canvas: CTkCanvas):
         self._canvas = canvas

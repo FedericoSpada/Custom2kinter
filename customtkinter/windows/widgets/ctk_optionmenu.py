@@ -347,9 +347,9 @@ class CTkOptionMenu(CTkBaseClass):
             return super().cget(attribute_name)
 
     def _open_dropdown_menu(self):
-        self._close_on_next_click = True
         self._dropdown_menu.open(self.winfo_rootx(),
                                  self.winfo_rooty() + self._apply_widget_scaling(self._current_height + 0))
+        self._close_on_next_click = True
 
     def _on_enter(self, event=0):
         self._close_on_next_click = self._dropdown_menu.is_open()
