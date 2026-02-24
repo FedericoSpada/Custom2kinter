@@ -8,6 +8,8 @@ import sys
 
 from .ctk_frame import CTkFrame
 from .ctk_scrollbar import CTkScrollbar
+from .ctk_slider import CTkSlider
+from .ctk_textbox import CTkTextbox
 from .appearance_mode import CTkAppearanceModeBaseClass
 from .scaling import CTkScalingBaseClass
 from .core_widget_classes import CTkBaseClass
@@ -260,7 +262,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             self._parent_canvas.configure(xscrollincrement=30, yscrollincrement=30)
 
     def _mouse_wheel_all(self, event):
-        if self.check_if_master_is_canvas(event.widget):
+        if self._check_if_valid_scroll(event.widget):
             if sys.platform.startswith("win"):
                 if self._shift_pressed:
                     if self._parent_canvas.xview() != (0.0, 1.0):
@@ -290,11 +292,15 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
     def _keyboard_shift_release_all(self, event):
         self._shift_pressed = False
 
-    def check_if_master_is_canvas(self, widget):
+    def _check_if_valid_scroll(self, widget):
         if widget == self._parent_canvas:
             return True
+        elif isinstance(widget, (CTkScrollbar, CTkSlider, CTkTextbox)):
+            return False
+        elif isinstance(widget, CTkScrollableFrame):
+            return widget._parent_canvas == self._parent_canvas
         elif widget.master is not None:
-            return self.check_if_master_is_canvas(widget.master)
+            return self._check_if_valid_scroll(widget.master)
         else:
             return False
 
