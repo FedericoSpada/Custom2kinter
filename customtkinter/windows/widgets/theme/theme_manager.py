@@ -8,7 +8,7 @@ from typing import List, Union
 class ThemeManager:
 
     theme: dict = {}  # contains all the theme data
-    _built_in_themes: List[str] = ["blue", "green", "dark-blue", "sweetkind"]
+    _built_in_themes: List[str] = ["blue", "green", "gold", "dark-blue"]
     _currently_loaded_theme: Union[str, None] = None
 
     @classmethod
@@ -42,6 +42,11 @@ class ThemeManager:
             cls.theme["CTkCheckBox"] = cls.theme.pop("CTkCheckbox")
         if "CTkRadiobutton" in cls.theme.keys():
             cls.theme["CTkRadioButton"] = cls.theme.pop("CTkRadiobutton")
+        if "CTkLabel" in cls.theme.keys():
+            if "border_width" not in cls.theme["CTkLabel"].keys():
+                cls.theme["CTkLabel"]["border_width"] = 0
+            if "border_color" not in cls.theme["CTkLabel"].keys():
+                cls.theme["CTkLabel"]["border_color"] = ["black", "white"]
 
     @classmethod
     def save_theme(cls):

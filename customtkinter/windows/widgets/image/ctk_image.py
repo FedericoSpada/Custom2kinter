@@ -55,10 +55,12 @@ class CTkImage:
             self._light_image = kwargs.pop("light_image")
             self._scaled_light_photo_images = {}
             self._check_images()
+
         if "dark_image" in kwargs:
             self._dark_image = kwargs.pop("dark_image")
             self._scaled_dark_photo_images = {}
             self._check_images()
+
         if "size" in kwargs:
             self._size = kwargs.pop("size")
 
@@ -69,9 +71,9 @@ class CTkImage:
     def cget(self, attribute_name: str) -> any:
         if attribute_name == "light_image":
             return self._light_image
-        if attribute_name == "dark_image":
+        elif attribute_name == "dark_image":
             return self._dark_image
-        if attribute_name == "size":
+        elif attribute_name == "size":
             return self._size
 
     def _check_images(self):

@@ -78,14 +78,21 @@ class CTkScrollbar(CTkBaseClass):
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None:
             self._canvas.tag_bind("border_parts", "<Button-1>", self._clicked)
+            self._canvas.tag_bind("scrollbar_parts", "<Button-1>", self._clicked_scrollbar)
         if sequence is None or sequence == "<Enter>":
             self._canvas.bind("<Enter>", self._on_enter)
         if sequence is None or sequence == "<Leave>":
             self._canvas.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<B1-Motion>":
-            self._canvas.bind("<B1-Motion>", self._clicked)
-        if sequence is None or sequence == "<MouseWheel>":
-            self._canvas.bind("<MouseWheel>", self._mouse_scroll_event)
+            self._canvas.bind("<B1-Motion>", self._on_motion)
+        if "linux" in sys.platform:
+            if sequence is None or sequence == "<Button-4>":
+                self._canvas.bind("<Button-4>", self._mouse_scroll_event)
+            if sequence is None or sequence == "<Button-5>":
+                self._canvas.bind("<Button-5>", self._mouse_scroll_event)
+        else:
+            if sequence is None or sequence == "<MouseWheel>":
+                self._canvas.bind("<MouseWheel>", self._mouse_scroll_event)
 
     def _set_scaling(self, *args, **kwargs):
         super()._set_scaling(*args, **kwargs)
@@ -161,6 +168,14 @@ class CTkScrollbar(CTkBaseClass):
         self._canvas.update_idletasks()
 
     def configure(self, require_redraw=False, **kwargs):
+        if "corner_radius" in kwargs:
+            self._corner_radius = kwargs.pop("corner_radius")
+            require_redraw = True
+
+        if "border_spacing" in kwargs:
+            self._border_spacing = kwargs.pop("border_spacing")
+            require_redraw = True
+
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             require_redraw = True
@@ -179,14 +194,6 @@ class CTkScrollbar(CTkBaseClass):
         if "command" in kwargs:
             self._command = kwargs.pop("command")
 
-        if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
-            require_redraw = True
-
-        if "border_spacing" in kwargs:
-            self._border_spacing = kwargs.pop("border_spacing")
-            require_redraw = True
-
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> any:
@@ -199,9 +206,9 @@ class CTkScrollbar(CTkBaseClass):
 
         elif attribute_name == "fg_color":
             return self._fg_color
-        elif attribute_name == "scrollbar_color":
+        elif attribute_name == "button_color":
             return self._button_color
-        elif attribute_name == "scrollbar_hover_color":
+        elif attribute_name == "button_hover_color":
             return self._button_hover_color
 
         elif attribute_name == "hover":
@@ -228,10 +235,22 @@ class CTkScrollbar(CTkBaseClass):
                                 fill=self._apply_appearance_mode(self._button_color))
 
     def _clicked(self, event):
+        self._motion_center_offset = 0
+        self._on_motion(event)
+    
+    def _clicked_scrollbar(self,event):
         if self._orientation == "vertical":
             value = self._reverse_widget_scaling(((event.y - self._border_spacing) / (self._current_height - 2 * self._border_spacing)))
         else:
             value = self._reverse_widget_scaling(((event.x - self._border_spacing) / (self._current_width - 2 * self._border_spacing)))
+        center = self._start_value + ((self._end_value - self._start_value) * 0.5)
+        self._motion_center_offset = center - value
+
+    def _on_motion(self, event):
+        if self._orientation == "vertical":
+            value = self._reverse_widget_scaling(((event.y - self._border_spacing) / (self._current_height - 2 * self._border_spacing)))+self._motion_center_offset
+        else:
+            value = self._reverse_widget_scaling(((event.x - self._border_spacing) / (self._current_width - 2 * self._border_spacing)))+self._motion_center_offset
 
         current_scrollbar_length = self._end_value - self._start_value
         value = max(current_scrollbar_length / 2, min(value, 1 - (current_scrollbar_length / 2)))
@@ -245,9 +264,30 @@ class CTkScrollbar(CTkBaseClass):
     def _mouse_scroll_event(self, event=None):
         if self._command is not None:
             if sys.platform.startswith("win"):
-                self._command('scroll', -int(event.delta/40), 'units')
+                delta = -int(event.delta/40)
+            elif sys.platform == "darwin":
+                delta = -event.delta
             else:
-                self._command('scroll', -event.delta, 'units')
+                delta = -1 if event.num == 4 else 1
+            self._command('scroll', delta, 'units')
+        else:
+            #empty space is divided in 20 steps
+            delta = (1 - self._end_value + self._start_value) / 20
+            #condition for both Linux and others OS
+            if event.delta > 0 or event.num == 4:
+                delta = -delta
+
+            if self._start_value + delta < 0.0:
+                self._end_value = self._end_value - self._start_value
+                self._start_value = 0.0
+            elif self._end_value + delta > 1.0:
+                self._start_value = 1 - self._end_value + self._start_value
+                self._end_value = 1.0
+            else:
+                self._start_value += delta
+                self._end_value += delta
+            self._draw()
+            
 
     def set(self, start_value: float, end_value: float):
         self._start_value = float(start_value)

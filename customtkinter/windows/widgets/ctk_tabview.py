@@ -7,6 +7,7 @@ from .core_rendering import CTkCanvas
 from .core_rendering import DrawEngine
 from .core_widget_classes import CTkBaseClass
 from .ctk_segmented_button import CTkSegmentedButton
+from .font import CTkFont
 
 
 class CTkTabview(CTkBaseClass):
@@ -36,6 +37,7 @@ class CTkTabview(CTkBaseClass):
                  segmented_button_selected_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
                  segmented_button_unselected_color: Optional[Union[str, Tuple[str, str]]] = None,
                  segmented_button_unselected_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
+                 segmented_button_font: Optional[Union[tuple, CTkFont]] = None,
 
                  text_color: Optional[Union[str, Tuple[str, str]]] = None,
                  text_color_disabled: Optional[Union[str, Tuple[str, str]]] = None,
@@ -75,6 +77,9 @@ class CTkTabview(CTkBaseClass):
                                  height=self._apply_widget_scaling(self._desired_height - self._outer_spacing - self._outer_button_overhang))
         self._draw_engine = DrawEngine(self._canvas)
 
+        # segmented_button_font font
+        self._segmented_button_font = CTkFont() if segmented_button_font is None else segmented_button_font
+
         self._segmented_button = CTkSegmentedButton(self,
                                                     values=[],
                                                     height=self._button_height,
@@ -88,6 +93,7 @@ class CTkTabview(CTkBaseClass):
                                                     corner_radius=corner_radius,
                                                     border_width=self._segmented_button_border_width,
                                                     command=self._segmented_button_callback,
+                                                    font=self._segmented_button_font,
                                                     state=state)
         self._configure_segmented_button_background_corners()
         self._configure_grid()
@@ -253,37 +259,53 @@ class CTkTabview(CTkBaseClass):
             self._set_grid_canvas()
             self._configure_segmented_button_background_corners()
             self._segmented_button.configure(corner_radius=self._corner_radius)
+
         if "border_width" in kwargs:
             self._border_width = kwargs.pop("border_width")
             require_redraw = True
+
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             self._configure_segmented_button_background_corners()
             require_redraw = True
+
         if "border_color" in kwargs:
             self._border_color = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
+
         if "segmented_button_fg_color" in kwargs:
             self._segmented_button.configure(fg_color=kwargs.pop("segmented_button_fg_color"))
+
         if "segmented_button_selected_color" in kwargs:
             self._segmented_button.configure(selected_color=kwargs.pop("segmented_button_selected_color"))
+
         if "segmented_button_selected_hover_color" in kwargs:
             self._segmented_button.configure(selected_hover_color=kwargs.pop("segmented_button_selected_hover_color"))
+
         if "segmented_button_unselected_color" in kwargs:
             self._segmented_button.configure(unselected_color=kwargs.pop("segmented_button_unselected_color"))
+
         if "segmented_button_unselected_hover_color" in kwargs:
             self._segmented_button.configure(unselected_hover_color=kwargs.pop("segmented_button_unselected_hover_color"))
+
+        if "segmented_button_font" in kwargs:
+            self._segmented_button_font = kwargs.pop("segmented_button_font")
+            self._segmented_button.configure(font=self._segmented_button_font)
+
         if "text_color" in kwargs:
             self._segmented_button.configure(text_color=kwargs.pop("text_color"))
+
         if "text_color_disabled" in kwargs:
             self._segmented_button.configure(text_color_disabled=kwargs.pop("text_color_disabled"))
 
         if "command" in kwargs:
             self._command = kwargs.pop("command")
+
         if "anchor" in kwargs:
             self._anchor = kwargs.pop("anchor")
             self._configure_grid()
             self._set_grid_segmented_button()
+
         if "state" in kwargs:
             self._segmented_button.configure(state=kwargs.pop("state"))
 
@@ -299,6 +321,7 @@ class CTkTabview(CTkBaseClass):
             return self._fg_color
         elif attribute_name == "border_color":
             return self._border_color
+
         elif attribute_name == "segmented_button_fg_color":
             return self._segmented_button.cget(attribute_name)
         elif attribute_name == "segmented_button_selected_color":
@@ -309,6 +332,9 @@ class CTkTabview(CTkBaseClass):
             return self._segmented_button.cget(attribute_name)
         elif attribute_name == "segmented_button_unselected_hover_color":
             return self._segmented_button.cget(attribute_name)
+        elif attribute_name == "segmented_button_font":
+            return self._segmented_button_font
+
         elif attribute_name == "text_color":
             return self._segmented_button.cget(attribute_name)
         elif attribute_name == "text_color_disabled":
@@ -359,10 +385,6 @@ class CTkTabview(CTkBaseClass):
         """ appends new tab with given name """
         return self.insert(len(self._tab_dict), name)
 
-    def index(self, name) -> int:
-        """ get index of tab with given name """
-        return self._segmented_button.index(name)
-
     def move(self, new_index: int, name: str):
         if 0 <= new_index < len(self._name_list):
             if name in self._tab_dict:
@@ -382,18 +404,21 @@ class CTkTabview(CTkBaseClass):
         self._segmented_button.insert(old_index, new_name)
 
         # name list
-        self._name_list.remove(old_name)
-        self._name_list.append(new_name)
+        self._name_list[self._name_list.index(old_name)] = new_name
 
         # tab dictionary
         self._tab_dict[new_name] = self._tab_dict.pop(old_name)
+
+        # update current_name so we don't loose the connection to the frame
+        if self._current_name == old_name:
+            self._current_name = new_name
 
     def delete(self, name: str):
         """ delete tab by name """
 
         if name in self._tab_dict:
             self._name_list.remove(name)
-            self._tab_dict[name].grid_forget()
+            self._tab_dict[name].destroy()
             self._tab_dict.pop(name)
             self._segmented_button.delete(name)
 
@@ -428,6 +453,22 @@ class CTkTabview(CTkBaseClass):
         else:
             raise ValueError(f"CTkTabview has no tab named '{name}'")
 
-    def get(self) -> str:
-        """ returns name of selected tab, returns empty string if no tab selected """
-        return self._current_name
+    def get(self, index: Optional[int] = None) -> str:
+        """ returns name of selected tab, returns empty string if no tab selected.\n
+        if an index is provided, returns the tab name in that position """
+        if index is None:
+            return self._current_name
+        else:
+            return self._name_list[index]
+
+    def index(self, name: Optional[str] = None) -> int:
+        """ returns index of selected tab, raises ValueError if the tab is missing
+        if the parameter is provided, returns the associated index or raises ValueError if no tab is found """
+        if name is None:
+            return self._name_list.index(self._current_name)
+        else:
+            return self._name_list.index(name)
+        
+    def len(self) -> int:
+        """ returns the number of defined tabs """
+        return len(self._name_list)

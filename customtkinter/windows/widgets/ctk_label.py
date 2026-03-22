@@ -27,9 +27,11 @@ class CTkLabel(CTkBaseClass):
                  width: int = 0,
                  height: int = 28,
                  corner_radius: Optional[int] = None,
+                 border_width: Optional[int] = None,
 
                  bg_color: Union[str, Tuple[str, str]] = "transparent",
                  fg_color: Optional[Union[str, Tuple[str, str]]] = None,
+                 border_color: Optional[Union[str, Tuple[str, str]]] = None,
                  text_color: Optional[Union[str, Tuple[str, str]]] = None,
                  text_color_disabled: Optional[Union[str, Tuple[str, str]]] = None,
 
@@ -46,11 +48,12 @@ class CTkLabel(CTkBaseClass):
 
         # color
         self._fg_color = ThemeManager.theme["CTkLabel"]["fg_color"] if fg_color is None else self._check_color_type(fg_color, transparency=True)
+        self._border_color: Union[str, Tuple[str, str]] = ThemeManager.theme["CTkLabel"]["border_color"] if border_color is None else self._check_color_type(border_color)
         self._text_color = ThemeManager.theme["CTkLabel"]["text_color"] if text_color is None else self._check_color_type(text_color)
 
         if text_color_disabled is None:
             if "text_color_disabled" in ThemeManager.theme["CTkLabel"]:
-                self._text_color_disabled = ThemeManager.theme["CTkLabel"]["text_color"]
+                self._text_color_disabled = ThemeManager.theme["CTkLabel"]["text_color_disabled"]
             else:
                 self._text_color_disabled = self._text_color
         else:
@@ -58,6 +61,7 @@ class CTkLabel(CTkBaseClass):
 
         # shape
         self._corner_radius = ThemeManager.theme["CTkLabel"]["corner_radius"] if corner_radius is None else corner_radius
+        self._border_width: int = ThemeManager.theme["CTkLabel"]["border_width"] if border_width is None else border_width
 
         # text
         self._anchor = anchor
@@ -161,27 +165,34 @@ class CTkLabel(CTkBaseClass):
         requires_recoloring = self._draw_engine.draw_rounded_rect_with_border(self._apply_widget_scaling(self._current_width),
                                                                               self._apply_widget_scaling(self._current_height),
                                                                               self._apply_widget_scaling(self._corner_radius),
-                                                                              0)
+                                                                              self._apply_widget_scaling(self._border_width))
 
         if no_color_updates is False or requires_recoloring:
-            if self._apply_appearance_mode(self._fg_color) == "transparent":
+
+            self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
+
+            # set color for the button border parts (outline)
+            self._canvas.itemconfig("border_parts",
+                                    outline=self._apply_appearance_mode(self._border_color),
+                                    fill=self._apply_appearance_mode(self._border_color))
+
+            # set color for inner parts
+            if self._fg_color == "transparent":
                 self._canvas.itemconfig("inner_parts",
-                                        fill=self._apply_appearance_mode(self._bg_color),
-                                        outline=self._apply_appearance_mode(self._bg_color))
+                                        outline=self._apply_appearance_mode(self._bg_color),
+                                        fill=self._apply_appearance_mode(self._bg_color))
 
                 self._label.configure(fg=self._apply_appearance_mode(self._text_color),
                                       disabledforeground=self._apply_appearance_mode(self._text_color_disabled),
                                       bg=self._apply_appearance_mode(self._bg_color))
             else:
                 self._canvas.itemconfig("inner_parts",
-                                        fill=self._apply_appearance_mode(self._fg_color),
-                                        outline=self._apply_appearance_mode(self._fg_color))
+                                        outline=self._apply_appearance_mode(self._fg_color),
+                                        fill=self._apply_appearance_mode(self._fg_color))
 
                 self._label.configure(fg=self._apply_appearance_mode(self._text_color),
                                       disabledforeground=self._apply_appearance_mode(self._text_color_disabled),
                                       bg=self._apply_appearance_mode(self._fg_color))
-
-            self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
 
     def configure(self, require_redraw=False, **kwargs):
         if "corner_radius" in kwargs:
@@ -189,8 +200,17 @@ class CTkLabel(CTkBaseClass):
             self._create_grid()
             require_redraw = True
 
+        if "border_width" in kwargs:
+            self._border_width = kwargs.pop("border_width")
+            self._create_grid()
+            require_redraw = True
+
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            require_redraw = True
+
+        if "border_color" in kwargs:
+            self._border_color = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
 
         if "text_color" in kwargs:
@@ -240,9 +260,13 @@ class CTkLabel(CTkBaseClass):
     def cget(self, attribute_name: str) -> any:
         if attribute_name == "corner_radius":
             return self._corner_radius
+        elif attribute_name == "border_width":
+            return self._border_width
 
         elif attribute_name == "fg_color":
             return self._fg_color
+        elif attribute_name == "border_color":
+            return self._border_color
         elif attribute_name == "text_color":
             return self._text_color
         elif attribute_name == "text_color_disabled":

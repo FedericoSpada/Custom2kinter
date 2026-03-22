@@ -34,6 +34,7 @@ class CTkSlider(CTkBaseClass):
                  to: int = 1,
                  state: str = "normal",
                  number_of_steps: Union[int, None] = None,
+                 scroll_step: Optional[Union[int, float]] = None,
                  hover: bool = True,
                  command: Union[Callable[[float], Any], None] = None,
                  variable: Union[tkinter.Variable, None] = None,
@@ -74,6 +75,7 @@ class CTkSlider(CTkBaseClass):
         self._from_ = from_
         self._to = to
         self._number_of_steps = number_of_steps
+        self._scroll_step = (1 / (20 if number_of_steps is None else number_of_steps)) if scroll_step is None else scroll_step
         self._output_value = self._from_ + (self._value * (self._to - self._from_))
 
         if self._corner_radius < self._button_corner_radius:
@@ -116,6 +118,14 @@ class CTkSlider(CTkBaseClass):
             self._canvas.bind("<Button-1>", self._clicked)
         if sequence is None or sequence == "<B1-Motion>":
             self._canvas.bind("<B1-Motion>", self._clicked)
+        if "linux" in sys.platform:
+            if sequence is None or sequence == "<Button-4>":
+                self._canvas.bind("<Button-4>", self._mouse_scroll_event)
+            if sequence is None or sequence == "<Button-5>":
+                self._canvas.bind("<Button-5>", self._mouse_scroll_event)
+        else:
+            if sequence is None or sequence == "<MouseWheel>":
+                self._canvas.bind("<MouseWheel>", self._mouse_scroll_event)
 
     def _set_scaling(self, *args, **kwargs):
         super()._set_scaling(*args, **kwargs)
@@ -249,6 +259,9 @@ class CTkSlider(CTkBaseClass):
         if "number_of_steps" in kwargs:
             self._number_of_steps = kwargs.pop("number_of_steps")
 
+        if "scroll_step" in kwargs:
+            self._scroll_step = kwargs.pop("scroll_step")
+
         if "hover" in kwargs:
             self._hover = kwargs.pop("hover")
 
@@ -258,14 +271,10 @@ class CTkSlider(CTkBaseClass):
         if "variable" in kwargs:
             if self._variable is not None:
                 self._variable.trace_remove("write", self._variable_callback_name)
-
             self._variable = kwargs.pop("variable")
-
             if self._variable is not None and self._variable != "":
                 self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
                 self.set(self._variable.get(), from_variable_callback=True)
-            else:
-                self._variable = None
 
         if "orientation" in kwargs:
             self._orientation = kwargs.pop("orientation")
@@ -302,6 +311,8 @@ class CTkSlider(CTkBaseClass):
             return self._state
         elif attribute_name == "number_of_steps":
             return self._number_of_steps
+        elif attribute_name == "scroll_step":
+            return self._scroll_step
         elif attribute_name == "hover":
             return self._hover
         elif attribute_name == "command":
@@ -313,31 +324,39 @@ class CTkSlider(CTkBaseClass):
 
         else:
             return super().cget(attribute_name)
+        
+    def _update_value(self, value: float):
+        self._value = max(0.0, min(1.0, value))
+
+        self._output_value = self._round_to_step_size(self._from_ + (self._value * (self._to - self._from_)))
+        self._value = (self._output_value - self._from_) / (self._to - self._from_)
+
+        self._draw(no_color_updates=False)
+
+        if self._variable is not None:
+            self._variable_callback_blocked = True
+            self._variable.set(round(self._output_value) if isinstance(self._variable, tkinter.IntVar) else self._output_value)
+            self._variable_callback_blocked = False
+
+        if self._command is not None:
+            self._command(self._output_value)
 
     def _clicked(self, event=None):
         if self._state == "normal":
             if self._orientation.lower() == "horizontal":
-                self._value = self._reverse_widget_scaling(event.x / self._current_width)
+                value = self._reverse_widget_scaling(event.x / self._current_width)
             else:
-                self._value = 1 - self._reverse_widget_scaling(event.y / self._current_height)
+                value = 1.0 - self._reverse_widget_scaling(event.y / self._current_height)
 
-            if self._value > 1:
-                self._value = 1
-            if self._value < 0:
-                self._value = 0
+            self._update_value(value)
 
-            self._output_value = self._round_to_step_size(self._from_ + (self._value * (self._to - self._from_)))
-            self._value = (self._output_value - self._from_) / (self._to - self._from_)
+    def _mouse_scroll_event(self, event):
+        delta = self._scroll_step
+        #condition for both Linux and others OS
+        if event.delta < 0 or event.num == 5:
+            delta = -delta
 
-            self._draw(no_color_updates=False)
-
-            if self._variable is not None:
-                self._variable_callback_blocked = True
-                self._variable.set(round(self._output_value) if isinstance(self._variable, tkinter.IntVar) else self._output_value)
-                self._variable_callback_blocked = False
-
-            if self._command is not None:
-                self._command(self._output_value)
+        self._update_value(self._value + delta)
 
     def _on_enter(self, event=0):
         if self._hover is True and self._state == "normal":
@@ -360,9 +379,6 @@ class CTkSlider(CTkBaseClass):
         else:
             return value
 
-    def get(self) -> float:
-        return self._output_value
-
     def set(self, output_value, from_variable_callback=False):
         if self._from_ < self._to:
             if output_value > self._to:
@@ -384,6 +400,9 @@ class CTkSlider(CTkBaseClass):
             self._variable_callback_blocked = True
             self._variable.set(round(self._output_value) if isinstance(self._variable, tkinter.IntVar) else self._output_value)
             self._variable_callback_blocked = False
+
+    def get(self) -> float:
+        return self._output_value
 
     def _variable_callback(self, var_name, index, mode):
         if not self._variable_callback_blocked:

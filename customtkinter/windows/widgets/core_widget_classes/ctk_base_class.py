@@ -171,7 +171,7 @@ class CTkBaseClass(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClas
 
     def _check_image_type(self, image: any):
         """ check image type when passed to widget """
-        if image is None:
+        if image is None or image == "":
             return image
         elif isinstance(image, CTkImage):
             return image

@@ -90,6 +90,7 @@ class CTkButton(CTkBaseClass):
         self._compound: str = compound
         self._anchor: str = anchor
         self._click_animation_running: bool = False
+        self._mouse_inside: bool = False
 
         # canvas and draw engine
         self._canvas = CTkCanvas(master=self,
@@ -124,13 +125,13 @@ class CTkButton(CTkBaseClass):
             if self._image_label is not None:
                 self._image_label.bind("<Leave>", self._on_leave)
 
-        if sequence is None or sequence == "<Button-1>":
-            self._canvas.bind("<Button-1>", self._clicked)
+        if sequence is None or sequence == "<ButtonRelease-1>":
+            self._canvas.bind("<ButtonRelease-1>", self._on_release)
 
             if self._text_label is not None:
-                self._text_label.bind("<Button-1>", self._clicked)
+                self._text_label.bind("<ButtonRelease-1>", self._on_release)
             if self._image_label is not None:
-                self._image_label.bind("<Button-1>", self._clicked)
+                self._image_label.bind("<ButtonRelease-1>", self._on_release)
 
     def _set_scaling(self, *args, **kwargs):
         super()._set_scaling(*args, **kwargs)
@@ -224,6 +225,7 @@ class CTkButton(CTkBaseClass):
                 self._text_label = tkinter.Label(master=self,
                                                  font=self._apply_font_scaling(self._font),
                                                  text=self._text,
+                                                 anchor=self._anchor,
                                                  padx=0,
                                                  pady=0,
                                                  borderwidth=1,
@@ -232,8 +234,8 @@ class CTkButton(CTkBaseClass):
 
                 self._text_label.bind("<Enter>", self._on_enter)
                 self._text_label.bind("<Leave>", self._on_leave)
-                self._text_label.bind("<Button-1>", self._clicked)
-                self._text_label.bind("<Button-1>", self._clicked)
+                self._text_label.bind("<ButtonRelease-1>", self._on_release)
+                self._text_label.bind("<ButtonRelease-1>", self._on_release)
 
             if no_color_updates is False:
                 # set text_label fg color (text color)
@@ -260,14 +262,14 @@ class CTkButton(CTkBaseClass):
         if self._image is not None:
 
             if self._image_label is None:
-                self._image_label = tkinter.Label(master=self)
+                self._image_label = tkinter.Label(master=self, anchor=self._anchor)
                 self._update_image()  # set image
                 self._create_grid()
 
                 self._image_label.bind("<Enter>", self._on_enter)
                 self._image_label.bind("<Leave>", self._on_leave)
-                self._image_label.bind("<Button-1>", self._clicked)
-                self._image_label.bind("<Button-1>", self._clicked)
+                self._image_label.bind("<ButtonRelease-1>", self._on_release)
+                self._image_label.bind("<ButtonRelease-1>", self._on_release)
 
             if no_color_updates is False:
                 # set image_label bg color (background color of label)
@@ -314,7 +316,7 @@ class CTkButton(CTkBaseClass):
             if self._image_label is not None and self._text_label is not None:
                 self.grid_columnconfigure(2, weight=0, minsize=self._apply_widget_scaling(self._image_label_spacing))
             else:
-                self.grid_columnconfigure(2, weight=0)
+                self.grid_columnconfigure(2, weight=0, minsize=0)
 
             self.grid_rowconfigure((1, 3), weight=0)
             self.grid_columnconfigure((1, 3), weight=1)
@@ -323,7 +325,7 @@ class CTkButton(CTkBaseClass):
             if self._image_label is not None and self._text_label is not None:
                 self.grid_rowconfigure(2, weight=0, minsize=self._apply_widget_scaling(self._image_label_spacing))
             else:
-                self.grid_rowconfigure(2, weight=0)
+                self.grid_rowconfigure(2, weight=0, minsize=0)
 
             self.grid_columnconfigure((1, 3), weight=0)
             self.grid_rowconfigure((1, 3), weight=1)
@@ -402,7 +404,6 @@ class CTkButton(CTkBaseClass):
             self._font = self._check_font_type(kwargs.pop("font"))
             if isinstance(self._font, CTkFont):
                 self._font.add_size_configure_callback(self._update_font)
-
             self._update_font()
 
         if "textvariable" in kwargs:
@@ -416,7 +417,10 @@ class CTkButton(CTkBaseClass):
             self._image = self._check_image_type(kwargs.pop("image"))
             if isinstance(self._image, CTkImage):
                 self._image.add_configure_callback(self._update_image)
-            self._update_image()
+            if self._image_label is not None:
+                self._update_image()
+            else:
+                require_redraw = True
 
         if "state" in kwargs:
             self._state = kwargs.pop("state")
@@ -436,6 +440,10 @@ class CTkButton(CTkBaseClass):
 
         if "anchor" in kwargs:
             self._anchor = kwargs.pop("anchor")
+            if self._text_label is not None:
+                self._text_label.configure(anchor=self._anchor)
+            if self._image_label is not None:
+                self._image_label.configure(anchor=self._anchor)
             self._create_grid()
             require_redraw = True
 
@@ -480,6 +488,7 @@ class CTkButton(CTkBaseClass):
             return self._compound
         elif attribute_name == "anchor":
             return self._anchor
+
         else:
             return super().cget(attribute_name)
 
@@ -498,6 +507,7 @@ class CTkButton(CTkBaseClass):
                     self.configure(cursor="hand2")
 
     def _on_enter(self, event=None):
+        self._mouse_inside = True
         if self._hover is True and self._state == "normal":
             if self._hover_color is None:
                 inner_parts_color = self._fg_color
@@ -518,6 +528,7 @@ class CTkButton(CTkBaseClass):
                 self._image_label.configure(bg=self._apply_appearance_mode(inner_parts_color))
 
     def _on_leave(self, event=None):
+        self._mouse_inside = False
         self._click_animation_running = False
 
         if self._fg_color == "transparent":
@@ -542,9 +553,8 @@ class CTkButton(CTkBaseClass):
         if self._click_animation_running:
             self._on_enter()
 
-    def _clicked(self, event=None):
-        if self._state != tkinter.DISABLED:
-
+    def _on_release(self, event=None):
+        if self._mouse_inside and self._state != tkinter.DISABLED:
             # click animation: change color with .on_leave() and back to normal after 100ms with click_animation()
             self._on_leave()
             self._click_animation_running = True

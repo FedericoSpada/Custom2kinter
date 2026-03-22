@@ -72,7 +72,7 @@ class CTkEntry(CTkBaseClass):
         if isinstance(self._font, CTkFont):
             self._font.add_size_configure_callback(self._update_font)
 
-        if not (self._textvariable is None or self._textvariable == ""):
+        if self._textvariable is not None and self._textvariable != "":
             self._textvariable_callback_name = self._textvariable.trace_add("write", self._textvariable_callback)
 
         self._canvas = CTkCanvas(master=self,
@@ -145,6 +145,9 @@ class CTkEntry(CTkBaseClass):
         self._canvas.grid(column=0, row=0, sticky="nswe")
 
     def destroy(self):
+        if self._textvariable is not None:
+            self._textvariable.trace_remove("write", self._textvariable_callback_name)
+
         if isinstance(self._font, CTkFont):
             self._font.remove_size_configure_callback(self._update_font)
 
@@ -192,12 +195,22 @@ class CTkEntry(CTkBaseClass):
                                    insertbackground=self._apply_appearance_mode(self._text_color))
 
     def configure(self, require_redraw=False, **kwargs):
-        if "state" in kwargs:
-            self._state = kwargs.pop("state")
-            self._entry.configure(state=self._state)
+        if "corner_radius" in kwargs:
+            self._corner_radius = kwargs.pop("corner_radius")
+            self._create_grid()
+            require_redraw = True
+
+        if "border_width" in kwargs:
+            self._border_width = kwargs.pop("border_width")
+            self._create_grid()
+            require_redraw = True
 
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
+            require_redraw = True
+
+        if "border_color" in kwargs:
+            self._border_color = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
 
         if "text_color" in kwargs:
@@ -208,19 +221,13 @@ class CTkEntry(CTkBaseClass):
             self._placeholder_text_color = self._check_color_type(kwargs.pop("placeholder_text_color"))
             require_redraw = True
 
-        if "border_color" in kwargs:
-            self._border_color = self._check_color_type(kwargs.pop("border_color"))
-            require_redraw = True
-
-        if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
-            self._create_grid()
-            require_redraw = True
-
-        if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
-            self._create_grid()
-            require_redraw = True
+        if "textvariable" in kwargs:
+            if self._textvariable is not None and self._textvariable != "":
+                self._textvariable.trace_remove("write", self._textvariable_callback_name)  # remove old variable callback
+            self._textvariable = kwargs.pop("textvariable")
+            self._entry.configure(textvariable=self._textvariable)
+            if self._textvariable is not None and self._textvariable != "":
+                self._textvariable_callback_name = self._textvariable.trace_add("write", self._textvariable_callback)
 
         if "placeholder_text" in kwargs:
             self._placeholder_text = kwargs.pop("placeholder_text")
@@ -230,18 +237,17 @@ class CTkEntry(CTkBaseClass):
             else:
                 self._activate_placeholder()
 
-        if "textvariable" in kwargs:
-            self._textvariable = kwargs.pop("textvariable")
-            self._entry.configure(textvariable=self._textvariable)
-
         if "font" in kwargs:
             if isinstance(self._font, CTkFont):
                 self._font.remove_size_configure_callback(self._update_font)
             self._font = self._check_font_type(kwargs.pop("font"))
             if isinstance(self._font, CTkFont):
                 self._font.add_size_configure_callback(self._update_font)
-
             self._update_font()
+
+        if "state" in kwargs:
+            self._state = kwargs.pop("state")
+            self._entry.configure(state=self._state)
 
         if "show" in kwargs:
             if self._placeholder_text_active:
@@ -334,6 +340,10 @@ class CTkEntry(CTkBaseClass):
         self._deactivate_placeholder()
 
         return self._entry.insert(index, string)
+
+    def set(self, string: str):
+        self._entry.delete(0, tkinter.END)
+        self.insert(0, string)
 
     def get(self):
         if self._placeholder_text_active:

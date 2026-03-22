@@ -90,6 +90,7 @@ class CTkOptionMenu(CTkBaseClass):
                                            hover_color=dropdown_hover_color,
                                            text_color=dropdown_text_color,
                                            font=dropdown_font)
+        self._close_on_next_click: bool = False
 
         # configure grid system (1x1)
         self.grid_rowconfigure(0, weight=1)
@@ -262,7 +263,6 @@ class CTkOptionMenu(CTkBaseClass):
             self._font = self._check_font_type(kwargs.pop("font"))
             if isinstance(self._font, CTkFont):
                 self._font.add_size_configure_callback(self._update_font)
-
             self._update_font()
 
         if "dropdown_font" in kwargs:
@@ -275,15 +275,11 @@ class CTkOptionMenu(CTkBaseClass):
         if "variable" in kwargs:
             if self._variable is not None:  # remove old callback
                 self._variable.trace_remove("write", self._variable_callback_name)
-
             self._variable = kwargs.pop("variable")
-
             if self._variable is not None and self._variable != "":
                 self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
                 self._current_value = self._variable.get()
                 self._text_label.configure(text=self._current_value)
-            else:
-                self._variable = None
 
         if "state" in kwargs:
             self._state = kwargs.pop("state")
@@ -353,8 +349,10 @@ class CTkOptionMenu(CTkBaseClass):
     def _open_dropdown_menu(self):
         self._dropdown_menu.open(self.winfo_rootx(),
                                  self.winfo_rooty() + self._apply_widget_scaling(self._current_height + 0))
+        self._close_on_next_click = True
 
     def _on_enter(self, event=0):
+        self._close_on_next_click = self._dropdown_menu.is_open()
         if self._hover is True and self._state == tkinter.NORMAL and len(self._values) > 0:
             # set color of inner button parts to hover color
             self._canvas.itemconfig("inner_parts_right",
@@ -396,8 +394,19 @@ class CTkOptionMenu(CTkBaseClass):
     def get(self) -> str:
         return self._current_value
 
+    def index(self, value: Optional[Any] = None) -> int:
+        """ returns index of selected value, raises ValueError if the value is missing
+        if the parameter is provided, returns the associated index or raises ValueError if no value is found """
+        if value is None:
+            return self._values.index(self._current_value)
+        else:
+            return self._values.index(value)
+
     def _clicked(self, event=0):
-        if self._state is not tkinter.DISABLED and len(self._values) > 0:
+        if self._close_on_next_click:
+            self._dropdown_menu.close()
+            self._close_on_next_click = False
+        elif self._state is not tkinter.DISABLED and len(self._values) > 0:
             self._open_dropdown_menu()
 
     def bind(self, sequence: str = None, command: Callable = None, add: Union[str, bool] = True):

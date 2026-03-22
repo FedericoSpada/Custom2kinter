@@ -251,6 +251,21 @@ class CTkTextbox(CTkBaseClass):
         self._canvas.tag_lower("border_parts")
 
     def configure(self, require_redraw=False, **kwargs):
+        if "corner_radius" in kwargs:
+            self._corner_radius = kwargs.pop("corner_radius")
+            self._create_grid_for_text_and_scrollbars(re_grid_textbox=True, re_grid_x_scrollbar=True, re_grid_y_scrollbar=True)
+            require_redraw = True
+
+        if "border_width" in kwargs:
+            self._border_width = kwargs.pop("border_width")
+            self._create_grid_for_text_and_scrollbars(re_grid_textbox=True, re_grid_x_scrollbar=True, re_grid_y_scrollbar=True)
+            require_redraw = True
+
+        if "border_spacing" in kwargs:
+            self._border_spacing = kwargs.pop("border_spacing")
+            self._create_grid_for_text_and_scrollbars(re_grid_textbox=True, re_grid_x_scrollbar=True, re_grid_y_scrollbar=True)
+            require_redraw = True
+
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             require_redraw = True
@@ -278,28 +293,12 @@ class CTkTextbox(CTkBaseClass):
             self._x_scrollbar.configure(button_hover_color=self._scrollbar_button_hover_color)
             self._y_scrollbar.configure(button_hover_color=self._scrollbar_button_hover_color)
 
-        if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
-            self._create_grid_for_text_and_scrollbars(re_grid_textbox=True, re_grid_x_scrollbar=True, re_grid_y_scrollbar=True)
-            require_redraw = True
-
-        if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
-            self._create_grid_for_text_and_scrollbars(re_grid_textbox=True, re_grid_x_scrollbar=True, re_grid_y_scrollbar=True)
-            require_redraw = True
-
-        if "border_spacing" in kwargs:
-            self._border_spacing = kwargs.pop("border_spacing")
-            self._create_grid_for_text_and_scrollbars(re_grid_textbox=True, re_grid_x_scrollbar=True, re_grid_y_scrollbar=True)
-            require_redraw = True
-
         if "font" in kwargs:
             if isinstance(self._font, CTkFont):
                 self._font.remove_size_configure_callback(self._update_font)
             self._font = self._check_font_type(kwargs.pop("font"))
             if isinstance(self._font, CTkFont):
                 self._font.add_size_configure_callback(self._update_font)
-
             self._update_font()
 
         self._textbox.configure(**pop_from_dict_by_set(kwargs, self._valid_tk_text_attributes))
@@ -319,10 +318,18 @@ class CTkTextbox(CTkBaseClass):
             return self._border_color
         elif attribute_name == "text_color":
             return self._text_color
+        elif attribute_name == "scrollbar_button_color":
+            return self._scrollbar_button_color
+        elif attribute_name == "scrollbar_button_hover_color":
+            return self._scrollbar_button_hover_color
 
         elif attribute_name == "font":
             return self._font
+        elif attribute_name == "activate_scrollbars":
+            return self._scrollbars_activated
 
+        elif attribute_name in self._valid_tk_text_attributes:
+            return self._textbox.cget(attribute_name)  # cget of tkinter.Text
         else:
             return super().cget(attribute_name)
 
