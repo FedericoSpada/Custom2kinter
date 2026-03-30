@@ -1,18 +1,20 @@
+from __future__ import annotations
+
 import tkinter
 import sys
 import os
 import platform
 import ctypes
-from typing import Union, Tuple, Optional
+from typing import Any
+from typing_extensions import Literal
 from packaging import version
 
-from .widgets.theme import ThemeManager
-from .widgets.scaling import CTkScalingBaseClass
 from .widgets.appearance_mode import CTkAppearanceModeBaseClass
+from .widgets.scaling import CTkScalingBaseClass
+from .widgets.theme import ThemeManager
+from .widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
 
-from customtkinter.windows.widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
-
-CTK_PARENT_CLASS = tkinter.Tk
+CTK_PARENT_CLASS: type = tkinter.Tk
 
 
 class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
@@ -21,18 +23,18 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
     For detailed information check out the documentation.
     """
 
-    _valid_tk_constructor_arguments: set = {"screenName", "baseName", "className", "useTk", "sync", "use"}
+    _valid_tk_constructor_arguments: set[str] = {"screenName", "baseName", "className", "useTk", "sync", "use"}
 
-    _valid_tk_configure_arguments: set = {'bd', 'borderwidth', 'class', 'menu', 'relief', 'screen',
-                                          'use', 'container', 'cursor', 'height',
-                                          'highlightthickness', 'padx', 'pady', 'takefocus', 'visual', 'width'}
+    _valid_tk_configure_arguments: set[str] = {"bd", "borderwidth", "class", "menu", "relief", "screen",
+                                               "use", "container", "cursor", "height",
+                                               "highlightthickness", "padx", "pady", "takefocus", "visual", "width"}
 
     _deactivate_macos_window_header_manipulation: bool = False
     _deactivate_windows_window_header_manipulation: bool = False
 
     def __init__(self,
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 **kwargs):
+                 fg_color: str | tuple[str, str] | None = None,
+                 **kwargs: Any) -> None:
 
         self._enable_macos_dark_title_bar()
 
@@ -42,15 +44,15 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         CTkScalingBaseClass.__init__(self, scaling_type="window")
         check_kwargs_empty(kwargs, raise_error=True)
 
-        self._current_width = 600  # initial window size, independent of scaling
-        self._current_height = 500
+        self._current_width: int = 600  # initial window size, independent of scaling
+        self._current_height: int = 500
         self._min_width: int = 0
         self._min_height: int = 0
         self._max_width: int = 1_000_000
         self._max_height: int = 1_000_000
-        self._last_resizable_args: Union[Tuple[list, dict], None] = None  # (args, kwargs)
+        self._last_resizable_args: tuple[list, dict] | None = None  # (args, kwargs)
 
-        self._fg_color = ThemeManager.theme["CTk"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
+        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTk"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
 
         # set bg of tkinter.Tk
         super().configure(bg=self._apply_appearance_mode(self._fg_color))
@@ -59,15 +61,15 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         self.title("CTk")
 
         # indicator variables
-        self._iconbitmap_method_called = False  # indicates if wm_iconbitmap method got called
-        self._state_before_windows_set_titlebar_color = None
-        self._window_exists = False  # indicates if the window is already shown through update() or mainloop() after init
-        self._withdraw_called_before_window_exists = False  # indicates if withdraw() was called before window is first shown through update() or mainloop()
-        self._iconify_called_before_window_exists = False  # indicates if iconify() was called before window is first shown through update() or mainloop()
-        self._block_update_dimensions_event = False
+        self._iconbitmap_method_called: bool = False  # indicates if wm_iconbitmap method got called
+        self._state_before_windows_set_titlebar_color: str | None = None
+        self._window_exists: bool = False  # indicates if the window is already shown through update() or mainloop() after init
+        self._withdraw_called_before_window_exists: bool = False  # indicates if withdraw() was called before window is first shown through update() or mainloop()
+        self._iconify_called_before_window_exists: bool = False  # indicates if iconify() was called before window is first shown through update() or mainloop()
+        self._block_update_dimensions_event: bool = False
 
         # save focus before calling withdraw
-        self.focused_widget_before_widthdraw = None
+        self.focused_widget_before_widthdraw: tkinter.Misc | None = None
 
         # set CustomTkinter titlebar icon (Windows only)
         if sys.platform.startswith("win"):
@@ -77,15 +79,15 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         if sys.platform.startswith("win"):
             self._windows_set_titlebar_color(self._get_appearance_mode())
 
-        self.bind('<Configure>', self._update_dimensions_event)
-        self.bind('<FocusIn>', self._focus_in_event)
+        self.bind("<Configure>", self._update_dimensions_event)
+        self.bind("<FocusIn>", self._focus_in_event)
         #allows CTkEntry and CTkTextbox to lose focus
-        def set_focus(event: tkinter.Event):
+        def set_focus(event: tkinter.Event) -> None:
             if hasattr(event.widget, "focus_set"):
                 event.widget.focus_set()
         self.bind_all("<Button-1>", set_focus, add=True)
 
-    def destroy(self):
+    def destroy(self) -> None:
         self._disable_macos_dark_title_bar()
 
         # call destroy methods of super classes
@@ -93,12 +95,12 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         CTkAppearanceModeBaseClass.destroy(self)
         CTkScalingBaseClass.destroy(self)
 
-    def _focus_in_event(self, event):
+    def _focus_in_event(self, _: tkinter.Event) -> None:
         # sometimes window looses jumps back on macOS if window is selected from Mission Control, so has to be lifted again
         if sys.platform == "darwin":
             self.lift()
 
-    def _update_dimensions_event(self, event=None):
+    def _update_dimensions_event(self, _: tkinter.Event) -> None:
         if not self._block_update_dimensions_event:
 
             detected_width = super().winfo_width()  # detect current window size
@@ -111,7 +113,7 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
                 self._current_width = self._reverse_window_scaling(detected_width)  # adjust current size according to new size given by event
                 self._current_height = self._reverse_window_scaling(detected_height)  # _current_width and _current_height are independent of the scale
 
-    def _set_scaling(self, new_widget_scaling, new_window_scaling):
+    def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
 
         # Force new dimensions on window by using min, max, and geometry. Without min, max it won't work.
@@ -123,29 +125,27 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         # set new scaled min and max with delay (delay prevents weird bug where window dimensions snap to unscaled dimensions when mouse releases window)
         self.after(1000, self._set_scaled_min_max)  # Why 1000ms delay? Experience! (Everything tested on Windows 11)
 
-    def block_update_dimensions_event(self):
+    def block_update_dimensions_event(self) -> None:
         self._block_update_dimensions_event = False
 
-    def unblock_update_dimensions_event(self):
+    def unblock_update_dimensions_event(self) -> None:
         self._block_update_dimensions_event = False
 
-    def _set_scaled_min_max(self):
-        if self._min_width is not None or self._min_height is not None:
-            super().minsize(self._apply_window_scaling(self._min_width), self._apply_window_scaling(self._min_height))
-        if self._max_width is not None or self._max_height is not None:
-            super().maxsize(self._apply_window_scaling(self._max_width), self._apply_window_scaling(self._max_height))
+    def _set_scaled_min_max(self) -> None:
+        super().minsize(self._apply_window_scaling(self._min_width), self._apply_window_scaling(self._min_height))
+        super().maxsize(self._apply_window_scaling(self._max_width), self._apply_window_scaling(self._max_height))
 
-    def withdraw(self):
+    def withdraw(self) -> None:
         if self._window_exists is False:
             self._withdraw_called_before_window_exists = True
         super().withdraw()
 
-    def iconify(self):
+    def iconify(self) -> None:
         if self._window_exists is False:
             self._iconify_called_before_window_exists = True
         super().iconify()
 
-    def update(self):
+    def update(self) -> None:
         if self._window_exists is False:
             if sys.platform.startswith("win"):
                 if not self._withdraw_called_before_window_exists and not self._iconify_called_before_window_exists:
@@ -156,20 +156,19 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
 
         super().update()
 
-    def mainloop(self, *args, **kwargs):
+    def mainloop(self, *args: Any, **kwargs: Any) -> None:
         if not self._window_exists:
             if sys.platform.startswith("win"):
                 self._windows_set_titlebar_color(self._get_appearance_mode())
 
                 if not self._withdraw_called_before_window_exists and not self._iconify_called_before_window_exists:
-                    # print("window dont exists -> deiconify in mainloop")
                     self.deiconify()
 
             self._window_exists = True
 
         super().mainloop(*args, **kwargs)
 
-    def resizable(self, width: bool = None, height: bool = None):
+    def resizable(self, width: bool | None = None, height: bool | None = None) -> tuple[bool, bool] | None:
         current_resizable_values = super().resizable(width, height)
         self._last_resizable_args = ([], {"width": width, "height": height})
 
@@ -178,37 +177,42 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
 
         return current_resizable_values
 
-    def minsize(self, width: int = None, height: int = None):
-        self._min_width = width
-        self._min_height = height
-        if self._current_width < width:
-            self._current_width = width
-        if self._current_height < height:
-            self._current_height = height
+    def minsize(self, width: int | None = None, height: int | None = None) -> None:
+        if width is not None:
+            self._min_width = width
+            if self._current_width < width:
+                self._current_width = width
+        if height is not None:
+            self._min_height = height
+            if self._current_height < height:
+                self._current_height = height
         super().minsize(self._apply_window_scaling(self._min_width), self._apply_window_scaling(self._min_height))
 
-    def maxsize(self, width: int = None, height: int = None):
-        self._max_width = width
-        self._max_height = height
-        if self._current_width > width:
-            self._current_width = width
-        if self._current_height > height:
-            self._current_height = height
+    def maxsize(self, width: int | None = None, height: int | None = None) -> None:
+        if width is not None:
+            self._max_width = width
+            if self._current_width > width:
+                self._current_width = width
+        if height is not None:
+            self._max_height = height
+            if self._current_height > height:
+                self._current_height = height
         super().maxsize(self._apply_window_scaling(self._max_width), self._apply_window_scaling(self._max_height))
 
-    def geometry(self, geometry_string: str = None):
+    def geometry(self, geometry_string: str | None = None) -> str | None:
         if geometry_string is not None:
             super().geometry(self._apply_geometry_scaling(geometry_string))
 
             # update width and height attributes
-            width, height, x, y = self._parse_geometry_string(geometry_string)
+            width, height, _, _ = self._parse_geometry_string(geometry_string)
             if width is not None and height is not None:
                 self._current_width = max(self._min_width, min(width, self._max_width))  # bound value between min and max
                 self._current_height = max(self._min_height, min(height, self._max_height))
+            return None
         else:
             return self._reverse_geometry_scaling(super().geometry())
 
-    def configure(self, **kwargs):
+    def configure(self, **kwargs: Any) -> None:
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
             super().configure(bg=self._apply_appearance_mode(self._fg_color))
@@ -222,22 +226,22 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         super().configure(**pop_from_dict_by_set(kwargs, self._valid_tk_configure_arguments))
         check_kwargs_empty(kwargs)
 
-    def cget(self, attribute_name: str) -> any:
+    def cget(self, attribute_name: str) -> Any:
         if attribute_name == "fg_color":
             return self._fg_color
 
         else:
             return super().cget(attribute_name)
 
-    def wm_iconbitmap(self, bitmap=None, default=None):
+    def wm_iconbitmap(self, bitmap: Any = None, default: Any = None) -> None:
         self._iconbitmap_method_called = True
         super().wm_iconbitmap(bitmap, default)
 
-    def iconbitmap(self, bitmap=None, default=None):
+    def iconbitmap(self, bitmap: Any = None, default: Any = None) -> None:
         self._iconbitmap_method_called = True
         super().wm_iconbitmap(bitmap, default)
 
-    def _windows_set_titlebar_icon(self):
+    def _windows_set_titlebar_icon(self) -> None:
         try:
             # if not the user already called iconbitmap method, set icon
             if not self._iconbitmap_method_called:
@@ -247,7 +251,7 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
             pass
 
     @classmethod
-    def _enable_macos_dark_title_bar(cls):
+    def _enable_macos_dark_title_bar(cls) -> None:
         if sys.platform == "darwin" and not cls._deactivate_macos_window_header_manipulation:  # macOS
             if version.parse(platform.python_version()) < version.parse("3.10"):
                 if version.parse(tkinter.Tcl().call("info", "patchlevel")) >= version.parse("8.6.9"):  # Tcl/Tk >= 8.6.9
@@ -255,14 +259,14 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
                     # This command allows dark-mode for all programs
 
     @classmethod
-    def _disable_macos_dark_title_bar(cls):
+    def _disable_macos_dark_title_bar(cls) -> None:
         if sys.platform == "darwin" and not cls._deactivate_macos_window_header_manipulation:  # macOS
             if version.parse(platform.python_version()) < version.parse("3.10"):
                 if version.parse(tkinter.Tcl().call("info", "patchlevel")) >= version.parse("8.6.9"):  # Tcl/Tk >= 8.6.9
                     os.system("defaults delete -g NSRequiresAquaSystemAppearance")
                     # This command reverts the dark-mode setting for all programs.
 
-    def _windows_set_titlebar_color(self, color_mode: str):
+    def _windows_set_titlebar_color(self, appearance_mode: Literal["light", "dark"]) -> None:
         """
         Set the titlebar color of the window to light or dark theme on Microsoft Windows.
 
@@ -277,20 +281,18 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
 
             if self._window_exists:
                 self._state_before_windows_set_titlebar_color = self.state()
-                # print("window_exists -> state_before_windows_set_titlebar_color: ", self.state_before_windows_set_titlebar_color)
 
                 if self._state_before_windows_set_titlebar_color != "iconic" or self._state_before_windows_set_titlebar_color != "withdrawn":
                     self.focused_widget_before_widthdraw = self.focus_get()
                     super().withdraw()  # hide window so that it can be redrawn after the titlebar change so that the color change is visible
             else:
-                # print("window dont exists -> withdraw and update")
                 self.focused_widget_before_widthdraw = self.focus_get()
                 super().withdraw()
                 super().update()
 
-            if color_mode.lower() == "dark":
+            if appearance_mode.lower() == "dark":
                 value = 1
-            elif color_mode.lower() == "light":
+            elif appearance_mode.lower() == "light":
                 value = 0
             else:
                 return
@@ -313,8 +315,7 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
             except Exception as err:
                 print(err)
 
-            if self._window_exists or True:
-                # print("window_exists -> return to original state: ", self.state_before_windows_set_titlebar_color)
+            if self._window_exists:
                 if self._state_before_windows_set_titlebar_color == "normal":
                     self.deiconify()
                 elif self._state_before_windows_set_titlebar_color == "iconic":
@@ -330,10 +331,10 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
                 self.after(1, self.focused_widget_before_widthdraw.focus)
                 self.focused_widget_before_widthdraw = None
 
-    def _set_appearance_mode(self, mode_string: str):
-        super()._set_appearance_mode(mode_string)
+    def _set_appearance_mode(self, mode: Literal["light", "dark"]) -> None:
+        super()._set_appearance_mode(mode)
 
         if sys.platform.startswith("win"):
-            self._windows_set_titlebar_color(mode_string)
+            self._windows_set_titlebar_color(mode)
 
         super().configure(bg=self._apply_appearance_mode(self._fg_color))

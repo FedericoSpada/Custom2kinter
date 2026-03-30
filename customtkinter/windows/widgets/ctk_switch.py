@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import tkinter
 import sys
-from typing import Union, Tuple, Callable, Optional, Any
+from typing import Any, Callable
+from typing_extensions import Literal
 
-from .core_rendering import CTkCanvas
-from .theme import ThemeManager
-from .core_rendering import DrawEngine
 from .core_widget_classes import CTkBaseClass
+from .core_rendering import CTkCanvas, DrawEngine
+from .theme import ThemeManager
 from .font import CTkFont
 
 
@@ -16,77 +18,76 @@ class CTkSwitch(CTkBaseClass):
     """
 
     def __init__(self,
-                 master: Any,
+                 master: tkinter.Misc,
                  width: int = 100,
                  height: int = 24,
                  switch_width: int = 36,
                  switch_height: int = 18,
-                 corner_radius: Optional[int] = None,
-                 border_width: Optional[int] = None,
-                 button_length: Optional[int] = None,
+                 corner_radius: int | None = None,
+                 border_width: int | None = None,
+                 button_length: int | None = None,
 
-                 bg_color: Union[str, Tuple[str, str]] = "transparent",
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 border_color: Union[str, Tuple[str, str]] = "transparent",
-                 progress_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 button_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 button_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color_disabled: Optional[Union[str, Tuple[str, str]]] = None,
+                 bg_color: str | tuple[str, str] = "transparent",
+                 fg_color: str | tuple[str, str] | None = None,
+                 border_color: str | tuple[str, str] = "transparent",
+                 progress_color: str | tuple[str, str] | None = None,
+                 button_color: str | tuple[str, str] | None = None,
+                 button_hover_color: str | tuple[str, str] | None = None,
+                 text_color: str | tuple[str, str] | None = None,
+                 text_color_disabled: str | tuple[str, str] | None = None,
 
                  text: str = "CTkSwitch",
-                 font: Optional[Union[tuple, CTkFont]] = None,
-                 textvariable: Union[tkinter.Variable, None] = None,
-                 onvalue: Union[int, str] = 1,
-                 offvalue: Union[int, str] = 0,
-                 variable: Union[tkinter.Variable, None] = None,
+                 font: CTkFont | tuple | None = None,
+                 textvariable: tkinter.StringVar | None = None,
+                 onvalue: int | float | str | bool = 1,
+                 offvalue: int | float | str | bool = 0,
+                 variable: tkinter.Variable | None = None,
                  hover: bool = True,
-                 command: Union[Callable, Any] = None,
-                 state: str = tkinter.NORMAL,
-                 **kwargs):
+                 command: Callable[[], None] | None = None,
+                 state: Literal["normal", "disabled"] = "normal",
+                 **kwargs: Any) -> None:
 
         # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
         super().__init__(master=master, bg_color=bg_color, width=width, height=height, **kwargs)
 
         # dimensions
-        self._switch_width = switch_width
-        self._switch_height = switch_height
+        self._switch_width: int = switch_width
+        self._switch_height: int = switch_height
 
         # color
-        self._border_color = self._check_color_type(border_color, transparency=True)
-        self._fg_color = ThemeManager.theme["CTkSwitch"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-        self._progress_color = ThemeManager.theme["CTkSwitch"]["progress_color"] if progress_color is None else self._check_color_type(progress_color, transparency=True)
-        self._button_color = ThemeManager.theme["CTkSwitch"]["button_color"] if button_color is None else self._check_color_type(button_color)
-        self._button_hover_color = ThemeManager.theme["CTkSwitch"]["button_hover_color"] if button_hover_color is None else self._check_color_type(button_hover_color)
-        self._text_color = ThemeManager.theme["CTkSwitch"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._text_color_disabled = ThemeManager.theme["CTkSwitch"]["text_color_disabled"] if text_color_disabled is None else self._check_color_type(text_color_disabled)
+        self._border_color: str | tuple[str, str] = self._check_color_type(border_color, transparency=True)
+        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
+        self._progress_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["progress_color"] if progress_color is None else self._check_color_type(progress_color, transparency=True)
+        self._button_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["button_color"] if button_color is None else self._check_color_type(button_color)
+        self._button_hover_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["button_hover_color"] if button_hover_color is None else self._check_color_type(button_hover_color)
+        self._text_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["text_color"] if text_color is None else self._check_color_type(text_color)
+        self._text_color_disabled: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["text_color_disabled"] if text_color_disabled is None else self._check_color_type(text_color_disabled)
 
         # text
-        self._text = text
-        self._text_label = None
+        self._text: str = text
 
         # font
-        self._font = CTkFont() if font is None else self._check_font_type(font)
+        self._font: CTkFont | tuple = CTkFont() if font is None else self._check_font_type(font)
         if isinstance(self._font, CTkFont):
             self._font.add_size_configure_callback(self._update_font)
 
         # shape
-        self._corner_radius = ThemeManager.theme["CTkSwitch"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_width = ThemeManager.theme["CTkSwitch"]["border_width"] if border_width is None else border_width
-        self._button_length = ThemeManager.theme["CTkSwitch"]["button_length"] if button_length is None else button_length
+        self._corner_radius: int = ThemeManager.theme["CTkSwitch"]["corner_radius"] if corner_radius is None else corner_radius
+        self._border_width: int = ThemeManager.theme["CTkSwitch"]["border_width"] if border_width is None else border_width
+        self._button_length: int = ThemeManager.theme["CTkSwitch"]["button_length"] if button_length is None else button_length
         self._hover_state: bool = False
         self._check_state: bool = False  # True if switch is activated
-        self._hover = hover
-        self._state = state
-        self._onvalue = onvalue
-        self._offvalue = offvalue
+        self._hover: bool = hover
+        self._state: Literal["normal", "disabled"] = state
+        self._onvalue: int | float | str | bool = onvalue
+        self._offvalue: int | float | str | bool = offvalue
 
         # callback and control variables
-        self._command = command
-        self._variable = variable
-        self._variable_callback_blocked = False
-        self._variable_callback_name = None
-        self._textvariable = textvariable
+        self._command: Callable[[], None] | None = command
+        self._variable: tkinter.Variable | None = variable
+        self._variable_callback_blocked: bool = False
+        self._variable_callback_name: str | None = None
+        self._textvariable: tkinter.StringVar | None = textvariable
 
         # configure grid system (3x1)
         self.grid_columnconfigure(0, weight=0)
@@ -120,13 +121,13 @@ class CTkSwitch(CTkBaseClass):
 
         if self._variable is not None and self._variable != "":
             self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
-            self._check_state = True if self._variable.get() == self._onvalue else False
+            self._check_state = self._variable.get() == self._onvalue
 
         self._create_bindings()
         self._set_cursor()
         self._draw()  # initial draw
 
-    def _create_bindings(self, sequence: Optional[str] = None):
+    def _create_bindings(self, sequence: str | None = None) -> None:
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None or sequence == "<Enter>":
             self._canvas.bind("<Enter>", self._on_enter)
@@ -138,8 +139,8 @@ class CTkSwitch(CTkBaseClass):
             self._canvas.bind("<Button-1>", self.toggle)
             self._text_label.bind("<Button-1>", self.toggle)
 
-    def _set_scaling(self, *args, **kwargs):
-        super()._set_scaling(*args, **kwargs)
+    def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
+        super()._set_scaling(new_widget_scaling, new_window_scaling)
 
         self.grid_columnconfigure(1, weight=0, minsize=self._apply_widget_scaling(6))
         self._text_label.configure(font=self._apply_font_scaling(self._font))
@@ -150,13 +151,13 @@ class CTkSwitch(CTkBaseClass):
                                height=self._apply_widget_scaling(self._switch_height))
         self._draw(no_color_updates=True)
 
-    def _set_dimensions(self, width: int = None, height: int = None):
+    def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
         super()._set_dimensions(width, height)
 
         self._bg_canvas.configure(width=self._apply_widget_scaling(self._desired_width),
                                   height=self._apply_widget_scaling(self._desired_height))
 
-    def _update_font(self):
+    def _update_font(self) -> None:
         """ pass font to tkinter widgets with applied font scaling and update grid with workaround """
         self._text_label.configure(font=self._apply_font_scaling(self._font))
 
@@ -165,7 +166,7 @@ class CTkSwitch(CTkBaseClass):
         self._bg_canvas.grid_forget()
         self._bg_canvas.grid(row=0, column=0, columnspan=3, sticky="nswe")
 
-    def destroy(self):
+    def destroy(self) -> None:
         # remove variable_callback from variable callbacks if variable exists
         if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
@@ -175,7 +176,7 @@ class CTkSwitch(CTkBaseClass):
 
         super().destroy()
 
-    def _set_cursor(self):
+    def _set_cursor(self) -> None:
         if self._cursor_manipulation_enabled:
             if self._state == tkinter.DISABLED:
                 if sys.platform == "darwin":
@@ -197,7 +198,7 @@ class CTkSwitch(CTkBaseClass):
                     if self._text_label is not None:
                         self._text_label.configure(cursor="hand2")
 
-    def _draw(self, no_color_updates=False):
+    def _draw(self, no_color_updates: bool = False) -> None:
         super()._draw(no_color_updates)
 
         if self._check_state is True:
@@ -207,7 +208,7 @@ class CTkSwitch(CTkBaseClass):
                                                                                                self._apply_widget_scaling(self._border_width),
                                                                                                self._apply_widget_scaling(self._button_length),
                                                                                                self._apply_widget_scaling(self._corner_radius),
-                                                                                               1, "w")
+                                                                                               1, "horizontal")
         else:
             requires_recoloring = self._draw_engine.draw_rounded_slider_with_border_and_button(self._apply_widget_scaling(self._switch_width),
                                                                                                self._apply_widget_scaling(self._switch_height),
@@ -215,7 +216,7 @@ class CTkSwitch(CTkBaseClass):
                                                                                                self._apply_widget_scaling(self._border_width),
                                                                                                self._apply_widget_scaling(self._button_length),
                                                                                                self._apply_widget_scaling(self._corner_radius),
-                                                                                               0, "w")
+                                                                                               0, "horizontal")
 
         if no_color_updates is False or requires_recoloring:
             self._bg_canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
@@ -248,13 +249,13 @@ class CTkSwitch(CTkBaseClass):
                                     outline=self._apply_appearance_mode(self._button_color))
 
             if self._state == tkinter.DISABLED:
-                self._text_label.configure(fg=(self._apply_appearance_mode(self._text_color_disabled)))
+                self._text_label.configure(fg=self._apply_appearance_mode(self._text_color_disabled))
             else:
                 self._text_label.configure(fg=self._apply_appearance_mode(self._text_color))
 
             self._text_label.configure(bg=self._apply_appearance_mode(self._bg_color))
 
-    def configure(self, require_redraw=False, **kwargs):
+    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
         require_new_state = False
 
         if "switch_width" in kwargs:
@@ -355,7 +356,7 @@ class CTkSwitch(CTkBaseClass):
             require_redraw = True
         super().configure(require_redraw=require_redraw, **kwargs)
 
-    def cget(self, attribute_name: str) -> any:
+    def cget(self, attribute_name: str) -> Any:
         if attribute_name == "switch_width":
             return self._switch_width
         elif attribute_name == "switch_height":
@@ -403,8 +404,8 @@ class CTkSwitch(CTkBaseClass):
 
         else:
             return super().cget(attribute_name)
-    
-    def set(self, state: bool, from_variable_callback=False):
+
+    def set(self, state: bool, from_variable_callback: bool = False) -> None:
         self._check_state = state
         self._draw(no_color_updates=True)
 
@@ -413,50 +414,53 @@ class CTkSwitch(CTkBaseClass):
             self._variable.set(self._onvalue if self._check_state is True else self._offvalue)
             self._variable_callback_blocked = False
 
-    def toggle(self, event=None):
+    def toggle(self, _: tkinter.Event | None = None) -> None:
         if self._state == tkinter.NORMAL:
             self.set(not self._check_state)
 
             if self._command is not None:
                 self._command()
 
-    def select(self, from_variable_callback=False):
+    def select(self, from_variable_callback: bool = False) -> None:
         self.set(True, from_variable_callback)
 
-    def deselect(self, from_variable_callback=False):
+    def deselect(self, from_variable_callback: bool = False) -> None:
         self.set(False, from_variable_callback)
 
-    def get(self) -> Union[int, str]:
-        return self._onvalue if self._check_state is True else self._offvalue
+    def get(self) -> int | float | str | bool:
+        return self._onvalue if self._check_state else self._offvalue
 
-    def _on_enter(self, event=0):
+    def _on_enter(self, _: tkinter.Event | None = None) -> None:
         if self._hover is True and self._state == "normal":
             self._hover_state = True
             self._canvas.itemconfig("slider_parts",
                                     fill=self._apply_appearance_mode(self._button_hover_color),
                                     outline=self._apply_appearance_mode(self._button_hover_color))
 
-    def _on_leave(self, event=0):
+    def _on_leave(self, _: tkinter.Event | None = None) -> None:
         self._hover_state = False
         self._canvas.itemconfig("slider_parts",
                                 fill=self._apply_appearance_mode(self._button_color),
                                 outline=self._apply_appearance_mode(self._button_color))
 
-    def _variable_callback(self, var_name, index, mode):
+    def _variable_callback(self, *_: str) -> None:
         if not self._variable_callback_blocked:
             if self._variable.get() == self._onvalue:
                 self.select(from_variable_callback=True)
             elif self._variable.get() == self._offvalue:
                 self.deselect(from_variable_callback=True)
 
-    def bind(self, sequence: str = None, command: Callable = None, add: Union[str, bool] = True):
-        """ called on the tkinter.Canvas """
+    def bind(self,
+             sequence: str | None = None,
+             func: Callable[[tkinter.Event], None] | None = None,
+             add: str | bool = True) -> None:
+        """ called on the tkinter.Canvas and tkinter.Label """
         if not (add == "+" or add is True):
             raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
-        self._canvas.bind(sequence, command, add=True)
-        self._text_label.bind(sequence, command, add=True)
+        self._canvas.bind(sequence, func, add=True)
+        self._text_label.bind(sequence, func, add=True)
 
-    def unbind(self, sequence: str = None, funcid: str = None):
+    def unbind(self, sequence: str, funcid: None = None) -> None:
         """ called on the tkinter.Label and tkinter.Canvas """
         if funcid is not None:
             raise ValueError("'funcid' argument can only be None, because there is a bug in" +
@@ -465,11 +469,11 @@ class CTkSwitch(CTkBaseClass):
         self._text_label.unbind(sequence, None)
         self._create_bindings(sequence=sequence)  # restore internal callbacks for sequence
 
-    def focus(self):
+    def focus(self) -> None:
         return self._text_label.focus()
 
-    def focus_set(self):
+    def focus_set(self) -> None:
         return self._text_label.focus_set()
 
-    def focus_force(self):
+    def focus_force(self) -> None:
         return self._text_label.focus_force()

@@ -1,9 +1,12 @@
-from typing import Union, Tuple, List, Optional, Any
+from __future__ import annotations
 
-from .core_rendering import CTkCanvas
-from .theme import ThemeManager
-from .core_rendering import DrawEngine
+import tkinter
+from typing import Any, Callable
+from typing_extensions import Literal
+
 from .core_widget_classes import CTkBaseClass
+from .core_rendering import CTkCanvas, DrawEngine
+from .theme import ThemeManager
 
 
 class CTkFrame(CTkBaseClass):
@@ -15,27 +18,28 @@ class CTkFrame(CTkBaseClass):
     """
 
     def __init__(self,
-                 master: Any,
+                 master: tkinter.Misc,
                  width: int = 200,
                  height: int = 200,
-                 corner_radius: Optional[Union[int, str]] = None,
-                 border_width: Optional[Union[int, str]] = None,
+                 corner_radius: int | None = None,
+                 border_width: int | None = None,
 
-                 bg_color: Union[str, Tuple[str, str]] = "transparent",
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 border_color: Optional[Union[str, Tuple[str, str]]] = None,
+                 bg_color: str | tuple[str, str] = "transparent",
+                 fg_color: str | tuple[str, str] | None = None,
+                 border_color: str | tuple[str, str] | None = None,
 
-                 background_corner_colors: Union[Tuple[Union[str, Tuple[str, str]]], None] = None,
-                 overwrite_preferred_drawing_method: Union[str, None] = None,
-                 **kwargs):
+                 background_corner_colors: tuple[str | tuple[str, str], ...] | None = None,
+                 overwrite_preferred_drawing_method: Literal["polygon_shapes", "font_shapes", "circle_shapes"] | None = None,
+                 **kwargs: Any) -> None:
 
         # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
         super().__init__(master=master, bg_color=bg_color, width=width, height=height, **kwargs)
 
         # color
-        self._border_color = ThemeManager.theme["CTkFrame"]["border_color"] if border_color is None else self._check_color_type(border_color)
+        self._border_color: str | tuple[str, str] = ThemeManager.theme["CTkFrame"]["border_color"] if border_color is None else self._check_color_type(border_color)
 
         # determine fg_color of frame
+        self._fg_color: str | tuple[str, str]
         if fg_color is None:
             if isinstance(self.master, CTkFrame):
                 if self.master._fg_color == ThemeManager.theme["CTkFrame"]["fg_color"]:
@@ -47,11 +51,11 @@ class CTkFrame(CTkBaseClass):
         else:
             self._fg_color = self._check_color_type(fg_color, transparency=True)
 
-        self._background_corner_colors = background_corner_colors  # rendering options for DrawEngine
+        self._background_corner_colors: tuple[str | tuple[str, str], ...] | None = background_corner_colors  # rendering options for DrawEngine
 
         # shape
-        self._corner_radius = ThemeManager.theme["CTkFrame"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_width = ThemeManager.theme["CTkFrame"]["border_width"] if border_width is None else border_width
+        self._corner_radius: int = ThemeManager.theme["CTkFrame"]["corner_radius"] if corner_radius is None else corner_radius
+        self._border_width: int = ThemeManager.theme["CTkFrame"]["border_width"] if border_width is None else border_width
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
@@ -60,11 +64,11 @@ class CTkFrame(CTkBaseClass):
         self._canvas.place(x=0, y=0, relwidth=1, relheight=1)
         self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
         self._draw_engine = DrawEngine(self._canvas)
-        self._overwrite_preferred_drawing_method = overwrite_preferred_drawing_method
+        self._overwrite_preferred_drawing_method: Literal["polygon_shapes", "font_shapes", "circle_shapes"] | None = overwrite_preferred_drawing_method
 
         self._draw(no_color_updates=True)
 
-    def winfo_children(self) -> List[any]:
+    def winfo_children(self) -> list[tkinter.Widget]:
         """
         winfo_children of CTkFrame without self.canvas widget,
         because it's not a child but part of the CTkFrame itself
@@ -77,21 +81,21 @@ class CTkFrame(CTkBaseClass):
         except ValueError:
             return child_widgets
 
-    def _set_scaling(self, *args, **kwargs):
-        super()._set_scaling(*args, **kwargs)
+    def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
+        super()._set_scaling(new_widget_scaling, new_window_scaling)
 
         self._canvas.configure(width=self._apply_widget_scaling(self._desired_width),
                                height=self._apply_widget_scaling(self._desired_height))
         self._draw()
 
-    def _set_dimensions(self, width=None, height=None):
+    def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
         super()._set_dimensions(width, height)
 
         self._canvas.configure(width=self._apply_widget_scaling(self._desired_width),
                                height=self._apply_widget_scaling(self._desired_height))
         self._draw()
 
-    def _draw(self, no_color_updates=False):
+    def _draw(self, no_color_updates: bool = False) -> None:
         super()._draw(no_color_updates)
 
         if not self._canvas.winfo_exists():
@@ -131,7 +135,7 @@ class CTkFrame(CTkBaseClass):
         # self._canvas.tag_lower("inner_parts")  # maybe unnecessary, I don't know ???
         # self._canvas.tag_lower("border_parts")
 
-    def configure(self, require_redraw=False, **kwargs):
+    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
         if "corner_radius" in kwargs:
             self._corner_radius = kwargs.pop("corner_radius")
             require_redraw = True
@@ -166,7 +170,7 @@ class CTkFrame(CTkBaseClass):
 
         super().configure(require_redraw=require_redraw, **kwargs)
 
-    def cget(self, attribute_name: str) -> any:
+    def cget(self, attribute_name: str) -> Any:
         if attribute_name == "corner_radius":
             return self._corner_radius
         elif attribute_name == "border_width":
@@ -182,13 +186,16 @@ class CTkFrame(CTkBaseClass):
         else:
             return super().cget(attribute_name)
 
-    def bind(self, sequence=None, command=None, add=True):
+    def bind(self,
+             sequence: str | None = None,
+             func: Callable[[tkinter.Event], None] | None = None,
+             add: str | bool = True) -> None:
         """ called on the tkinter.Canvas """
         if not (add == "+" or add is True):
             raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
-        self._canvas.bind(sequence, command, add=True)
+        self._canvas.bind(sequence, func, add=True)
 
-    def unbind(self, sequence=None, funcid=None):
+    def unbind(self, sequence: str, funcid: None = None) -> None:
         """ called on the tkinter.Canvas """
         if funcid is not None:
             raise ValueError("'funcid' argument can only be None, because there is a bug in" +

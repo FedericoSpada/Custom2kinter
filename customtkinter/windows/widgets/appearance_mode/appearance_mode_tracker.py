@@ -1,20 +1,23 @@
+from __future__ import annotations
+
 import tkinter
 from typing import Callable
+from typing_extensions import Literal
 import darkdetect
 
 
 class AppearanceModeTracker:
 
-    callback_list = []
-    app_list = []
-    update_loop_running = False
-    update_loop_interval = 30  # milliseconds
+    callback_list: list[Callable[[Literal["light", "dark"]], None]] = []
+    app_list: list[tkinter.Tk] = []
+    update_loop_running: bool = False
+    update_loop_interval: int = 30  # milliseconds
 
-    appearance_mode_set_by = "system"
-    appearance_mode = 0  # Light (standard)
+    appearance_mode_set_by: Literal["user", "system"] = "system"
+    appearance_mode: int = 0  # 0: "Light" 1: "Dark"
 
     @classmethod
-    def init_appearance_mode(cls):
+    def init_appearance_mode(cls) -> None:
         if cls.appearance_mode_set_by == "system":
             new_appearance_mode = cls.detect_appearance_mode()
 
@@ -23,7 +26,9 @@ class AppearanceModeTracker:
                 cls.update_callbacks()
 
     @classmethod
-    def add(cls, callback: Callable, widget=None):
+    def add(cls,
+            callback: Callable[[Literal["light", "dark"]], None],
+            widget: tkinter.Widget | None = None) -> None:
         cls.callback_list.append(callback)
 
         if widget is not None:
@@ -36,11 +41,11 @@ class AppearanceModeTracker:
                     cls.update_loop_running = True
 
     @classmethod
-    def remove(cls, callback: Callable):
+    def remove(cls, callback: Callable[[Literal["light", "dark"]], None]) -> None:
         try:
             cls.callback_list.remove(callback)
         except ValueError:
-            return
+            pass
 
     @staticmethod
     def detect_appearance_mode() -> int:
@@ -53,7 +58,7 @@ class AppearanceModeTracker:
             return 0  # Light
 
     @classmethod
-    def get_tk_root_of_widget(cls, widget):
+    def get_tk_root_of_widget(cls, widget: tkinter.Misc) -> tkinter.Tk:
         current_widget = widget
 
         while isinstance(current_widget, tkinter.Tk) is False:
@@ -62,23 +67,23 @@ class AppearanceModeTracker:
         return current_widget
 
     @classmethod
-    def update_callbacks(cls):
+    def update_callbacks(cls) -> None:
         if cls.appearance_mode == 0:
             for callback in cls.callback_list:
                 try:
-                    callback("Light")
+                    callback("light")
                 except Exception:
                     continue
 
         elif cls.appearance_mode == 1:
             for callback in cls.callback_list:
                 try:
-                    callback("Dark")
+                    callback("dark")
                 except Exception:
                     continue
 
     @classmethod
-    def update(cls):
+    def update(cls) -> None:
         if cls.appearance_mode_set_by == "system":
             new_appearance_mode = cls.detect_appearance_mode()
 
@@ -101,8 +106,8 @@ class AppearanceModeTracker:
         return cls.appearance_mode
 
     @classmethod
-    def set_appearance_mode(cls, mode_string: str):
-        if mode_string.lower() == "dark":
+    def set_appearance_mode(cls, mode: Literal["light", "dark", "system"]) -> None:
+        if mode.lower() == "dark":
             cls.appearance_mode_set_by = "user"
             new_appearance_mode = 1
 
@@ -110,7 +115,7 @@ class AppearanceModeTracker:
                 cls.appearance_mode = new_appearance_mode
                 cls.update_callbacks()
 
-        elif mode_string.lower() == "light":
+        elif mode.lower() == "light":
             cls.appearance_mode_set_by = "user"
             new_appearance_mode = 0
 
@@ -118,5 +123,5 @@ class AppearanceModeTracker:
                 cls.appearance_mode = new_appearance_mode
                 cls.update_callbacks()
 
-        elif mode_string.lower() == "system":
+        elif mode.lower() == "system":
             cls.appearance_mode_set_by = "system"

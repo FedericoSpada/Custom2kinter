@@ -1,4 +1,7 @@
-from typing import Tuple, Dict, Callable, List
+from __future__ import annotations
+
+from typing import Any, Callable
+from typing_extensions import Literal
 try:
     from PIL import Image, ImageTk
 except ImportError:
@@ -16,41 +19,41 @@ class CTkImage:
     One of the two images can be None and will be replaced by the other image.
     """
 
-    _checked_PIL_import = False
+    _checked_PIL_import: bool = False
 
     def __init__(self,
-                 light_image: "Image.Image" = None,
-                 dark_image: "Image.Image" = None,
-                 size: Tuple[int, int] = (20, 20)):
+                 light_image: Image.Image | None = None,
+                 dark_image: Image.Image | None = None,
+                 size: tuple[int, int] = (20, 20)) -> None:
 
         if not self._checked_PIL_import:
             self._check_pil_import()
 
-        self._light_image = light_image
-        self._dark_image = dark_image
+        self._light_image: Image.Image | None = light_image
+        self._dark_image: Image.Image | None = dark_image
         self._check_images()
-        self._size = size
+        self._size: tuple[int, int] = size
 
-        self._configure_callback_list: List[Callable] = []
-        self._scaled_light_photo_images: Dict[Tuple[int, int], ImageTk.PhotoImage] = {}
-        self._scaled_dark_photo_images: Dict[Tuple[int, int], ImageTk.PhotoImage] = {}
+        self._configure_callback_list: list[Callable[[], None]] = []
+        self._scaled_light_photo_images: dict[tuple[int, int], ImageTk.PhotoImage] = {}
+        self._scaled_dark_photo_images: dict[tuple[int, int], ImageTk.PhotoImage] = {}
 
     @classmethod
-    def _check_pil_import(cls):
+    def _check_pil_import(cls) -> None:
         try:
             _, _ = Image, ImageTk
-        except NameError:
-            raise ImportError("PIL.Image and PIL.ImageTk couldn't be imported")
+        except NameError as exc:
+            raise ImportError("PIL.Image and PIL.ImageTk couldn't be imported") from exc
 
-    def add_configure_callback(self, callback: Callable):
+    def add_configure_callback(self, callback: Callable[[], None]) -> None:
         """ add function, that gets called when image got configured """
         self._configure_callback_list.append(callback)
 
-    def remove_configure_callback(self, callback: Callable):
+    def remove_configure_callback(self, callback: Callable[[], None]) -> None:
         """ remove function, that gets called when image got configured """
         self._configure_callback_list.remove(callback)
 
-    def configure(self, **kwargs):
+    def configure(self, **kwargs: Any) -> None:
         if "light_image" in kwargs:
             self._light_image = kwargs.pop("light_image")
             self._scaled_light_photo_images = {}
@@ -68,7 +71,7 @@ class CTkImage:
         for callback in self._configure_callback_list:
             callback()
 
-    def cget(self, attribute_name: str) -> any:
+    def cget(self, attribute_name: str) -> Any:
         if attribute_name == "light_image":
             return self._light_image
         elif attribute_name == "dark_image":
@@ -76,7 +79,7 @@ class CTkImage:
         elif attribute_name == "size":
             return self._size
 
-    def _check_images(self):
+    def _check_images(self) -> None:
         # check types
         if self._light_image is not None and not isinstance(self._light_image, Image.Image):
             raise ValueError(f"CTkImage: light_image must be instance if PIL.Image.Image, not {type(self._light_image)}")
@@ -91,24 +94,20 @@ class CTkImage:
         if self._light_image is not None and self._dark_image is not None and self._light_image.size != self._dark_image.size:
             raise ValueError(f"CTkImage: light_image size {self._light_image.size} must be the same as dark_image size {self._dark_image.size}.")
 
-    def _get_scaled_size(self, widget_scaling: float) -> Tuple[int, int]:
+    def _get_scaled_size(self, widget_scaling: float) -> tuple[int, int]:
         return round(self._size[0] * widget_scaling), round(self._size[1] * widget_scaling)
 
-    def _get_scaled_light_photo_image(self, scaled_size: Tuple[int, int]) -> "ImageTk.PhotoImage":
-        if scaled_size in self._scaled_light_photo_images:
-            return self._scaled_light_photo_images[scaled_size]
-        else:
+    def _get_scaled_light_photo_image(self, scaled_size: tuple[int, int]) -> ImageTk.PhotoImage:
+        if scaled_size not in self._scaled_light_photo_images:
             self._scaled_light_photo_images[scaled_size] = ImageTk.PhotoImage(self._light_image.resize(scaled_size))
-            return self._scaled_light_photo_images[scaled_size]
+        return self._scaled_light_photo_images[scaled_size]
 
-    def _get_scaled_dark_photo_image(self, scaled_size: Tuple[int, int]) -> "ImageTk.PhotoImage":
-        if scaled_size in self._scaled_dark_photo_images:
-            return self._scaled_dark_photo_images[scaled_size]
-        else:
+    def _get_scaled_dark_photo_image(self, scaled_size: tuple[int, int]) -> ImageTk.PhotoImage:
+        if scaled_size not in self._scaled_dark_photo_images:
             self._scaled_dark_photo_images[scaled_size] = ImageTk.PhotoImage(self._dark_image.resize(scaled_size))
-            return self._scaled_dark_photo_images[scaled_size]
+        return self._scaled_dark_photo_images[scaled_size]
 
-    def create_scaled_photo_image(self, widget_scaling: float, appearance_mode: str) -> "ImageTk.PhotoImage":
+    def create_scaled_photo_image(self, widget_scaling: float, appearance_mode: Literal["light", "dark"]) -> ImageTk.PhotoImage:
         scaled_size = self._get_scaled_size(widget_scaling)
 
         if appearance_mode == "light" and self._light_image is not None:
@@ -120,5 +119,3 @@ class CTkImage:
             return self._get_scaled_dark_photo_image(scaled_size)
         elif appearance_mode == "dark" and self._dark_image is None:
             return self._get_scaled_light_photo_image(scaled_size)
-
-

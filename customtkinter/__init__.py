@@ -1,11 +1,11 @@
 __version__ = "5.3.0"
 
-from typing import Optional
 import os
 import sys
 from tkinter import Variable, StringVar, IntVar, DoubleVar, BooleanVar
 from tkinter.constants import *
 import tkinter.filedialog as filedialog
+from typing_extensions import Literal
 
 # import manager classes
 from .windows.widgets.appearance_mode import AppearanceModeTracker
@@ -52,45 +52,46 @@ from .windows import ctk_tk
 _ = Variable, StringVar, IntVar, DoubleVar, BooleanVar, CENTER, filedialog  # prevent IDE from removing unused imports
 
 
-def set_appearance_mode(mode_string: str):
+def set_appearance_mode(mode: Literal["light", "dark", "system"]) -> None:
     """ possible values: light, dark, system """
-    AppearanceModeTracker.set_appearance_mode(mode_string)
+    AppearanceModeTracker.set_appearance_mode(mode)
 
 
-def get_appearance_mode() -> str:
+def get_appearance_mode() -> Literal["light", "dark"]:
     """ get current state of the appearance mode (light or dark) """
     if AppearanceModeTracker.appearance_mode == 0:
-        return "Light"
+        return "light"
     elif AppearanceModeTracker.appearance_mode == 1:
-        return "Dark"
+        return "dark"
+    raise RuntimeError("Something went very wrong")
 
 
-def set_default_color_theme(color_string: str):
+def set_default_color_theme(color_string: str) -> None:
     """ set color theme or load custom theme file by passing the path """
     ThemeManager.load_theme(color_string)
 
 
-def set_widget_scaling(scaling_value: float):
+def set_widget_scaling(scaling_value: float) -> None:
     """ set scaling for the widget dimensions """
     ScalingTracker.set_widget_scaling(scaling_value)
 
 
-def set_window_scaling(scaling_value: float):
+def set_window_scaling(scaling_value: float) -> None:
     """ set scaling for window dimensions """
     ScalingTracker.set_window_scaling(scaling_value)
 
 
-def deactivate_automatic_dpi_awareness():
+def deactivate_automatic_dpi_awareness() -> None:
     """ deactivate DPI awareness of current process (windll.shcore.SetProcessDpiAwareness(0)) """
     ScalingTracker.deactivate_automatic_dpi_awareness = True
 
 
-def set_ctk_parent_class(ctk_parent_class):
+def set_ctk_parent_class(ctk_parent_class: type) -> None:
     ctk_tk.CTK_PARENT_CLASS = ctk_parent_class
 
 
 def run_showroom() -> None:
-    set_appearance_mode("Light")
+    set_appearance_mode("light")
     set_default_color_theme("blue")
 
     new_instance: bool = True
@@ -149,7 +150,7 @@ class _Showroom(CTk):
         self.main_tabview.pack(side="left", fill="both", expand=True, padx=5, pady=(0, 5))
 
         # buttons
-        self.buttons_frame = self.main_tabview.add("Buttons")
+        self.buttons_frame: CTkFrame = self.main_tabview.add("Buttons")
 
         self.button_1 = CTkButton(self.buttons_frame)
         self.button_2 = CTkButton(self.buttons_frame, hover=False, text="No Hover")
@@ -160,7 +161,7 @@ class _Showroom(CTk):
         self.button_3.pack(padx=20, pady=(0, 5))
 
         # choices
-        self.choices_frame = self.main_tabview.add("Choices")
+        self.choices_frame: CTkFrame = self.main_tabview.add("Choices")
         self.combobox_1 = CTkComboBox(self.choices_frame,
                                       values=["CTkComboBox", "Value 2", "Value 3", "User can also", "write any text"])
         self.combobox_1.set("CTkComboBox")
@@ -181,7 +182,7 @@ class _Showroom(CTk):
         self.seg_button2.pack(padx=20, pady=(0, 5))
 
         # text
-        self.text_frame = self.main_tabview.add("Text")
+        self.text_frame: CTkFrame = self.main_tabview.add("Text")
         self.label = CTkLabel(self.text_frame, text="CTkLabel", height=1)
         self.entry = CTkEntry(self.text_frame, placeholder_text="CTkEntry")
         self.textbox = CTkTextbox(self.text_frame, width=320)
@@ -192,7 +193,7 @@ class _Showroom(CTk):
         self.textbox.pack(padx=20, pady=(self.SPACING, 5))
 
         # boolean
-        self.boolean_frame = self.main_tabview.add("Boolean")
+        self.boolean_frame: CTkFrame = self.main_tabview.add("Boolean")
         self.radio_var = IntVar(value=0)
         self.radio_button_1 = CTkRadioButton(self.boolean_frame, variable=self.radio_var, value=0, width=130)
         self.radio_button_2 = CTkRadioButton(self.boolean_frame, variable=self.radio_var, value=1, hover=False, text="No Hover", width=130)
@@ -217,7 +218,7 @@ class _Showroom(CTk):
         self.switch_3.pack(padx=20, pady=(0, 5))
 
         # bars
-        self.bars_frame = self.main_tabview.add("Bars")
+        self.bars_frame: CTkFrame = self.main_tabview.add("Bars")
         self.label_progbar_1 = CTkLabel(self.bars_frame, text="CTkProgressBar - determinate", height=1)
         self.progressbar_1 = CTkProgressBar(self.bars_frame, mode="determinate", determinate_speed=0.5)
         self.label_progbar_2 = CTkLabel(self.bars_frame, text="CTkProgressBar - indeterminate", height=1)
@@ -239,7 +240,7 @@ class _Showroom(CTk):
 
         self.progressbar_1.start()
         self.progressbar_2.start()
-        self.slider_3.configure(command = self.progressbar_3.set)
+        self.slider_3.configure(command=self.progressbar_3.set)
 
         self.label_progbar_1.pack(padx=20, pady=(self.SPACING, 5))
         self.progressbar_1.pack(padx=20, pady=(0, 5))
@@ -259,7 +260,7 @@ class _Showroom(CTk):
         self.scrollbar_2.pack(side="left", padx=20)
 
         # frames
-        self.frames_frame = self.main_tabview.add("Frames")
+        self.frames_frame: CTkFrame = self.main_tabview.add("Frames")
         self.scrollable_frame = CTkScrollableFrame(self.frames_frame, label_text="CTkScrollableFrame",
                                                    fg_color=ThemeManager.theme["CTk"]["fg_color"])
         self.tabview = CTkTabview(self.frames_frame, fg_color=ThemeManager.theme["CTk"]["fg_color"])
@@ -278,7 +279,7 @@ class _Showroom(CTk):
         self.tabview.pack(side=LEFT, padx=20, pady=(self.SPACING, 5))
 
         # windows
-        self.windows_frame = self.main_tabview.add("Windows")
+        self.windows_frame: CTkFrame = self.main_tabview.add("Windows")
         self.open_toplevel = CTkButton(self.windows_frame, text="Open CTkToplevel", command=self._open_ctktoplevel_event)
         self.open_dialog = CTkButton(self.windows_frame, text="Open CTkInputDialog", command=self._open_input_dialog_event)
 
@@ -297,7 +298,7 @@ class _Showroom(CTk):
         dialog.get_input()
 
     def _change_appearance_mode_event(self, new_appearance_mode: str) -> None:
-        set_appearance_mode(new_appearance_mode)
+        set_appearance_mode(new_appearance_mode.lower())
 
     def _change_scaling_event(self, new_scaling: str) -> None:
         new_scaling_float = int(new_scaling.replace("%", "")) / 100

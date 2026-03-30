@@ -1,10 +1,12 @@
-import tkinter
-from typing import Union, Tuple, Optional, Any
+from __future__ import annotations
 
-from .core_rendering import CTkCanvas
-from .theme import ThemeManager
-from .core_rendering import DrawEngine
+import tkinter
+from typing import Any, Callable
+from typing_extensions import Literal
+
 from .core_widget_classes import CTkBaseClass
+from .core_rendering import CTkCanvas, DrawEngine
+from .theme import ThemeManager
 from .font import CTkFont
 from .utility import pop_from_dict_by_set, check_kwargs_empty
 
@@ -15,31 +17,31 @@ class CTkEntry(CTkBaseClass):
     For detailed information check out the documentation.
     """
 
-    _minimum_x_padding = 6  # minimum padding between tkinter entry and frame border
+    _minimum_x_padding: int = 6  # minimum padding between tkinter entry and frame border
 
     # attributes that are passed to and managed by the tkinter entry only:
-    _valid_tk_entry_attributes = {"exportselection", "insertborderwidth", "insertofftime",
-                                  "insertontime", "insertwidth", "justify", "selectborderwidth",
-                                  "show", "takefocus", "validate", "validatecommand", "xscrollcommand"}
+    _valid_tk_entry_attributes: set[str] = {"exportselection", "insertborderwidth", "insertofftime",
+                                            "insertontime", "insertwidth", "justify", "selectborderwidth",
+                                            "show", "takefocus", "validate", "validatecommand", "xscrollcommand"}
 
     def __init__(self,
-                 master: Any,
+                 master: tkinter.Misc,
                  width: int = 140,
                  height: int = 28,
-                 corner_radius: Optional[int] = None,
-                 border_width: Optional[int] = None,
+                 corner_radius: int | None = None,
+                 border_width: int | None = None,
 
-                 bg_color: Union[str, Tuple[str, str]] = "transparent",
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 border_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 placeholder_text_color: Optional[Union[str, Tuple[str, str]]] = None,
+                 bg_color: str | tuple[str, str] = "transparent",
+                 fg_color: str | tuple[str, str] | None = None,
+                 border_color: str | tuple[str, str] | None = None,
+                 text_color: str | tuple[str, str] | None = None,
+                 placeholder_text_color: str | tuple[str, str] | None = None,
 
-                 textvariable: Union[tkinter.Variable, None] = None,
-                 placeholder_text: Union[str, None] = None,
-                 font: Optional[Union[tuple, CTkFont]] = None,
-                 state: str = tkinter.NORMAL,
-                 **kwargs):
+                 textvariable: tkinter.StringVar | None = None,
+                 placeholder_text: str | None = None,
+                 font: CTkFont | tuple | None = None,
+                 state: Literal["normal", "disabled", "readonly"] = "normal",
+                 **kwargs: Any) -> None:
 
         # transfer basic functionality (bg_color, size, appearance_mode, scaling) to CTkBaseClass
         super().__init__(master=master, bg_color=bg_color, width=width, height=height)
@@ -49,26 +51,26 @@ class CTkEntry(CTkBaseClass):
         self.grid_columnconfigure(0, weight=1)
 
         # color
-        self._fg_color = ThemeManager.theme["CTkEntry"]["fg_color"] if fg_color is None else self._check_color_type(fg_color, transparency=True)
-        self._text_color = ThemeManager.theme["CTkEntry"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._placeholder_text_color = ThemeManager.theme["CTkEntry"]["placeholder_text_color"] if placeholder_text_color is None else self._check_color_type(placeholder_text_color)
-        self._border_color = ThemeManager.theme["CTkEntry"]["border_color"] if border_color is None else self._check_color_type(border_color)
+        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["fg_color"] if fg_color is None else self._check_color_type(fg_color, transparency=True)
+        self._text_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["text_color"] if text_color is None else self._check_color_type(text_color)
+        self._placeholder_text_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["placeholder_text_color"] if placeholder_text_color is None else self._check_color_type(placeholder_text_color)
+        self._border_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["border_color"] if border_color is None else self._check_color_type(border_color)
 
         # shape
-        self._corner_radius = ThemeManager.theme["CTkEntry"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_width = ThemeManager.theme["CTkEntry"]["border_width"] if border_width is None else border_width
+        self._corner_radius: int = ThemeManager.theme["CTkEntry"]["corner_radius"] if corner_radius is None else corner_radius
+        self._border_width: int = ThemeManager.theme["CTkEntry"]["border_width"] if border_width is None else border_width
 
         # text and state
         self._is_focused: bool = True
-        self._placeholder_text = placeholder_text
-        self._placeholder_text_active = False
-        self._pre_placeholder_arguments = {}  # some set arguments of the entry will be changed for placeholder and then set back
-        self._textvariable = textvariable
-        self._state = state
+        self._placeholder_text: str | None = placeholder_text
+        self._placeholder_text_active: bool = False
+        self._pre_placeholder_arguments: dict[str, Any] = {}  # some set arguments of the entry will be changed for placeholder and then set back
+        self._textvariable: tkinter.StringVar | None = textvariable
+        self._state: Literal["normal", "disabled", "readonly"] = state
         self._textvariable_callback_name: str = ""
 
         # font
-        self._font = CTkFont() if font is None else self._check_font_type(font)
+        self._font: CTkFont | tuple = CTkFont() if font is None else self._check_font_type(font)
         if isinstance(self._font, CTkFont):
             self._font.add_size_configure_callback(self._update_font)
 
@@ -97,14 +99,14 @@ class CTkEntry(CTkBaseClass):
         self._create_bindings()
         self._draw()
 
-    def _create_bindings(self, sequence: Optional[str] = None):
+    def _create_bindings(self, sequence: str | None = None) -> None:
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None or sequence == "<FocusIn>":
             self._entry.bind("<FocusIn>", self._entry_focus_in)
         if sequence is None or sequence == "<FocusOut>":
             self._entry.bind("<FocusOut>", self._entry_focus_out)
 
-    def _create_grid(self):
+    def _create_grid(self) -> None:
         self._canvas.grid(column=0, row=0, sticky="nswe")
 
         if self._corner_radius >= self._minimum_x_padding:
@@ -116,26 +118,26 @@ class CTkEntry(CTkBaseClass):
                              padx=self._apply_widget_scaling(self._minimum_x_padding),
                              pady=(self._apply_widget_scaling(self._border_width), self._apply_widget_scaling(self._border_width + 1)))
 
-    def _textvariable_callback(self, var_name, index, mode):
+    def _textvariable_callback(self, *_: str) -> None:
         if self._textvariable.get() == "":
             self._activate_placeholder()
 
-    def _set_scaling(self, *args, **kwargs):
-        super()._set_scaling(*args, **kwargs)
+    def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
+        super()._set_scaling(new_widget_scaling, new_window_scaling)
 
         self._entry.configure(font=self._apply_font_scaling(self._font))
         self._canvas.configure(width=self._apply_widget_scaling(self._desired_width), height=self._apply_widget_scaling(self._desired_height))
         self._create_grid()
         self._draw(no_color_updates=True)
 
-    def _set_dimensions(self, width=None, height=None):
+    def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
         super()._set_dimensions(width, height)
 
         self._canvas.configure(width=self._apply_widget_scaling(self._desired_width),
                                height=self._apply_widget_scaling(self._desired_height))
         self._draw(no_color_updates=True)
 
-    def _update_font(self):
+    def _update_font(self) -> None:
         """ pass font to tkinter widgets with applied font scaling and update grid with workaround """
         self._entry.configure(font=self._apply_font_scaling(self._font))
 
@@ -144,7 +146,7 @@ class CTkEntry(CTkBaseClass):
         self._canvas.grid_forget()
         self._canvas.grid(column=0, row=0, sticky="nswe")
 
-    def destroy(self):
+    def destroy(self) -> None:
         if self._textvariable is not None:
             self._textvariable.trace_remove("write", self._textvariable_callback_name)
 
@@ -153,7 +155,7 @@ class CTkEntry(CTkBaseClass):
 
         super().destroy()
 
-    def _draw(self, no_color_updates=False):
+    def _draw(self, no_color_updates: bool = False) -> None:
         super()._draw(no_color_updates)
 
         requires_recoloring = self._draw_engine.draw_rounded_rect_with_border(self._apply_widget_scaling(self._current_width),
@@ -194,7 +196,7 @@ class CTkEntry(CTkBaseClass):
                                    disabledforeground=self._apply_appearance_mode(self._text_color),
                                    insertbackground=self._apply_appearance_mode(self._text_color))
 
-    def configure(self, require_redraw=False, **kwargs):
+    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
         if "corner_radius" in kwargs:
             self._corner_radius = kwargs.pop("corner_radius")
             self._create_grid()
@@ -258,7 +260,7 @@ class CTkEntry(CTkBaseClass):
         self._entry.configure(**pop_from_dict_by_set(kwargs, self._valid_tk_entry_attributes))  # configure Tkinter.Entry
         super().configure(require_redraw=require_redraw, **kwargs)  # configure CTkBaseClass
 
-    def cget(self, attribute_name: str) -> any:
+    def cget(self, attribute_name: str) -> Any:
         if attribute_name == "corner_radius":
             return self._corner_radius
         elif attribute_name == "border_width":
@@ -287,13 +289,16 @@ class CTkEntry(CTkBaseClass):
         else:
             return super().cget(attribute_name)  # cget of CTkBaseClass
 
-    def bind(self, sequence=None, command=None, add=True):
+    def bind(self,
+             sequence: str | None = None,
+             func: Callable[[tkinter.Event], None] | None = None,
+             add: str | bool = True) -> None:
         """ called on the tkinter.Entry """
         if not (add == "+" or add is True):
             raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
-        self._entry.bind(sequence, command, add=True)
+        self._entry.bind(sequence, func, add=True)
 
-    def unbind(self, sequence=None, funcid=None):
+    def unbind(self, sequence: str, funcid: None = None) -> None:
         """ called on the tkinter.Entry """
         if funcid is not None:
             raise ValueError("'funcid' argument can only be None, because there is a bug in" +
@@ -301,7 +306,7 @@ class CTkEntry(CTkBaseClass):
         self._entry.unbind(sequence, None)  # unbind all callbacks for sequence
         self._create_bindings(sequence=sequence)  # restore internal callbacks for sequence
 
-    def _activate_placeholder(self):
+    def _activate_placeholder(self) -> None:
         if self._entry.get() == "" and self._placeholder_text is not None and (self._textvariable is None or self._textvariable == ""):
             self._placeholder_text_active = True
 
@@ -312,7 +317,7 @@ class CTkEntry(CTkBaseClass):
             self._entry.delete(0, tkinter.END)
             self._entry.insert(0, self._placeholder_text)
 
-    def _deactivate_placeholder(self):
+    def _deactivate_placeholder(self) -> None:
         if self._placeholder_text_active and self._entry.cget("state") != "readonly":
             self._placeholder_text_active = False
 
@@ -322,73 +327,91 @@ class CTkEntry(CTkBaseClass):
             for argument, value in self._pre_placeholder_arguments.items():
                 self._entry[argument] = value
 
-    def _entry_focus_out(self, event=None):
+    def _entry_focus_out(self, _: tkinter.Event | None = None) -> None:
         self._activate_placeholder()
         self._is_focused = False
 
-    def _entry_focus_in(self, event=None):
+    def _entry_focus_in(self, _: tkinter.Event | None = None) -> None:
         self._deactivate_placeholder()
         self._is_focused = True
 
-    def delete(self, first_index, last_index=None):
+    def delete(self, first_index: str | int, last_index: str | int | None = None) -> None:
         self._entry.delete(first_index, last_index)
 
         if not self._is_focused and self._entry.get() == "":
             self._activate_placeholder()
 
-    def insert(self, index, string):
+    def insert(self, index: str | int, string: str) -> None:
         self._deactivate_placeholder()
 
         return self._entry.insert(index, string)
 
-    def set(self, string: str):
+    def set(self, string: str) -> None:
         self._entry.delete(0, tkinter.END)
         self.insert(0, string)
 
-    def get(self):
+    def get(self) -> str:
         if self._placeholder_text_active:
             return ""
         else:
             return self._entry.get()
 
-    def focus(self):
-        self._entry.focus()
+    def focus(self) -> None:
+        return self._entry.focus()
 
-    def focus_set(self):
-        self._entry.focus_set()
+    def focus_set(self) -> None:
+        return self._entry.focus_set()
 
-    def focus_force(self):
-        self._entry.focus_force()
+    def focus_force(self) -> None:
+        return self._entry.focus_force()
 
-    def index(self, index):
+    def index(self, index: str | int) -> int:
         return self._entry.index(index)
 
-    def icursor(self, index):
+    def icursor(self, index: str | int) -> None:
         return self._entry.icursor(index)
 
-    def select_adjust(self, index):
+    def select_adjust(self, index: str | int) -> None:
         return self._entry.select_adjust(index)
 
-    def select_from(self, index):
-        return self._entry.icursor(index)
+    def selection_adjust(self, index: str | int) -> None:
+        return self._entry.selection_adjust(index)
 
-    def select_clear(self):
+    def select_from(self, index: str | int) -> None:
+        return self._entry.select_from(index)
+
+    def selection_from(self, index: str | int) -> None:
+        return self._entry.selection_from(index)
+
+    def select_clear(self) -> None:
         return self._entry.select_clear()
 
-    def select_present(self):
+    def selection_clear(self) -> None:
+        return self._entry.selection_clear()
+
+    def select_present(self) -> bool:
         return self._entry.select_present()
 
-    def select_range(self, start_index, end_index):
-        return self._entry.select_range(start_index, end_index)
+    def selection_present(self) -> bool:
+        return self._entry.selection_present()
 
-    def select_to(self, index):
+    def select_range(self, start: str | int, end: str | int) -> None:
+        return self._entry.select_range(start, end)
+
+    def selection_range(self, start: str | int, end: str | int) -> None:
+        return self._entry.selection_range(start, end)
+
+    def select_to(self, index: str | int) -> None:
         return self._entry.select_to(index)
 
-    def xview(self, index):
+    def selection_to(self, index: str | int) -> None:
+        return self._entry.selection_to(index)
+
+    def xview(self, index: str | int) -> None:
         return self._entry.xview(index)
 
-    def xview_moveto(self, f):
-        return self._entry.xview_moveto(f)
+    def xview_moveto(self, fraction: float) -> None:
+        return self._entry.xview_moveto(fraction)
 
-    def xview_scroll(self, number, what):
+    def xview_scroll(self, number: int | float | str, what: Literal["unit", "pages", "pixels"]) -> None:
         return self._entry.xview_scroll(number, what)

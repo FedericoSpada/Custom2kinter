@@ -1,18 +1,20 @@
+from __future__ import annotations
+
 import sys
 import os
 import pathlib
 import json
-from typing import List, Union
+from typing import Any
 
 
 class ThemeManager:
 
-    theme: dict = {}  # contains all the theme data
-    _built_in_themes: List[str] = ["blue", "green", "gold", "dark-blue"]
-    _currently_loaded_theme: Union[str, None] = None
+    theme: dict[str, dict[str, Any]] = {}  # contains all the theme data
+    _built_in_themes: list[str] = ["blue", "green", "gold", "dark-blue"]
+    _currently_loaded_theme: str | None = None
 
     @classmethod
-    def load_theme(cls, theme_name_or_path: str):
+    def load_theme(cls, theme_name_or_path: str) -> None:
         script_directory = os.path.dirname(os.path.abspath(__file__))
 
         if theme_name_or_path in cls._built_in_themes:
@@ -27,7 +29,7 @@ class ThemeManager:
         cls._currently_loaded_theme = theme_name_or_path
 
         # filter theme values for platform
-        for key in cls.theme.keys():
+        for key in cls.theme:
             # check if values for key differ on platforms
             if "macOS" in cls.theme[key].keys():
                 if sys.platform == "darwin":
@@ -38,18 +40,18 @@ class ThemeManager:
                     cls.theme[key] = cls.theme[key]["Linux"]
 
         # fix name inconsistencies
-        if "CTkCheckbox" in cls.theme.keys():
+        if "CTkCheckbox" in cls.theme:
             cls.theme["CTkCheckBox"] = cls.theme.pop("CTkCheckbox")
-        if "CTkRadiobutton" in cls.theme.keys():
+        if "CTkRadiobutton" in cls.theme:
             cls.theme["CTkRadioButton"] = cls.theme.pop("CTkRadiobutton")
-        if "CTkLabel" in cls.theme.keys():
+        if "CTkLabel" in cls.theme:
             if "border_width" not in cls.theme["CTkLabel"].keys():
                 cls.theme["CTkLabel"]["border_width"] = 0
             if "border_color" not in cls.theme["CTkLabel"].keys():
                 cls.theme["CTkLabel"]["border_color"] = ["black", "white"]
 
     @classmethod
-    def save_theme(cls):
+    def save_theme(cls) -> None:
         if cls._currently_loaded_theme is not None:
             if cls._currently_loaded_theme not in cls._built_in_themes:
                 with open(cls._currently_loaded_theme, "r") as f:
@@ -57,4 +59,4 @@ class ThemeManager:
             else:
                 raise ValueError(f"cannot modify builtin theme '{cls._currently_loaded_theme}'")
         else:
-            raise ValueError(f"cannot save theme, no theme is loaded")
+            raise ValueError("cannot save theme, no theme is loaded")

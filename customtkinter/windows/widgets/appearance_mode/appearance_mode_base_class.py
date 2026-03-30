@@ -1,4 +1,6 @@
-from typing import Union, Tuple, List
+from __future__ import annotations
+
+from typing_extensions import Literal
 
 from .appearance_mode_tracker import AppearanceModeTracker
 
@@ -12,28 +14,28 @@ class CTkAppearanceModeBaseClass:
     - _apply_appearance_mode() to convert tuple color
 
     """
-    def __init__(self):
+    def __init__(self) -> None:
         AppearanceModeTracker.add(self._set_appearance_mode, self)
-        self.__appearance_mode = AppearanceModeTracker.get_mode()  # 0: "Light" 1: "Dark"
+        self.__appearance_mode: int = AppearanceModeTracker.get_mode()  # 0: "Light" 1: "Dark"
 
-    def destroy(self):
+    def destroy(self) -> None:
         AppearanceModeTracker.remove(self._set_appearance_mode)
 
-    def _set_appearance_mode(self, mode_string: str):
+    def _set_appearance_mode(self, mode: Literal["light", "dark"]) -> None:
         """ can be overridden but super method must be called at the beginning """
-        if mode_string.lower() == "dark":
+        if mode.lower() == "dark":
             self.__appearance_mode = 1
-        elif mode_string.lower() == "light":
+        elif mode.lower() == "light":
             self.__appearance_mode = 0
 
-    def _get_appearance_mode(self) -> str:
+    def _get_appearance_mode(self) -> Literal["light", "dark"]:
         """ get appearance mode as a string, 'light' or 'dark' """
         if self.__appearance_mode == 0:
             return "light"
         else:
             return "dark"
 
-    def _apply_appearance_mode(self, color: Union[str, Tuple[str, str], List[str]]) -> str:
+    def _apply_appearance_mode(self, color: str | tuple[str, str] | list[str]) -> str:
         """
         color can be either a single hex color string or a color name or it can be a
         tuple color with (light_color, dark_color). The functions returns
@@ -46,16 +48,17 @@ class CTkAppearanceModeBaseClass:
             return color
 
     @staticmethod
-    def _check_color_type(color: any, transparency: bool = False):
+    def _check_color_type(color: str | tuple[str, str] | list[str],
+                          transparency: bool = False) -> str | tuple[str, str]:
         if color is None:
-            raise ValueError(f"color is None, for transparency set color='transparent'")
+            raise ValueError("color is None, for transparency set color='transparent'")
         elif isinstance(color, (tuple, list)) and (color[0] == "transparent" or color[1] == "transparent"):
             raise ValueError(f"transparency is not allowed in tuple color {color}, use 'transparent'")
         elif color == "transparent" and transparency is False:
-            raise ValueError(f"transparency is not allowed for this attribute")
+            raise ValueError("transparency is not allowed for this attribute")
         elif isinstance(color, str):
             return color
         elif isinstance(color, (tuple, list)) and len(color) == 2 and isinstance(color[0], str) and isinstance(color[1], str):
-            return color
+            return tuple(color)
         else:
             raise ValueError(f"color {color} must be string ('transparent' or 'color-name' or 'hex-color') or tuple of two strings, not {type(color)}")
