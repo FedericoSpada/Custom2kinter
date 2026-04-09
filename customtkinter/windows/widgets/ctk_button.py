@@ -3,16 +3,38 @@ from __future__ import annotations
 import tkinter
 import sys
 from typing import Any, Callable, TYPE_CHECKING
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkBaseClass
 from .core_rendering import CTkCanvas, DrawEngine
 from .theme import ThemeManager
-from .font import CTkFont
+from .font.ctk_font import CTkFont, CTkFontArgs
 from .image import CTkImage
 
 if TYPE_CHECKING:
     from PIL import ImageTk
+
+
+class CTkButtonArgs(TypedDict, total=False):
+    width: int
+    height: int
+    corner_radius: int
+    border_width: int
+    border_spacing: int
+    bg_color: str | tuple[str, str]
+    fg_color: str | tuple[str, str]
+    border_color: str | tuple[str, str]
+    text_color: str | tuple[str, str]
+    text_color_disabled: str | tuple[str, str]
+    hover_color: str | tuple[str, str]
+    hover: bool
+    round_width_to_even_numbers: bool
+    round_height_to_even_numbers: bool
+    text: str
+    font: CTkFontArgs | CTkFont | tuple | str
+    anchor: str  #center or combination of n, e, s, w
+    compound: Literal["left", "right", "top", "bottom"]
+
 
 class CTkButton(CTkBaseClass):
     """
@@ -24,62 +46,38 @@ class CTkButton(CTkBaseClass):
 
     def __init__(self,
                  master: tkinter.Misc,
-                 width: int = 140,
-                 height: int = 28,
-                 corner_radius: int | None = None,
-                 border_width: int | None = None,
-                 border_spacing: int = 2,
-
-                 bg_color: str | tuple[str, str] = "transparent",
-                 fg_color: str | tuple[str, str] | None = None,
-                 hover_color: str | tuple[str, str] | None = None,
-                 border_color: str | tuple[str, str] | None = None,
-                 text_color: str | tuple[str, str] | None = None,
-                 text_color_disabled: str | tuple[str, str] | None = None,
-
-                 background_corner_colors: tuple[str | tuple[str, str], ...] | None = None,
-                 round_width_to_even_numbers: bool = True,
-                 round_height_to_even_numbers: bool = True,
-
-                 text: str = "CTkButton",
-                 font: CTkFont | tuple | None = None,
+                 theme_key: str | None = None,
                  textvariable: tkinter.Variable | None = None,
                  image: CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | None = None,
                  state: Literal["normal", "disabled"] = "normal",
-                 hover: bool = True,
                  command: Callable[[], None] | None = None,
-                 compound: Literal["left", "right", "top", "bottom"] = "left",
-                 anchor: str = "center",  #center or combination of n, e, s, w
-                 **kwargs: Any) -> None:
+                 background_corner_colors: tuple[str | tuple[str, str], ...] | None = None,
+                 **kwargs: Unpack[CTkButtonArgs]) -> None:
 
-        # transfer basic functionality (bg_color, size, appearance_mode, scaling) to CTkBaseClass
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height, **kwargs)
+        self._theme_info: CTkButtonArgs = ThemeManager.get_info("CTkButton", theme_key, **kwargs)
 
-        # shape
-        self._corner_radius: int = ThemeManager.theme["CTkButton"]["corner_radius"] if corner_radius is None else corner_radius
-        self._corner_radius = min(self._corner_radius, round(self._current_height / 2))
-        self._border_width: int = ThemeManager.theme["CTkButton"]["border_width"] if border_width is None else border_width
-        self._border_spacing: int = border_spacing
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key],
+                                                               transparency=key in ("fg_color", "bg_color"))
 
-        # color
-        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkButton"]["fg_color"] if fg_color is None else self._check_color_type(fg_color, transparency=True)
-        self._hover_color: str | tuple[str, str] = ThemeManager.theme["CTkButton"]["hover_color"] if hover_color is None else self._check_color_type(hover_color)
-        self._border_color: str | tuple[str, str] = ThemeManager.theme["CTkButton"]["border_color"] if border_color is None else self._check_color_type(border_color)
-        self._text_color: str | tuple[str, str] = ThemeManager.theme["CTkButton"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._text_color_disabled: str | tuple[str, str] = ThemeManager.theme["CTkButton"]["text_color_disabled"] if text_color_disabled is None else self._check_color_type(text_color_disabled)
+        # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
+        super().__init__(master=master,
+                         bg_color=self._theme_info["bg_color"],
+                         width=self._theme_info["width"],
+                         height=self._theme_info["height"])
+
+        self._theme_info["corner_radius"] = min(self._theme_info["corner_radius"], round(self._current_height / 2))
 
         # rendering options
         self._background_corner_colors: tuple[str | tuple[str, str], ...] | None = background_corner_colors  # rendering options for DrawEngine
-        self._round_width_to_even_numbers: bool = round_width_to_even_numbers  # rendering options for DrawEngine
-        self._round_height_to_even_numbers: bool = round_height_to_even_numbers  # rendering options for DrawEngine
 
-        # text, font
-        self._text: str = text
-        self._text_label: tkinter.Label | None = None
+        # text and font
         self._textvariable: tkinter.Variable | None = textvariable
-        self._font: CTkFont | tuple = CTkFont() if font is None else self._check_font_type(font)
-        if isinstance(self._font, CTkFont):
-            self._font.add_size_configure_callback(self._update_font)
+        self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
+        self._font.add_size_configure_callback(self._update_font)
+        self._text_label: tkinter.Label | None = None
 
         # image
         self._image: CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | str | None = self._check_image_type(image)
@@ -87,12 +85,9 @@ class CTkButton(CTkBaseClass):
         if isinstance(self._image, CTkImage):
             self._image.add_configure_callback(self._update_image)
 
-        # other
+        # functionality
         self._state: Literal["normal", "disabled"] = state
-        self._hover: bool = hover
         self._command: Callable[[], None] | None = command
-        self._compound: Literal["left", "right", "top", "bottom"] = compound
-        self._anchor: str = anchor
         self._click_animation_running: bool = False
         self._mouse_inside: bool = False
 
@@ -103,7 +98,7 @@ class CTkButton(CTkBaseClass):
                                  height=self._apply_widget_scaling(self._desired_height))
         self._canvas.grid(row=0, column=0, rowspan=5, columnspan=5, sticky="nsew")
         self._draw_engine = DrawEngine(self._canvas)
-        self._draw_engine.set_round_to_even_numbers(self._round_width_to_even_numbers, self._round_height_to_even_numbers)  # rendering options
+        self._draw_engine.set_round_to_even_numbers(self._theme_info["round_width_to_even_numbers"], self._theme_info["round_height_to_even_numbers"])  # rendering options
 
         # configure cursor and initial draw
         self._create_bindings()
@@ -181,8 +176,7 @@ class CTkButton(CTkBaseClass):
                 self._image_label.configure(image=self._image)
 
     def destroy(self) -> None:
-        if isinstance(self._font, CTkFont):
-            self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_size_configure_callback(self._update_font)
         super().destroy()
 
     def _draw(self, no_color_updates: bool = False) -> None:
@@ -200,8 +194,8 @@ class CTkButton(CTkBaseClass):
 
         requires_recoloring = self._draw_engine.draw_rounded_rect_with_border(self._apply_widget_scaling(self._current_width),
                                                                               self._apply_widget_scaling(self._current_height),
-                                                                              self._apply_widget_scaling(self._corner_radius),
-                                                                              self._apply_widget_scaling(self._border_width))
+                                                                              self._apply_widget_scaling(self._theme_info["corner_radius"]),
+                                                                              self._apply_widget_scaling(self._theme_info["border_width"]))
 
         if no_color_updates is False or requires_recoloring:
 
@@ -209,27 +203,27 @@ class CTkButton(CTkBaseClass):
 
             # set color for the button border parts (outline)
             self._canvas.itemconfig("border_parts",
-                                    outline=self._apply_appearance_mode(self._border_color),
-                                    fill=self._apply_appearance_mode(self._border_color))
+                                    outline=self._apply_appearance_mode(self._theme_info["border_color"]),
+                                    fill=self._apply_appearance_mode(self._theme_info["border_color"]))
 
             # set color for inner button parts
-            if self._fg_color == "transparent":
+            if self._theme_info["fg_color"] == "transparent":
                 self._canvas.itemconfig("inner_parts",
                                         outline=self._apply_appearance_mode(self._bg_color),
                                         fill=self._apply_appearance_mode(self._bg_color))
             else:
                 self._canvas.itemconfig("inner_parts",
-                                        outline=self._apply_appearance_mode(self._fg_color),
-                                        fill=self._apply_appearance_mode(self._fg_color))
+                                        outline=self._apply_appearance_mode(self._theme_info["fg_color"]),
+                                        fill=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
         # create text label if text given
-        if self._text is not None and self._text != "":
+        if self._theme_info["text"] is not None and self._theme_info["text"] != "":
 
             if self._text_label is None:
                 self._text_label = tkinter.Label(master=self,
                                                  font=self._apply_font_scaling(self._font),
-                                                 text=self._text,
-                                                 anchor=self._anchor,
+                                                 text=self._theme_info["text"],
+                                                 anchor=self._theme_info["anchor"],
                                                  padx=0,
                                                  pady=0,
                                                  borderwidth=1,
@@ -243,17 +237,17 @@ class CTkButton(CTkBaseClass):
 
             if no_color_updates is False:
                 # set text_label fg color (text color)
-                self._text_label.configure(fg=self._apply_appearance_mode(self._text_color))
+                self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]))
 
                 if self._state == tkinter.DISABLED:
-                    self._text_label.configure(fg=self._apply_appearance_mode(self._text_color_disabled))
+                    self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color_disabled"]))
                 else:
-                    self._text_label.configure(fg=self._apply_appearance_mode(self._text_color))
+                    self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]))
 
-                if self._apply_appearance_mode(self._fg_color) == "transparent":
+                if self._apply_appearance_mode(self._theme_info["fg_color"]) == "transparent":
                     self._text_label.configure(bg=self._apply_appearance_mode(self._bg_color))
                 else:
-                    self._text_label.configure(bg=self._apply_appearance_mode(self._fg_color))
+                    self._text_label.configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
         else:
             # delete text_label if no text given
@@ -265,7 +259,7 @@ class CTkButton(CTkBaseClass):
         # create image label if image given
         if self._image is not None:
             if self._image_label is None:
-                self._image_label = tkinter.Label(master=self, anchor=self._anchor)
+                self._image_label = tkinter.Label(master=self, anchor=self._theme_info["anchor"])
                 self._update_image()  # set image
                 self._create_grid()
 
@@ -276,10 +270,10 @@ class CTkButton(CTkBaseClass):
 
             if no_color_updates is False:
                 # set image_label bg color (background color of label)
-                if self._apply_appearance_mode(self._fg_color) == "transparent":
+                if self._apply_appearance_mode(self._theme_info["fg_color"]) == "transparent":
                     self._image_label.configure(bg=self._apply_appearance_mode(self._bg_color))
                 else:
-                    self._image_label.configure(bg=self._apply_appearance_mode(self._fg_color))
+                    self._image_label.configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
         else:
             # delete text_label if no text given
@@ -296,25 +290,27 @@ class CTkButton(CTkBaseClass):
         # so image and label need sticky option to stick together in the center, and therefore outer rows and columns
         # need weight of 100 in case of other anchor than center.
         n_padding_weight, s_padding_weight, e_padding_weight, w_padding_weight = 1000, 1000, 1000, 1000
-        if self._anchor != "center":
-            if "n" in self._anchor:
+        anchor = self._theme_info["anchor"]
+        if anchor != "center":
+            if "n" in anchor:
                 n_padding_weight, s_padding_weight = 0, 1000
-            if "s" in self._anchor:
+            if "s" in anchor:
                 n_padding_weight, s_padding_weight = 1000, 0
-            if "e" in self._anchor:
+            if "e" in anchor:
                 e_padding_weight, w_padding_weight = 1000, 0
-            if "w" in self._anchor:
+            if "w" in anchor:
                 e_padding_weight, w_padding_weight = 0, 1000
 
-        scaled_minsize_rows = self._apply_widget_scaling(max(self._border_width + 1, self._border_spacing))
-        scaled_minsize_columns = self._apply_widget_scaling(max(self._corner_radius, self._border_width + 1, self._border_spacing))
+        scaled_minsize_rows = self._apply_widget_scaling(max(self._theme_info["border_width"] + 1, self._theme_info["border_spacing"]))
+        scaled_minsize_columns = self._apply_widget_scaling(max(self._theme_info["corner_radius"], self._theme_info["border_width"] + 1, self._theme_info["border_spacing"]))
+        compound = self._theme_info["compound"]
 
         self.grid_rowconfigure(0, weight=n_padding_weight, minsize=scaled_minsize_rows)
         self.grid_rowconfigure(4, weight=s_padding_weight, minsize=scaled_minsize_rows)
         self.grid_columnconfigure(0, weight=e_padding_weight, minsize=scaled_minsize_columns)
         self.grid_columnconfigure(4, weight=w_padding_weight, minsize=scaled_minsize_columns)
 
-        if self._compound in ("right", "left"):
+        if compound in ("right", "left"):
             self.grid_rowconfigure(2, weight=1)
             if self._image_label is not None and self._text_label is not None:
                 self.grid_columnconfigure(2, weight=0, minsize=self._apply_widget_scaling(self._image_label_spacing))
@@ -333,61 +329,61 @@ class CTkButton(CTkBaseClass):
             self.grid_columnconfigure((1, 3), weight=0)
             self.grid_rowconfigure((1, 3), weight=1)
 
-        if self._compound == "right":
+        if compound == "right":
             if self._image_label is not None:
                 self._image_label.grid(row=2, column=3, sticky="w")
             if self._text_label is not None:
                 self._text_label.grid(row=2, column=1, sticky="e")
-        elif self._compound == "left":
+        elif compound == "left":
             if self._image_label is not None:
                 self._image_label.grid(row=2, column=1, sticky="e")
             if self._text_label is not None:
                 self._text_label.grid(row=2, column=3, sticky="w")
-        elif self._compound == "top":
+        elif compound == "top":
             if self._image_label is not None:
                 self._image_label.grid(row=1, column=2, sticky="s")
             if self._text_label is not None:
                 self._text_label.grid(row=3, column=2, sticky="n")
-        elif self._compound == "bottom":
+        elif compound == "bottom":
             if self._image_label is not None:
                 self._image_label.grid(row=3, column=2, sticky="n")
             if self._text_label is not None:
                 self._text_label.grid(row=1, column=2, sticky="s")
 
-    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkButtonArgs]) -> None:
         if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
+            self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             self._create_grid()
             require_redraw = True
 
         if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
+            self._theme_info["border_width"] = kwargs.pop("border_width")
             self._create_grid()
             require_redraw = True
 
         if "border_spacing" in kwargs:
-            self._border_spacing = kwargs.pop("border_spacing")
+            self._theme_info["border_spacing"] = kwargs.pop("border_spacing")
             self._create_grid()
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             require_redraw = True
 
         if "hover_color" in kwargs:
-            self._hover_color = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._border_color = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._text_color = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._text_color_disabled = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
             require_redraw = True
 
         if "background_corner_colors" in kwargs:
@@ -395,18 +391,16 @@ class CTkButton(CTkBaseClass):
             require_redraw = True
 
         if "text" in kwargs:
-            self._text = kwargs.pop("text")
+            self._theme_info["text"] = kwargs.pop("text")
             if self._text_label is None:
                 require_redraw = True  # text_label will be created in .draw()
             else:
-                self._text_label.configure(text=self._text)
+                self._text_label.configure(text=self._theme_info["text"])
 
         if "font" in kwargs:
-            if isinstance(self._font, CTkFont):
-                self._font.remove_size_configure_callback(self._update_font)
-            self._font = self._check_font_type(kwargs.pop("font"))
-            if isinstance(self._font, CTkFont):
-                self._font.add_size_configure_callback(self._update_font)
+            self._font.remove_size_configure_callback(self._update_font)
+            self._font = CTkFont.from_parameter(kwargs.pop("font"))
+            self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
         if "textvariable" in kwargs:
@@ -431,51 +425,29 @@ class CTkButton(CTkBaseClass):
             require_redraw = True
 
         if "hover" in kwargs:
-            self._hover = kwargs.pop("hover")
+            self._theme_info["hover"] = kwargs.pop("hover")
 
         if "command" in kwargs:
             self._command = kwargs.pop("command")
             self._set_cursor()
 
         if "compound" in kwargs:
-            self._compound = kwargs.pop("compound")
+            self._theme_info["compound"] = kwargs.pop("compound")
             require_redraw = True
 
         if "anchor" in kwargs:
-            self._anchor = kwargs.pop("anchor")
+            self._theme_info["anchor"] = kwargs.pop("anchor")
             if self._text_label is not None:
-                self._text_label.configure(anchor=self._anchor)
+                self._text_label.configure(anchor=self._theme_info["anchor"])
             if self._image_label is not None:
-                self._image_label.configure(anchor=self._anchor)
+                self._image_label.configure(anchor=self._theme_info["anchor"])
             self._create_grid()
             require_redraw = True
 
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name == "corner_radius":
-            return self._corner_radius
-        elif attribute_name == "border_width":
-            return self._border_width
-        elif attribute_name == "border_spacing":
-            return self._border_spacing
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "hover_color":
-            return self._hover_color
-        elif attribute_name == "border_color":
-            return self._border_color
-        elif attribute_name == "text_color":
-            return self._text_color
-        elif attribute_name == "text_color_disabled":
-            return self._text_color_disabled
-        elif attribute_name == "background_corner_colors":
-            return self._background_corner_colors
-
-        elif attribute_name == "text":
-            return self._text
-        elif attribute_name == "font":
+        if attribute_name == "font":
             return self._font
         elif attribute_name == "textvariable":
             return self._textvariable
@@ -483,15 +455,12 @@ class CTkButton(CTkBaseClass):
             return self._image
         elif attribute_name == "state":
             return self._state
-        elif attribute_name == "hover":
-            return self._hover
         elif attribute_name == "command":
             return self._command
-        elif attribute_name == "compound":
-            return self._compound
-        elif attribute_name == "anchor":
-            return self._anchor
-
+        elif attribute_name == "background_corner_colors":
+            return self._background_corner_colors
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)
 
@@ -511,11 +480,11 @@ class CTkButton(CTkBaseClass):
 
     def _on_enter(self, _: tkinter.Event | None = None) -> None:
         self._mouse_inside = True
-        if self._hover is True and self._state == "normal":
-            if self._hover_color is None:
-                inner_parts_color = self._fg_color
+        if self._theme_info["hover"] is True and self._state == "normal":
+            if self._theme_info["hover_color"] is None:
+                inner_parts_color = self._theme_info["fg_color"]
             else:
-                inner_parts_color = self._hover_color
+                inner_parts_color = self._theme_info["hover_color"]
 
             # set color of inner button parts to hover color
             self._canvas.itemconfig("inner_parts",
@@ -534,10 +503,10 @@ class CTkButton(CTkBaseClass):
         self._mouse_inside = False
         self._click_animation_running = False
 
-        if self._fg_color == "transparent":
+        if self._theme_info["fg_color"] == "transparent":
             inner_parts_color = self._bg_color
         else:
-            inner_parts_color = self._fg_color
+            inner_parts_color = self._theme_info["fg_color"]
 
         # set color of inner button parts
         self._canvas.itemconfig("inner_parts",

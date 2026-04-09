@@ -3,11 +3,28 @@ from __future__ import annotations
 import tkinter
 import sys
 from typing import Any, Callable
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkBaseClass
 from .core_rendering import CTkCanvas, DrawEngine
 from .theme import ThemeManager
+
+
+class CTkSliderArgs(TypedDict, total=False):
+    orientation: Literal["horizontal", "vertical"]
+    thickness: int
+    lenght: int
+    button_length: int
+    button_corner_radius: int
+    corner_radius: int
+    border_width: int
+    bg_color: str | tuple[str, str]
+    fg_color: str | tuple[str, str]
+    button_color: str | tuple[str, str]
+    button_hover_color: str | tuple[str, str]
+    border_color: str | tuple[str, str]
+    progress_color: str | tuple[str, str]
+    hover: bool
 
 
 class CTkSlider(CTkBaseClass):
@@ -18,79 +35,54 @@ class CTkSlider(CTkBaseClass):
 
     def __init__(self,
                  master: tkinter.Misc,
-                 width: int | None = None,
-                 height: int | None = None,
-                 corner_radius: int | None = None,
-                 button_corner_radius: int | None = None,
-                 border_width: int | None = None,
-                 button_length: int | None = None,
-
-                 bg_color: str | tuple[str, str] = "transparent",
-                 fg_color: str | tuple[str, str] | None = None,
-                 border_color: str | tuple[str, str] = "transparent",
-                 progress_color: str | tuple[str, str] | None = None,
-                 button_color: str | tuple[str, str] | None = None,
-                 button_hover_color: str | tuple[str, str] | None = None,
-
+                 theme_key: str | None = None,
+                 state: Literal["normal", "disabled"] = "normal",
                  from_: int | float = 0.0,
                  to: int | float = 1.0,
-                 state: Literal["normal", "disabled"] = "normal",
                  number_of_steps: int | None = None,
                  scroll_step: float | None = None,
-                 hover: bool = True,
-                 command: Callable[[float], None] | None = None,
                  variable: tkinter.IntVar | tkinter.DoubleVar | None = None,
-                 orientation: Literal["horizontal", "vertical"] = "horizontal",
-                 **kwargs: Any) -> None:
+                 command: Callable[[float], None] | None = None,
+                 **kwargs: Unpack[CTkSliderArgs]) -> None:
 
-        self._orientation: Literal["horizontal", "vertical"] = orientation.lower()
+        self._theme_info: CTkSliderArgs = ThemeManager.get_info("CTkSlider", theme_key, **kwargs)
+
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key],
+                                                               transparency=key in ("border_color", "progress_color", "bg_color"))
+
+        if self._theme_info["corner_radius"] < self._theme_info["button_corner_radius"]:
+            self._theme_info["corner_radius"] = self._theme_info["button_corner_radius"]
 
         # set default dimensions according to orientation
-        if width is None:
-            if self._orientation == "vertical":
-                width = 16
-            else:
-                width = 200
-        if height is None:
-            if self._orientation == "vertical":
-                height = 200
-            else:
-                height = 16
+        if self._theme_info["orientation"] == "vertical":
+            width = self._theme_info["thickness"]
+            height = self._theme_info["lenght"]
+        else:
+            width = self._theme_info["lenght"]
+            height = self._theme_info["thickness"]
 
         # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height, **kwargs)
+        super().__init__(master=master,
+                         bg_color=self._theme_info["bg_color"],
+                         width=width,
+                         height=height)
 
-        # color
-        self._border_color: str | tuple[str, str] = self._check_color_type(border_color, transparency=True)
-        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkSlider"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-        self._progress_color: str | tuple[str, str] = ThemeManager.theme["CTkSlider"]["progress_color"] if progress_color is None else self._check_color_type(progress_color, transparency=True)
-        self._button_color: str | tuple[str, str] = ThemeManager.theme["CTkSlider"]["button_color"] if button_color is None else self._check_color_type(button_color)
-        self._button_hover_color: str | tuple[str, str] = ThemeManager.theme["CTkSlider"]["button_hover_color"] if button_hover_color is None else self._check_color_type(button_hover_color)
-
-        # shape
-        self._corner_radius: int = ThemeManager.theme["CTkSlider"]["corner_radius"] if corner_radius is None else corner_radius
-        self._button_corner_radius: int = ThemeManager.theme["CTkSlider"]["button_corner_radius"] if button_corner_radius is None else button_corner_radius
-        self._border_width: int = ThemeManager.theme["CTkSlider"]["border_width"] if border_width is None else border_width
-        self._button_length: int = ThemeManager.theme["CTkSlider"]["button_length"] if button_length is None else button_length
-
+        #functionality
+        self._state: Literal["normal", "disabled"] = state
+        self._command: Callable[[float], None] | None = command
+        self._variable: tkinter.IntVar | tkinter.DoubleVar = variable
+        self._variable_callback_blocked: bool = False
+        self._variable_callback_name: str | None = None
         self._value: float = 0.5  # initial value of slider in percent
-        self._hover_state: bool = False
-        self._hover: bool = hover
         self._from_: int | float = from_
         self._to: int | float = to
         self._number_of_steps: int | None = number_of_steps
         self._scroll_step: float = (1 / (20 if number_of_steps is None else number_of_steps)) if scroll_step is None else scroll_step
         self._output_value: float = self._from_ + (self._value * (self._to - self._from_))
-
-        if self._corner_radius < self._button_corner_radius:
-            self._corner_radius = self._button_corner_radius
-
-        # callback and control variables
-        self._command: Callable[[float], None] | None = command
-        self._variable: tkinter.IntVar | tkinter.DoubleVar = variable
-        self._variable_callback_blocked: bool = False
-        self._variable_callback_name: str | None = None
-        self._state: Literal["normal", "disabled"] = state
+        self._hover_state: bool = False
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -170,76 +162,76 @@ class CTkSlider(CTkBaseClass):
 
         requires_recoloring = self._draw_engine.draw_rounded_slider_with_border_and_button(self._apply_widget_scaling(self._current_width),
                                                                                            self._apply_widget_scaling(self._current_height),
-                                                                                           self._apply_widget_scaling(self._corner_radius),
-                                                                                           self._apply_widget_scaling(self._border_width),
-                                                                                           self._apply_widget_scaling(self._button_length),
-                                                                                           self._apply_widget_scaling(self._button_corner_radius),
-                                                                                           self._value, self._orientation)
+                                                                                           self._apply_widget_scaling(self._theme_info["corner_radius"]),
+                                                                                           self._apply_widget_scaling(self._theme_info["border_width"]),
+                                                                                           self._apply_widget_scaling(self._theme_info["button_length"]),
+                                                                                           self._apply_widget_scaling(self._theme_info["button_corner_radius"]),
+                                                                                           self._value, self._theme_info["orientation"])
 
         if no_color_updates is False or requires_recoloring:
             self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
 
-            if self._border_color == "transparent":
+            if self._theme_info["border_color"] == "transparent":
                 self._canvas.itemconfig("border_parts", fill=self._apply_appearance_mode(self._bg_color),
                                         outline=self._apply_appearance_mode(self._bg_color))
             else:
-                self._canvas.itemconfig("border_parts", fill=self._apply_appearance_mode(self._border_color),
-                                        outline=self._apply_appearance_mode(self._border_color))
+                self._canvas.itemconfig("border_parts", fill=self._apply_appearance_mode(self._theme_info["border_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["border_color"]))
 
-            self._canvas.itemconfig("inner_parts", fill=self._apply_appearance_mode(self._fg_color),
-                                    outline=self._apply_appearance_mode(self._fg_color))
+            self._canvas.itemconfig("inner_parts", fill=self._apply_appearance_mode(self._theme_info["fg_color"]),
+                                    outline=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
-            if self._progress_color == "transparent":
-                self._canvas.itemconfig("progress_parts", fill=self._apply_appearance_mode(self._fg_color),
-                                        outline=self._apply_appearance_mode(self._fg_color))
+            if self._theme_info["progress_color"] == "transparent":
+                self._canvas.itemconfig("progress_parts", fill=self._apply_appearance_mode(self._theme_info["fg_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["fg_color"]))
             else:
-                self._canvas.itemconfig("progress_parts", fill=self._apply_appearance_mode(self._progress_color),
-                                        outline=self._apply_appearance_mode(self._progress_color))
+                self._canvas.itemconfig("progress_parts", fill=self._apply_appearance_mode(self._theme_info["progress_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["progress_color"]))
 
             if self._hover_state is True:
                 self._canvas.itemconfig("slider_parts",
-                                        fill=self._apply_appearance_mode(self._button_hover_color),
-                                        outline=self._apply_appearance_mode(self._button_hover_color))
+                                        fill=self._apply_appearance_mode(self._theme_info["button_hover_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["button_hover_color"]))
             else:
                 self._canvas.itemconfig("slider_parts",
-                                        fill=self._apply_appearance_mode(self._button_color),
-                                        outline=self._apply_appearance_mode(self._button_color))
+                                        fill=self._apply_appearance_mode(self._theme_info["button_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["button_color"]))
 
-    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkSliderArgs]) -> None:
         if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
+            self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
 
         if "button_corner_radius" in kwargs:
-            self._button_corner_radius = kwargs.pop("button_corner_radius")
+            self._theme_info["button_corner_radius"] = kwargs.pop("button_corner_radius")
             require_redraw = True
 
         if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
+            self._theme_info["border_width"] = kwargs.pop("border_width")
             require_redraw = True
 
         if "button_length" in kwargs:
-            self._button_length = kwargs.pop("button_length")
+            self._theme_info["button_length"] = kwargs.pop("button_length")
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._border_color = self._check_color_type(kwargs.pop("border_color"), transparency=True)
+            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"), transparency=True)
             require_redraw = True
 
         if "progress_color" in kwargs:
-            self._progress_color = self._check_color_type(kwargs.pop("progress_color"), transparency=True)
+            self._theme_info["progress_color"] = self._check_color_type(kwargs.pop("progress_color"), transparency=True)
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._button_color = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._button_hover_color = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
             require_redraw = True
 
         if "from_" in kwargs:
@@ -260,7 +252,7 @@ class CTkSlider(CTkBaseClass):
             self._scroll_step = kwargs.pop("scroll_step")
 
         if "hover" in kwargs:
-            self._hover = kwargs.pop("hover")
+            self._theme_info["hover"] = kwargs.pop("hover")
 
         if "command" in kwargs:
             self._command = kwargs.pop("command")
@@ -274,51 +266,28 @@ class CTkSlider(CTkBaseClass):
                 self.set(self._variable.get(), from_variable_callback=True)
 
         if "orientation" in kwargs:
-            self._orientation = kwargs.pop("orientation").lower()
+            self._theme_info["orientation"] = kwargs.pop("orientation").lower()
             require_redraw = True
 
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name == "corner_radius":
-            return self._corner_radius
-        elif attribute_name == "button_corner_radius":
-            return self._button_corner_radius
-        elif attribute_name == "border_width":
-            return self._border_width
-        elif attribute_name == "button_length":
-            return self._button_length
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "border_color":
-            return self._border_color
-        elif attribute_name == "progress_color":
-            return self._progress_color
-        elif attribute_name == "button_color":
-            return self._button_color
-        elif attribute_name == "button_hover_color":
-            return self._button_hover_color
-
+        if attribute_name == "state":
+            return self._state
         elif attribute_name == "from_":
             return self._from_
         elif attribute_name == "to":
             return self._to
-        elif attribute_name == "state":
-            return self._state
         elif attribute_name == "number_of_steps":
             return self._number_of_steps
         elif attribute_name == "scroll_step":
             return self._scroll_step
-        elif attribute_name == "hover":
-            return self._hover
-        elif attribute_name == "command":
-            return self._command
         elif attribute_name == "variable":
             return self._variable
-        elif attribute_name == "orientation":
-            return self._orientation
-
+        elif attribute_name == "command":
+            return self._command
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)
 
@@ -340,7 +309,7 @@ class CTkSlider(CTkBaseClass):
 
     def _clicked(self, event: tkinter.Event) -> None:
         if self._state == "normal":
-            if self._orientation == "horizontal":
+            if self._theme_info["orientation"] == "horizontal":
                 value = self._reverse_widget_scaling(event.x / self._current_width)
             else:
                 value = 1.0 - self._reverse_widget_scaling(event.y / self._current_height)
@@ -356,17 +325,17 @@ class CTkSlider(CTkBaseClass):
         self._update_value(self._value + delta)
 
     def _on_enter(self, _: tkinter.Event | None = None) -> None:
-        if self._hover is True and self._state == "normal":
+        if self._theme_info["hover"] is True and self._state == "normal":
             self._hover_state = True
             self._canvas.itemconfig("slider_parts",
-                                    fill=self._apply_appearance_mode(self._button_hover_color),
-                                    outline=self._apply_appearance_mode(self._button_hover_color))
+                                    fill=self._apply_appearance_mode(self._theme_info["button_hover_color"]),
+                                    outline=self._apply_appearance_mode(self._theme_info["button_hover_color"]))
 
     def _on_leave(self, _: tkinter.Event | None = None) -> None:
         self._hover_state = False
         self._canvas.itemconfig("slider_parts",
-                                fill=self._apply_appearance_mode(self._button_color),
-                                outline=self._apply_appearance_mode(self._button_color))
+                                fill=self._apply_appearance_mode(self._theme_info["button_color"]),
+                                outline=self._apply_appearance_mode(self._theme_info["button_color"]))
 
     def _round_to_step_size(self, value: float) -> float:
         if self._number_of_steps is not None:

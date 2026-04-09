@@ -26,3 +26,13 @@ def check_kwargs_empty(kwargs: dict, raise_error: bool = False) -> bool:
             return True
     else:
         return False
+
+
+def deep_update(base: dict[KT, VT], new: dict[KT, VT]) -> None:
+    """ performs the 'update' operation of the old dict with the new one, recursively for any sub-dict contained as value """
+
+    for key, value in new.items():
+        if isinstance(value, dict):
+            deep_update(base.setdefault(key, {}), value)
+        else:
+            base[key] = value

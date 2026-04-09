@@ -66,9 +66,14 @@ def get_appearance_mode() -> Literal["light", "dark"]:
     raise RuntimeError("Something went very wrong")
 
 
-def set_default_color_theme(color_string: str) -> None:
-    """ set color theme or load custom theme file by passing the path """
-    ThemeManager.load_theme(color_string)
+def set_default_color_theme(theme_name_or_path: str) -> None:
+    """ set theme info with built-in color scheme or load custom theme file by passing the path """
+    ThemeManager.load_theme(theme_name_or_path, add=False)
+
+
+def add_color_theme(theme_path: str) -> None:
+    """ update theme info by appending custom theme file by passing the path """
+    ThemeManager.load_theme(theme_path, add=True)
 
 
 def set_widget_scaling(scaling_value: float) -> None:
@@ -118,7 +123,7 @@ class _Showroom(CTk):
         self.theme_label = CTkLabel(self.sidebar_frame, text="Theme:", anchor="w")
         self.theme_optionmenu = CTkOptionMenu(self.sidebar_frame, values=ThemeManager._built_in_themes,
                                               command=self._change_theme_event)
-        self.theme_optionmenu.set(ThemeManager._currently_loaded_theme)
+        self.theme_optionmenu.set(ThemeManager._last_loaded_theme)
         self.appearance_mode_label = CTkLabel(self.sidebar_frame, text="Appearance Mode:", anchor="w")
         self.appearance_mode_optionemenu = CTkOptionMenu(self.sidebar_frame, values=["Light", "Dark", "System"],
                                                          command=self._change_appearance_mode_event)
@@ -232,7 +237,7 @@ class _Showroom(CTk):
         self.scrollbar_1.set(0, 0.3)
 
         self.label_vertical = CTkLabel(self.bars_frame, text="vertical", height=1)
-        self.frame_vertical = CTkFrame(self.bars_frame)
+        self.frame_vertical = CTkFrame(self.bars_frame, fg_color="transparent")
         self.progressbar_3 = CTkProgressBar(self.frame_vertical, orientation="vertical")
         self.slider_3 = CTkSlider(self.frame_vertical, orientation="vertical")
         self.scrollbar_2 = CTkScrollbar(self.frame_vertical, orientation="vertical")
@@ -261,9 +266,9 @@ class _Showroom(CTk):
 
         # frames
         self.frames_frame: CTkFrame = self.main_tabview.add("Frames")
-        self.scrollable_frame = CTkScrollableFrame(self.frames_frame, label_text="CTkScrollableFrame",
-                                                   fg_color=ThemeManager.theme["CTk"]["fg_color"])
-        self.tabview = CTkTabview(self.frames_frame, fg_color=ThemeManager.theme["CTk"]["fg_color"])
+        self.scrollable_frame = CTkScrollableFrame(self.frames_frame, label={"text": "CTkScrollableFrame"},
+                                                   frame={"fg_color": self.cget("fg_color")})
+        self.tabview = CTkTabview(self.frames_frame, fg_color=self.cget("fg_color"))
         tab1 = self.tabview.add("CTkTabview")
         tab2 = self.tabview.add("Tab 2")
         tab3 = self.tabview.add("Tab 3")
@@ -288,10 +293,9 @@ class _Showroom(CTk):
 
 
     def _open_ctktoplevel_event(self) -> None:
-        toplevel = CTkToplevel(self)
+        toplevel = CTkToplevel(self, title="CTkToplevel")
         toplevel.geometry(f"{500}x{250}")
         toplevel.resizable(True, True)
-        toplevel.title("CTkToplevel")
 
     def _open_input_dialog_event(self) -> None:
         dialog = CTkInputDialog(title="CTkInputDialog", text="Description of requested input")

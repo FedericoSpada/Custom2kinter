@@ -6,7 +6,7 @@ import os
 import platform
 import ctypes
 from typing import Any
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict, Unpack
 from packaging import version
 
 from .widgets.appearance_mode import CTkAppearanceModeBaseClass
@@ -15,6 +15,11 @@ from .widgets.theme import ThemeManager
 from .widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
 
 CTK_PARENT_CLASS: type = tkinter.Tk
+
+
+class CTkArgs(TypedDict, total=False):
+    fg_color: str | tuple[str, str]
+    title: str
 
 
 class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
@@ -32,17 +37,23 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
     _deactivate_macos_window_header_manipulation: bool = False
     _deactivate_windows_window_header_manipulation: bool = False
 
-    def __init__(self,
-                 fg_color: str | tuple[str, str] | None = None,
-                 **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Unpack[CTkArgs]) -> None:
+
+        tk_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_constructor_arguments)
+
+        self._theme_info: CTkArgs = ThemeManager.get_info("CTk", None, **kwargs)
+
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key], transparency=False)
 
         self._enable_macos_dark_title_bar()
 
         # call init methods of super classes
-        CTK_PARENT_CLASS.__init__(self, **pop_from_dict_by_set(kwargs, self._valid_tk_constructor_arguments))
+        CTK_PARENT_CLASS.__init__(self, **tk_kwargs)
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="window")
-        check_kwargs_empty(kwargs, raise_error=True)
 
         self._current_width: int = 600  # initial window size, independent of scaling
         self._current_height: int = 500
@@ -52,13 +63,11 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         self._max_height: int = 1_000_000
         self._last_resizable_args: tuple[list, dict] | None = None  # (args, kwargs)
 
-        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTk"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-
         # set bg of tkinter.Tk
-        super().configure(bg=self._apply_appearance_mode(self._fg_color))
+        super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
         # set title
-        self.title("CTk")
+        super().title(self._theme_info["title"])
 
         # indicator variables
         self._iconbitmap_method_called: bool = False  # indicates if wm_iconbitmap method got called
@@ -212,14 +221,14 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         else:
             return self._reverse_geometry_scaling(super().geometry())
 
-    def configure(self, **kwargs: Any) -> None:
+    def configure(self, **kwargs: Unpack[CTkArgs]) -> None:
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
-            super().configure(bg=self._apply_appearance_mode(self._fg_color))
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
             for child in self.winfo_children():
                 try:
-                    child.configure(bg_color=self._fg_color)
+                    child.configure(bg_color=self._theme_info["fg_color"])
                 except Exception:
                     pass
 
@@ -228,8 +237,7 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "fg_color":
-            return self._fg_color
-
+            return self._theme_info["fg_color"]
         else:
             return super().cget(attribute_name)
 
@@ -337,4 +345,4 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         if sys.platform.startswith("win"):
             self._windows_set_titlebar_color(mode)
 
-        super().configure(bg=self._apply_appearance_mode(self._fg_color))
+        super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))

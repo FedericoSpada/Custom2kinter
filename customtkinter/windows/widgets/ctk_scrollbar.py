@@ -3,11 +3,25 @@ from __future__ import annotations
 import tkinter
 import sys
 from typing import Any, Callable
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkBaseClass
 from .core_rendering import CTkCanvas, DrawEngine
 from .theme import ThemeManager
+
+
+class CTkScrollbarArgs(TypedDict, total=False):
+    orientation: Literal["horizontal", "vertical"]
+    thickness: int
+    lenght: int
+    minimum_pixel_length: int
+    corner_radius: int
+    border_spacing: int
+    bg_color: str | tuple[str, str]
+    fg_color: str | tuple[str, str]
+    button_color: str | tuple[str, str]
+    button_hover_color: str | tuple[str, str]
+    hover: bool
 
 
 class CTkScrollbar(CTkBaseClass):
@@ -19,56 +33,38 @@ class CTkScrollbar(CTkBaseClass):
 
     def __init__(self,
                  master: tkinter.Misc,
-                 width: int | None = None,
-                 height: int | None = None,
-                 corner_radius: int | None = None,
-                 border_spacing: int | None = None,
-                 minimum_pixel_length: int = 20,
-
-                 bg_color: str | tuple[str, str] = "transparent",
-                 fg_color: str | tuple[str, str] | None = None,
-                 button_color: str | tuple[str, str] | None = None,
-                 button_hover_color: str | tuple[str, str] | None = None,
-
-                 hover: bool = True,
+                 theme_key: str | None = None,
                  command: Callable[[str, int | float, str], None] | None = None,
-                 orientation: Literal["horizontal", "vertical"] = "vertical",
-                 **kwargs: Any) -> None:
+                 **kwargs: Unpack[CTkScrollbarArgs]) -> None:
 
-        self._orientation: Literal["horizontal", "vertical"] = orientation.lower()
+        self._theme_info: CTkScrollbarArgs = ThemeManager.get_info("CTkScrollbar", theme_key, **kwargs)
+
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key],
+                                                               transparency=key in ("fg_color", "bg_color"))
 
         # set default dimensions according to orientation
-        if width is None:
-            if self._orientation == "vertical":
-                width = 16
-            else:
-                width = 200
-        if height is None:
-            if self._orientation == "horizontal":
-                height = 16
-            else:
-                height = 200
+        if self._theme_info["orientation"] == "vertical":
+            width = self._theme_info["thickness"]
+            height = self._theme_info["lenght"]
+        else:
+            width = self._theme_info["lenght"]
+            height = self._theme_info["thickness"]
 
         # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height, **kwargs)
+        super().__init__(master=master,
+                         bg_color=self._theme_info["bg_color"],
+                         width=width,
+                         height=height)
 
-        # color
-        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkScrollbar"]["fg_color"] if fg_color is None else self._check_color_type(fg_color, transparency=True)
-        self._button_color: str | tuple[str, str] = ThemeManager.theme["CTkScrollbar"]["button_color"] if button_color is None else self._check_color_type(button_color)
-        self._button_hover_color: str | tuple[str, str] = ThemeManager.theme["CTkScrollbar"]["button_hover_color"] if button_hover_color is None else self._check_color_type(button_hover_color)
-
-        # shape
-        self._corner_radius: int = ThemeManager.theme["CTkScrollbar"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_spacing: int = ThemeManager.theme["CTkScrollbar"]["border_spacing"] if border_spacing is None else border_spacing
-
-        self._hover: bool = hover
-        self._hover_state: bool = False
+        # functionality
         self._command: Callable[[str, int | float, str], None] | None = command
         self._start_value: float = 0.0  # 0 to 1
         self._end_value: float = 1.0  # 0 to 1
-        self._minimum_pixel_length: int = minimum_pixel_length
-
         self._motion_center_offset: float = 0.0
+        self._hover_state: bool = False
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
@@ -116,11 +112,11 @@ class CTkScrollbar(CTkBaseClass):
 
     def _get_scrollbar_values_for_minimum_pixel_size(self) -> tuple[float, float]:
         # correct scrollbar float values if scrollbar is too small
-        if self._orientation == "vertical":
+        if self._theme_info["orientation"] == "vertical":
             scrollbar_pixel_length = (self._end_value - self._start_value) * self._current_height
-            if scrollbar_pixel_length < self._minimum_pixel_length and -scrollbar_pixel_length + self._current_height != 0:
+            if scrollbar_pixel_length < self._theme_info["minimum_pixel_length"] and -scrollbar_pixel_length + self._current_height != 0:
                 # calculate how much to increase the float interval values so that the scrollbar width is self.minimum_pixel_length
-                interval_extend_factor = (-scrollbar_pixel_length + self._minimum_pixel_length) / (-scrollbar_pixel_length + self._current_height)
+                interval_extend_factor = (-scrollbar_pixel_length + self._theme_info["minimum_pixel_length"]) / (-scrollbar_pixel_length + self._current_height)
                 corrected_end_value = self._end_value + (1 - self._end_value) * interval_extend_factor
                 corrected_start_value = self._start_value - self._start_value * interval_extend_factor
                 return corrected_start_value, corrected_end_value
@@ -129,9 +125,9 @@ class CTkScrollbar(CTkBaseClass):
 
         else:
             scrollbar_pixel_length = (self._end_value - self._start_value) * self._current_width
-            if scrollbar_pixel_length < self._minimum_pixel_length and -scrollbar_pixel_length + self._current_width != 0:
+            if scrollbar_pixel_length < self._theme_info["minimum_pixel_length"] and -scrollbar_pixel_length + self._current_width != 0:
                 # calculate how much to increase the float interval values so that the scrollbar width is self.minimum_pixel_length
-                interval_extend_factor = (-scrollbar_pixel_length + self._minimum_pixel_length) / (-scrollbar_pixel_length + self._current_width)
+                interval_extend_factor = (-scrollbar_pixel_length + self._theme_info["minimum_pixel_length"]) / (-scrollbar_pixel_length + self._current_width)
                 corrected_end_value = self._end_value + (1 - self._end_value) * interval_extend_factor
                 corrected_start_value = self._start_value - self._start_value * interval_extend_factor
                 return corrected_start_value, corrected_end_value
@@ -144,58 +140,57 @@ class CTkScrollbar(CTkBaseClass):
         corrected_start_value, corrected_end_value = self._get_scrollbar_values_for_minimum_pixel_size()
         requires_recoloring = self._draw_engine.draw_rounded_scrollbar(self._apply_widget_scaling(self._current_width),
                                                                        self._apply_widget_scaling(self._current_height),
-                                                                       self._apply_widget_scaling(self._corner_radius),
-                                                                       self._apply_widget_scaling(self._border_spacing),
+                                                                       self._apply_widget_scaling(self._theme_info["corner_radius"]),
+                                                                       self._apply_widget_scaling(self._theme_info["border_spacing"]),
                                                                        corrected_start_value,
                                                                        corrected_end_value,
-                                                                       self._orientation)
+                                                                       self._theme_info["orientation"])
 
         if no_color_updates is False or requires_recoloring:
+            bg_color = self._apply_appearance_mode(self._bg_color)
+            fg_color = self._apply_appearance_mode(self._theme_info["fg_color"])
+
             if self._hover_state is True:
                 self._canvas.itemconfig("scrollbar_parts",
-                                        fill=self._apply_appearance_mode(self._button_hover_color),
-                                        outline=self._apply_appearance_mode(self._button_hover_color))
+                                        fill=self._apply_appearance_mode(self._theme_info["button_hover_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["button_hover_color"]))
             else:
                 self._canvas.itemconfig("scrollbar_parts",
-                                        fill=self._apply_appearance_mode(self._button_color),
-                                        outline=self._apply_appearance_mode(self._button_color))
+                                        fill=self._apply_appearance_mode(self._theme_info["button_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["button_color"]))
 
-            if self._fg_color == "transparent":
-                self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
-                self._canvas.itemconfig("border_parts",
-                                        fill=self._apply_appearance_mode(self._bg_color),
-                                        outline=self._apply_appearance_mode(self._bg_color))
+            if fg_color == "transparent":
+                self._canvas.configure(bg=bg_color)
+                self._canvas.itemconfig("border_parts", fill=bg_color, outline=bg_color)
             else:
-                self._canvas.configure(bg=self._apply_appearance_mode(self._fg_color))
-                self._canvas.itemconfig("border_parts",
-                                        fill=self._apply_appearance_mode(self._fg_color),
-                                        outline=self._apply_appearance_mode(self._fg_color))
+                self._canvas.configure(bg=fg_color)
+                self._canvas.itemconfig("border_parts", fill=fg_color, outline=fg_color)
 
         self._canvas.update_idletasks()
 
-    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkScrollbarArgs]) -> None:
         if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
+            self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
 
         if "border_spacing" in kwargs:
-            self._border_spacing = kwargs.pop("border_spacing")
+            self._theme_info["border_spacing"] = kwargs.pop("border_spacing")
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._button_color = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._button_hover_color = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
             require_redraw = True
 
         if "hover" in kwargs:
-            self._hover = kwargs.pop("hover")
+            self._theme_info["hover"] = kwargs.pop("hover")
 
         if "command" in kwargs:
             self._command = kwargs.pop("command")
@@ -203,60 +198,43 @@ class CTkScrollbar(CTkBaseClass):
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name == "corner_radius":
-            return self._corner_radius
-        elif attribute_name == "border_spacing":
-            return self._border_spacing
-        elif attribute_name == "minimum_pixel_length":
-            return self._minimum_pixel_length
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "button_color":
-            return self._button_color
-        elif attribute_name == "button_hover_color":
-            return self._button_hover_color
-
-        elif attribute_name == "hover":
-            return self._hover
-        elif attribute_name == "command":
+        if attribute_name == "command":
             return self._command
-        elif attribute_name == "orientation":
-            return self._orientation
-
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)
 
     def _on_enter(self, _: tkinter.Event | None = None) -> None:
-        if self._hover is True:
+        if self._theme_info["hover"] is True:
             self._hover_state = True
             self._canvas.itemconfig("scrollbar_parts",
-                                    outline=self._apply_appearance_mode(self._button_hover_color),
-                                    fill=self._apply_appearance_mode(self._button_hover_color))
+                                    outline=self._apply_appearance_mode(self._theme_info["button_hover_color"]),
+                                    fill=self._apply_appearance_mode(self._theme_info["button_hover_color"]))
 
     def _on_leave(self, _: tkinter.Event | None = None) -> None:
         self._hover_state = False
         self._canvas.itemconfig("scrollbar_parts",
-                                outline=self._apply_appearance_mode(self._button_color),
-                                fill=self._apply_appearance_mode(self._button_color))
+                                outline=self._apply_appearance_mode(self._theme_info["button_color"]),
+                                fill=self._apply_appearance_mode(self._theme_info["button_color"]))
 
     def _clicked(self, event: tkinter.Event) -> None:
         self._motion_center_offset = 0.0
         self._on_motion(event)
 
     def _clicked_scrollbar(self, event: tkinter.Event) -> None:
-        if self._orientation == "vertical":
-            value = self._reverse_widget_scaling(((event.y - self._border_spacing) / (self._current_height - 2 * self._border_spacing)))
+        if self._theme_info["orientation"] == "vertical":
+            value = self._reverse_widget_scaling(((event.y - self._theme_info["border_spacing"]) / (self._current_height - 2 * self._theme_info["border_spacing"])))
         else:
-            value = self._reverse_widget_scaling(((event.x - self._border_spacing) / (self._current_width - 2 * self._border_spacing)))
+            value = self._reverse_widget_scaling(((event.x - self._theme_info["border_spacing"]) / (self._current_width - 2 * self._theme_info["border_spacing"])))
         center = self._start_value + ((self._end_value - self._start_value) * 0.5)
         self._motion_center_offset = center - value
 
     def _on_motion(self, event: tkinter.Event) -> None:
-        if self._orientation == "vertical":
-            value = self._reverse_widget_scaling(((event.y - self._border_spacing) / (self._current_height - 2 * self._border_spacing)))+self._motion_center_offset
+        if self._theme_info["orientation"] == "vertical":
+            value = self._reverse_widget_scaling(((event.y - self._theme_info["border_spacing"]) / (self._current_height - 2 * self._theme_info["border_spacing"])))+self._motion_center_offset
         else:
-            value = self._reverse_widget_scaling(((event.x - self._border_spacing) / (self._current_width - 2 * self._border_spacing)))+self._motion_center_offset
+            value = self._reverse_widget_scaling(((event.x - self._theme_info["border_spacing"]) / (self._current_width - 2 * self._theme_info["border_spacing"])))+self._motion_center_offset
 
         current_scrollbar_length = self._end_value - self._start_value
         value = max(current_scrollbar_length / 2, min(value, 1 - (current_scrollbar_length / 2)))

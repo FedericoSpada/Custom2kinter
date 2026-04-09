@@ -9,8 +9,6 @@ from typing_extensions import Literal, TypedDict
 from .... import windows  # import windows for isinstance checks
 from ..appearance_mode import CTkAppearanceModeBaseClass
 from ..scaling import CTkScalingBaseClass
-from ..theme import ThemeManager
-from ..font import CTkFont
 from ..image import CTkImage
 from ..utility import pop_from_dict_by_set, check_kwargs_empty
 
@@ -142,30 +140,10 @@ class CTkBaseClass(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClas
             return self._desired_width
         elif attribute_name == "height":
             return self._desired_height
-
         elif attribute_name in self._valid_tk_frame_attributes:
             return super().cget(attribute_name)  # cget of tkinter.Frame
         else:
             raise ValueError(f"'{attribute_name}' is not a supported argument. Look at the documentation for supported arguments.")
-
-    def _check_font_type(self, font: CTkFont | tuple) -> CTkFont | tuple:
-        """ check font type when passed to widget """
-        if isinstance(font, CTkFont):
-            return font
-
-        elif isinstance(font, tuple) and len(font) == 1:
-            warnings.warn(f"{type(self).__name__} Warning: font {font} given without size, will be extended with default text size of current theme\n")
-            return font[0], ThemeManager.theme["text"]["size"]
-
-        elif isinstance(font, tuple) and 2 <= len(font) <= 6:
-            return font
-
-        else:
-            raise ValueError(f"Wrong font type {type(font)}\n" +
-                             "For consistency, Customtkinter requires the font argument to be a tuple of len 2 to 6 or an instance of CTkFont.\n" +
-                             "\nUsage example:\n" +
-                             "font=customtkinter.CTkFont(family='<name>', size=<size in px>)\n" +
-                             "font=('<name>', <size in px>)\n")
 
     def _check_image_type(self, image: CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | str | None) -> CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | str | None:
         """ check image type when passed to widget """
@@ -191,9 +169,10 @@ class CTkBaseClass(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClas
         if widget is None:
             widget = self.master
 
-        if isinstance(widget, (windows.widgets.core_widget_classes.CTkBaseClass, windows.CTk, windows.CTkToplevel, windows.widgets.ctk_scrollable_frame.CTkScrollableFrame)):
-            if widget.cget("fg_color") is not None and widget.cget("fg_color") != "transparent":
-                return widget.cget("fg_color")
+        if isinstance(widget, (CTkBaseClass, windows.CTk, windows.CTkToplevel, windows.widgets.ctk_scrollable_frame.CTkScrollableFrame)):
+            fg_color = widget.cget("fg_color")
+            if fg_color is not None and fg_color != "transparent":
+                return fg_color
 
             elif isinstance(widget, windows.widgets.ctk_scrollable_frame.CTkScrollableFrame):
                 return self._detect_color_of_master(widget.master.master.master)

@@ -2,13 +2,27 @@ from __future__ import annotations
 
 import tkinter
 from typing import Any, Callable
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkBaseClass
 from .core_rendering import CTkCanvas, DrawEngine
+from .font.ctk_font import CTkFont, CTkFontArgs
 from .theme import ThemeManager
-from .font import CTkFont
-from .utility import pop_from_dict_by_set, check_kwargs_empty
+from .utility import pop_from_dict_by_set
+
+
+class CTkEntryArgs(TypedDict, total=False):
+    width: int
+    height: int
+    corner_radius: int
+    border_width: int
+    bg_color: str | tuple[str, str]
+    fg_color: str | tuple[str, str]
+    border_color: str | tuple[str, str]
+    text_color: str | tuple[str, str]
+    placeholder_text_color: str | tuple[str, str]
+    placeholder_text: str
+    font: CTkFontArgs | CTkFont | tuple | str
 
 
 class CTkEntry(CTkBaseClass):
@@ -26,53 +40,42 @@ class CTkEntry(CTkBaseClass):
 
     def __init__(self,
                  master: tkinter.Misc,
-                 width: int = 140,
-                 height: int = 28,
-                 corner_radius: int | None = None,
-                 border_width: int | None = None,
-
-                 bg_color: str | tuple[str, str] = "transparent",
-                 fg_color: str | tuple[str, str] | None = None,
-                 border_color: str | tuple[str, str] | None = None,
-                 text_color: str | tuple[str, str] | None = None,
-                 placeholder_text_color: str | tuple[str, str] | None = None,
-
+                 theme_key: str | None = None,
                  textvariable: tkinter.StringVar | None = None,
-                 placeholder_text: str | None = None,
-                 font: CTkFont | tuple | None = None,
                  state: Literal["normal", "disabled", "readonly"] = "normal",
-                 **kwargs: Any) -> None:
+                 **kwargs: Unpack[CTkEntryArgs]) -> None:
+
+        entry_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_entry_attributes)
+
+        self._theme_info: CTkEntryArgs = ThemeManager.get_info("CTkEntry", theme_key, **kwargs)
+
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key],
+                                                               transparency=key in ("fg_color", "bg_color"))
 
         # transfer basic functionality (bg_color, size, appearance_mode, scaling) to CTkBaseClass
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height)
+        super().__init__(master=master,
+                         bg_color=self._theme_info["bg_color"],
+                         width=self._theme_info["width"],
+                         height=self._theme_info["height"])
 
         # configure grid system (1x1)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # color
-        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["fg_color"] if fg_color is None else self._check_color_type(fg_color, transparency=True)
-        self._text_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._placeholder_text_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["placeholder_text_color"] if placeholder_text_color is None else self._check_color_type(placeholder_text_color)
-        self._border_color: str | tuple[str, str] = ThemeManager.theme["CTkEntry"]["border_color"] if border_color is None else self._check_color_type(border_color)
-
-        # shape
-        self._corner_radius: int = ThemeManager.theme["CTkEntry"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_width: int = ThemeManager.theme["CTkEntry"]["border_width"] if border_width is None else border_width
-
-        # text and state
+        # functionality
+        self._state: Literal["normal", "disabled", "readonly"] = state
+        self._textvariable: tkinter.StringVar | None = textvariable
+        self._textvariable_callback_name: str = ""
         self._is_focused: bool = True
-        self._placeholder_text: str | None = placeholder_text
         self._placeholder_text_active: bool = False
         self._pre_placeholder_arguments: dict[str, Any] = {}  # some set arguments of the entry will be changed for placeholder and then set back
-        self._textvariable: tkinter.StringVar | None = textvariable
-        self._state: Literal["normal", "disabled", "readonly"] = state
-        self._textvariable_callback_name: str = ""
 
         # font
-        self._font: CTkFont | tuple = CTkFont() if font is None else self._check_font_type(font)
-        if isinstance(self._font, CTkFont):
-            self._font.add_size_configure_callback(self._update_font)
+        self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
+        self._font.add_size_configure_callback(self._update_font)
 
         if self._textvariable is not None and self._textvariable != "":
             self._textvariable_callback_name = self._textvariable.trace_add("write", self._textvariable_callback)
@@ -90,9 +93,7 @@ class CTkEntry(CTkBaseClass):
                                     font=self._apply_font_scaling(self._font),
                                     state=self._state,
                                     textvariable=self._textvariable,
-                                    **pop_from_dict_by_set(kwargs, self._valid_tk_entry_attributes))
-
-        check_kwargs_empty(kwargs, raise_error=True)
+                                    **entry_kwargs)
 
         self._create_grid()
         self._activate_placeholder()
@@ -109,14 +110,14 @@ class CTkEntry(CTkBaseClass):
     def _create_grid(self) -> None:
         self._canvas.grid(column=0, row=0, sticky="nswe")
 
-        if self._corner_radius >= self._minimum_x_padding:
+        if self._theme_info["corner_radius"] >= self._minimum_x_padding:
             self._entry.grid(column=0, row=0, sticky="nswe",
-                             padx=min(self._apply_widget_scaling(self._corner_radius), round(self._apply_widget_scaling(self._current_height/2))),
-                             pady=(self._apply_widget_scaling(self._border_width), self._apply_widget_scaling(self._border_width + 1)))
+                             padx=min(self._apply_widget_scaling(self._theme_info["corner_radius"]), round(self._apply_widget_scaling(self._current_height/2))),
+                             pady=(self._apply_widget_scaling(self._theme_info["border_width"]), self._apply_widget_scaling(self._theme_info["border_width"] + 1)))
         else:
             self._entry.grid(column=0, row=0, sticky="nswe",
                              padx=self._apply_widget_scaling(self._minimum_x_padding),
-                             pady=(self._apply_widget_scaling(self._border_width), self._apply_widget_scaling(self._border_width + 1)))
+                             pady=(self._apply_widget_scaling(self._theme_info["border_width"]), self._apply_widget_scaling(self._theme_info["border_width"] + 1)))
 
     def _textvariable_callback(self, *_: str) -> None:
         if self._textvariable.get() == "":
@@ -150,9 +151,7 @@ class CTkEntry(CTkBaseClass):
         if self._textvariable is not None:
             self._textvariable.trace_remove("write", self._textvariable_callback_name)
 
-        if isinstance(self._font, CTkFont):
-            self._font.remove_size_configure_callback(self._update_font)
-
+        self._font.remove_size_configure_callback(self._update_font)
         super().destroy()
 
     def _draw(self, no_color_updates: bool = False) -> None:
@@ -160,67 +159,55 @@ class CTkEntry(CTkBaseClass):
 
         requires_recoloring = self._draw_engine.draw_rounded_rect_with_border(self._apply_widget_scaling(self._current_width),
                                                                               self._apply_widget_scaling(self._current_height),
-                                                                              self._apply_widget_scaling(self._corner_radius),
-                                                                              self._apply_widget_scaling(self._border_width))
+                                                                              self._apply_widget_scaling(self._theme_info["corner_radius"]),
+                                                                              self._apply_widget_scaling(self._theme_info["border_width"]))
 
         if requires_recoloring or no_color_updates is False:
-            self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
-
-            if self._apply_appearance_mode(self._fg_color) == "transparent":
-                self._canvas.itemconfig("inner_parts",
-                                        fill=self._apply_appearance_mode(self._bg_color),
-                                        outline=self._apply_appearance_mode(self._bg_color))
-                self._entry.configure(bg=self._apply_appearance_mode(self._bg_color),
-                                      disabledbackground=self._apply_appearance_mode(self._bg_color),
-                                      readonlybackground=self._apply_appearance_mode(self._bg_color),
-                                      highlightcolor=self._apply_appearance_mode(self._bg_color))
-            else:
-                self._canvas.itemconfig("inner_parts",
-                                        fill=self._apply_appearance_mode(self._fg_color),
-                                        outline=self._apply_appearance_mode(self._fg_color))
-                self._entry.configure(bg=self._apply_appearance_mode(self._fg_color),
-                                      disabledbackground=self._apply_appearance_mode(self._fg_color),
-                                      readonlybackground=self._apply_appearance_mode(self._fg_color),
-                                      highlightcolor=self._apply_appearance_mode(self._fg_color))
-
-            self._canvas.itemconfig("border_parts",
-                                    fill=self._apply_appearance_mode(self._border_color),
-                                    outline=self._apply_appearance_mode(self._border_color))
-
+            bg_color = self._apply_appearance_mode(self._bg_color)
+            fg_color = self._apply_appearance_mode(self._theme_info["fg_color"])
+            border_color = self._apply_appearance_mode(self._theme_info["border_color"])
             if self._placeholder_text_active:
-                self._entry.config(fg=self._apply_appearance_mode(self._placeholder_text_color),
-                                   disabledforeground=self._apply_appearance_mode(self._placeholder_text_color),
-                                   insertbackground=self._apply_appearance_mode(self._placeholder_text_color))
+                text_color = self._apply_appearance_mode(self._theme_info["placeholder_text_color"])
             else:
-                self._entry.config(fg=self._apply_appearance_mode(self._text_color),
-                                   disabledforeground=self._apply_appearance_mode(self._text_color),
-                                   insertbackground=self._apply_appearance_mode(self._text_color))
+                text_color = self._apply_appearance_mode(self._theme_info["text_color"])
 
-    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
+            self._canvas.configure(bg=bg_color)
+
+            if fg_color == "transparent":
+                self._canvas.itemconfig("inner_parts", fill=bg_color, outline=bg_color)
+                self._entry.configure(bg=bg_color, disabledbackground=bg_color, readonlybackground=bg_color, highlightcolor=bg_color)
+            else:
+                self._canvas.itemconfig("inner_parts", fill=fg_color, outline=fg_color)
+                self._entry.configure(bg=fg_color, disabledbackground=fg_color, readonlybackground=fg_color, highlightcolor=fg_color)
+
+            self._canvas.itemconfig("border_parts", fill=border_color, outline=border_color)
+            self._entry.config(fg=text_color, disabledforeground=text_color, insertbackground=text_color)
+
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkEntryArgs]) -> None:
         if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
+            self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             self._create_grid()
             require_redraw = True
 
         if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
+            self._theme_info["border_width"] = kwargs.pop("border_width")
             self._create_grid()
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._border_color = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._text_color = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             require_redraw = True
 
         if "placeholder_text_color" in kwargs:
-            self._placeholder_text_color = self._check_color_type(kwargs.pop("placeholder_text_color"))
+            self._theme_info["placeholder_text_color"] = self._check_color_type(kwargs.pop("placeholder_text_color"))
             require_redraw = True
 
         if "textvariable" in kwargs:
@@ -232,19 +219,17 @@ class CTkEntry(CTkBaseClass):
                 self._textvariable_callback_name = self._textvariable.trace_add("write", self._textvariable_callback)
 
         if "placeholder_text" in kwargs:
-            self._placeholder_text = kwargs.pop("placeholder_text")
+            self._theme_info["placeholder_text"] = kwargs.pop("placeholder_text")
             if self._placeholder_text_active:
                 self._entry.delete(0, tkinter.END)
-                self._entry.insert(0, self._placeholder_text)
+                self._entry.insert(0, self._theme_info["placeholder_text"])
             else:
                 self._activate_placeholder()
 
         if "font" in kwargs:
-            if isinstance(self._font, CTkFont):
-                self._font.remove_size_configure_callback(self._update_font)
-            self._font = self._check_font_type(kwargs.pop("font"))
-            if isinstance(self._font, CTkFont):
-                self._font.add_size_configure_callback(self._update_font)
+            self._font.remove_size_configure_callback(self._update_font)
+            self._font = CTkFont.from_parameter(kwargs.pop("font"))
+            self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
         if "state" in kwargs:
@@ -261,29 +246,14 @@ class CTkEntry(CTkBaseClass):
         super().configure(require_redraw=require_redraw, **kwargs)  # configure CTkBaseClass
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name == "corner_radius":
-            return self._corner_radius
-        elif attribute_name == "border_width":
-            return self._border_width
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "border_color":
-            return self._border_color
-        elif attribute_name == "text_color":
-            return self._text_color
-        elif attribute_name == "placeholder_text_color":
-            return self._placeholder_text_color
-
+        if attribute_name == "font":
+            return self._font
         elif attribute_name == "textvariable":
             return self._textvariable
-        elif attribute_name == "placeholder_text":
-            return self._placeholder_text
-        elif attribute_name == "font":
-            return self._font
         elif attribute_name == "state":
             return self._state
-
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
         elif attribute_name in self._valid_tk_entry_attributes:
             return self._entry.cget(attribute_name)  # cget of tkinter.Entry
         else:
@@ -307,22 +277,22 @@ class CTkEntry(CTkBaseClass):
         self._create_bindings(sequence=sequence)  # restore internal callbacks for sequence
 
     def _activate_placeholder(self) -> None:
-        if self._entry.get() == "" and self._placeholder_text is not None and (self._textvariable is None or self._textvariable == ""):
+        if self._entry.get() == "" and self._theme_info["placeholder_text"] is not None and (self._textvariable is None or self._textvariable == ""):
             self._placeholder_text_active = True
 
             self._pre_placeholder_arguments = {"show": self._entry.cget("show")}
-            self._entry.config(fg=self._apply_appearance_mode(self._placeholder_text_color),
-                               disabledforeground=self._apply_appearance_mode(self._placeholder_text_color),
+            self._entry.config(fg=self._apply_appearance_mode(self._theme_info["placeholder_text_color"]),
+                               disabledforeground=self._apply_appearance_mode(self._theme_info["placeholder_text_color"]),
                                show="")
             self._entry.delete(0, tkinter.END)
-            self._entry.insert(0, self._placeholder_text)
+            self._entry.insert(0, self._theme_info["placeholder_text"])
 
     def _deactivate_placeholder(self) -> None:
         if self._placeholder_text_active and self._entry.cget("state") != "readonly":
             self._placeholder_text_active = False
 
-            self._entry.config(fg=self._apply_appearance_mode(self._text_color),
-                               disabledforeground=self._apply_appearance_mode(self._text_color),)
+            self._entry.config(fg=self._apply_appearance_mode(self._theme_info["text_color"]),
+                               disabledforeground=self._apply_appearance_mode(self._theme_info["text_color"]),)
             self._entry.delete(0, tkinter.END)
             for argument, value in self._pre_placeholder_arguments.items():
                 self._entry[argument] = value

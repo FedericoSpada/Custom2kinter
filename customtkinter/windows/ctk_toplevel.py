@@ -6,13 +6,18 @@ import os
 import platform
 import ctypes
 from typing import Any
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict, Unpack
 from packaging import version
 
 from .widgets.appearance_mode import CTkAppearanceModeBaseClass
 from .widgets.scaling import CTkScalingBaseClass
 from .widgets.theme import ThemeManager
 from .widgets.utility.utility_functions import pop_from_dict_by_set, check_kwargs_empty
+
+
+class CTkToplevelArgs(TypedDict, total=False):
+    fg_color: str | tuple[str, str]
+    title: str
 
 
 class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
@@ -28,17 +33,25 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
     _deactivate_macos_window_header_manipulation: bool = False
     _deactivate_windows_window_header_manipulation: bool = False
 
-    def __init__(self, *args: Any,
-                 fg_color: str | tuple[str, str] | None = None,
-                 **kwargs: Any) -> None:
+    def __init__(self,
+                 master: tkinter.Misc | None = None,
+                 **kwargs: Unpack[CTkToplevelArgs]) -> None:
+
+        toplevel_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_toplevel_arguments)
+
+        self._theme_info: CTkToplevelArgs = ThemeManager.get_info("CTkToplevel", None, **kwargs)
+
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key], transparency=False)
 
         self._enable_macos_dark_title_bar()
 
         # call init methods of super classes
-        super().__init__(*args, **pop_from_dict_by_set(kwargs, self._valid_tk_toplevel_arguments))
+        super().__init__(master, **toplevel_kwargs)
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="window")
-        check_kwargs_empty(kwargs, raise_error=True)
 
         self._current_width: int = 200  # initial window size, always without scaling
         self._current_height: int = 200
@@ -48,13 +61,11 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
         self._max_height: int = 1_000_000
         self._last_resizable_args: tuple[list, dict] | None = None  # (args, kwargs)
 
-        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkToplevel"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-
         # set bg color of tkinter.Toplevel
-        super().configure(bg=self._apply_appearance_mode(self._fg_color))
+        super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
         # set title of tkinter.Toplevel
-        super().title("CTkToplevel")
+        super().title(self._theme_info["title"])
 
         # indicator variables
         self._iconbitmap_method_called: bool = False
@@ -181,14 +192,14 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
                 self._current_height = height
         super().maxsize(self._apply_window_scaling(self._max_width), self._apply_window_scaling(self._max_height))
 
-    def configure(self, **kwargs: Any) -> None:
+    def configure(self, **kwargs: Unpack[CTkToplevelArgs]) -> None:
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
-            super().configure(bg=self._apply_appearance_mode(self._fg_color))
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
             for child in self.winfo_children():
                 try:
-                    child.configure(bg_color=self._fg_color)
+                    child.configure(bg_color=self._theme_info["fg_color"])
                 except Exception:
                     pass
 
@@ -197,8 +208,7 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "fg_color":
-            return self._fg_color
-
+            return self._theme_info["fg_color"]
         else:
             return super().cget(attribute_name)
 
@@ -311,4 +321,4 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
         if sys.platform.startswith("win"):
             self._windows_set_titlebar_color(mode)
 
-        super().configure(bg=self._apply_appearance_mode(self._fg_color))
+        super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))

@@ -3,12 +3,33 @@ from __future__ import annotations
 import tkinter
 import sys
 from typing import Any, Callable
-from typing_extensions import Literal
+from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkBaseClass
 from .core_rendering import CTkCanvas, DrawEngine
+from .font.ctk_font import CTkFont, CTkFontArgs
 from .theme import ThemeManager
-from .font import CTkFont
+
+
+class CTkSwitchArgs(TypedDict, total=False):
+    width: int
+    height: int
+    switch_width: int
+    switch_height: int
+    button_length: int
+    corner_radius: int
+    border_width: int
+    bg_color: str | tuple[str, str]
+    fg_color: str | tuple[str, str]
+    button_color: str | tuple[str, str]
+    button_hover_color: str | tuple[str, str]
+    border_color: str | tuple[str, str]
+    progress_color: str | tuple[str, str]
+    text_color: str | tuple[str, str]
+    text_color_disabled: str | tuple[str, str]
+    hover: bool
+    text: str
+    font: CTkFontArgs | CTkFont | tuple | str
 
 
 class CTkSwitch(CTkBaseClass):
@@ -19,75 +40,44 @@ class CTkSwitch(CTkBaseClass):
 
     def __init__(self,
                  master: tkinter.Misc,
-                 width: int = 100,
-                 height: int = 24,
-                 switch_width: int = 36,
-                 switch_height: int = 18,
-                 corner_radius: int | None = None,
-                 border_width: int | None = None,
-                 button_length: int | None = None,
-
-                 bg_color: str | tuple[str, str] = "transparent",
-                 fg_color: str | tuple[str, str] | None = None,
-                 border_color: str | tuple[str, str] = "transparent",
-                 progress_color: str | tuple[str, str] | None = None,
-                 button_color: str | tuple[str, str] | None = None,
-                 button_hover_color: str | tuple[str, str] | None = None,
-                 text_color: str | tuple[str, str] | None = None,
-                 text_color_disabled: str | tuple[str, str] | None = None,
-
-                 text: str = "CTkSwitch",
-                 font: CTkFont | tuple | None = None,
+                 theme_key: str | None = None,
                  textvariable: tkinter.StringVar | None = None,
+                 state: Literal["normal", "disabled"] = "normal",
                  onvalue: int | float | str | bool = 1,
                  offvalue: int | float | str | bool = 0,
                  variable: tkinter.Variable | None = None,
-                 hover: bool = True,
                  command: Callable[[], None] | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 **kwargs: Any) -> None:
+                 **kwargs: Unpack[CTkSwitchArgs]) -> None:
+
+        self._theme_info: CTkSwitchArgs = ThemeManager.get_info("CTkSwitch", theme_key, **kwargs)
+
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key],
+                                                               transparency=key in ("border_color", "progress_color", "bg_color"))
 
         # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height, **kwargs)
-
-        # dimensions
-        self._switch_width: int = switch_width
-        self._switch_height: int = switch_height
-
-        # color
-        self._border_color: str | tuple[str, str] = self._check_color_type(border_color, transparency=True)
-        self._fg_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-        self._progress_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["progress_color"] if progress_color is None else self._check_color_type(progress_color, transparency=True)
-        self._button_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["button_color"] if button_color is None else self._check_color_type(button_color)
-        self._button_hover_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["button_hover_color"] if button_hover_color is None else self._check_color_type(button_hover_color)
-        self._text_color: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._text_color_disabled: str | tuple[str, str] = ThemeManager.theme["CTkSwitch"]["text_color_disabled"] if text_color_disabled is None else self._check_color_type(text_color_disabled)
-
-        # text
-        self._text: str = text
+        super().__init__(master=master,
+                         bg_color=self._theme_info["bg_color"],
+                         width=self._theme_info["width"],
+                         height=self._theme_info["height"])
 
         # font
-        self._font: CTkFont | tuple = CTkFont() if font is None else self._check_font_type(font)
-        if isinstance(self._font, CTkFont):
-            self._font.add_size_configure_callback(self._update_font)
+        self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
+        self._font.add_size_configure_callback(self._update_font)
 
-        # shape
-        self._corner_radius: int = ThemeManager.theme["CTkSwitch"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_width: int = ThemeManager.theme["CTkSwitch"]["border_width"] if border_width is None else border_width
-        self._button_length: int = ThemeManager.theme["CTkSwitch"]["button_length"] if button_length is None else button_length
-        self._hover_state: bool = False
-        self._check_state: bool = False  # True if switch is activated
-        self._hover: bool = hover
+        # functionality
         self._state: Literal["normal", "disabled"] = state
-        self._onvalue: int | float | str | bool = onvalue
-        self._offvalue: int | float | str | bool = offvalue
-
-        # callback and control variables
         self._command: Callable[[], None] | None = command
+        self._textvariable: tkinter.StringVar | None = textvariable
         self._variable: tkinter.Variable | None = variable
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
-        self._textvariable: tkinter.StringVar | None = textvariable
+        self._onvalue: int | float | str | bool = onvalue
+        self._offvalue: int | float | str | bool = offvalue
+        self._hover_state: bool = False
+        self._check_state: bool = False  # True if switch is activated
 
         # configure grid system (3x1)
         self.grid_columnconfigure(0, weight=0)
@@ -103,8 +93,8 @@ class CTkSwitch(CTkBaseClass):
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
-                                 width=self._apply_widget_scaling(self._switch_width),
-                                 height=self._apply_widget_scaling(self._switch_height))
+                                 width=self._apply_widget_scaling(self._theme_info["switch_width"]),
+                                 height=self._apply_widget_scaling(self._theme_info["switch_height"]))
         self._canvas.grid(row=0, column=0, sticky="")
         self._draw_engine = DrawEngine(self._canvas)
 
@@ -112,7 +102,7 @@ class CTkSwitch(CTkBaseClass):
                                          bd=0,
                                          padx=0,
                                          pady=0,
-                                         text=self._text,
+                                         text=self._theme_info["text"],
                                          justify=tkinter.LEFT,
                                          font=self._apply_font_scaling(self._font),
                                          textvariable=self._textvariable)
@@ -147,8 +137,8 @@ class CTkSwitch(CTkBaseClass):
 
         self._bg_canvas.configure(width=self._apply_widget_scaling(self._desired_width),
                                   height=self._apply_widget_scaling(self._desired_height))
-        self._canvas.configure(width=self._apply_widget_scaling(self._switch_width),
-                               height=self._apply_widget_scaling(self._switch_height))
+        self._canvas.configure(width=self._apply_widget_scaling(self._theme_info["switch_width"]),
+                               height=self._apply_widget_scaling(self._theme_info["switch_height"]))
         self._draw(no_color_updates=True)
 
     def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
@@ -171,9 +161,7 @@ class CTkSwitch(CTkBaseClass):
         if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
 
-        if isinstance(self._font, CTkFont):
-            self._font.remove_size_configure_callback(self._update_font)
-
+        self._font.remove_size_configure_callback(self._update_font)
         super().destroy()
 
     def _set_cursor(self) -> None:
@@ -202,122 +190,120 @@ class CTkSwitch(CTkBaseClass):
         super()._draw(no_color_updates)
 
         if self._check_state is True:
-            requires_recoloring = self._draw_engine.draw_rounded_slider_with_border_and_button(self._apply_widget_scaling(self._switch_width),
-                                                                                               self._apply_widget_scaling(self._switch_height),
-                                                                                               self._apply_widget_scaling(self._corner_radius),
-                                                                                               self._apply_widget_scaling(self._border_width),
-                                                                                               self._apply_widget_scaling(self._button_length),
-                                                                                               self._apply_widget_scaling(self._corner_radius),
+            requires_recoloring = self._draw_engine.draw_rounded_slider_with_border_and_button(self._apply_widget_scaling(self._theme_info["switch_width"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["switch_height"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["corner_radius"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["border_width"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["button_length"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["corner_radius"]),
                                                                                                1, "horizontal")
         else:
-            requires_recoloring = self._draw_engine.draw_rounded_slider_with_border_and_button(self._apply_widget_scaling(self._switch_width),
-                                                                                               self._apply_widget_scaling(self._switch_height),
-                                                                                               self._apply_widget_scaling(self._corner_radius),
-                                                                                               self._apply_widget_scaling(self._border_width),
-                                                                                               self._apply_widget_scaling(self._button_length),
-                                                                                               self._apply_widget_scaling(self._corner_radius),
+            requires_recoloring = self._draw_engine.draw_rounded_slider_with_border_and_button(self._apply_widget_scaling(self._theme_info["switch_width"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["switch_height"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["corner_radius"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["border_width"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["button_length"]),
+                                                                                               self._apply_widget_scaling(self._theme_info["corner_radius"]),
                                                                                                0, "horizontal")
 
         if no_color_updates is False or requires_recoloring:
-            self._bg_canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
-            self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
+            bg_color = self._apply_appearance_mode(self._bg_color)
 
-            if self._border_color == "transparent":
-                self._canvas.itemconfig("border_parts",
-                                        fill=self._apply_appearance_mode(self._bg_color),
-                                        outline=self._apply_appearance_mode(self._bg_color))
+            self._bg_canvas.configure(bg=bg_color)
+            self._canvas.configure(bg=bg_color)
+
+            if self._theme_info["border_color"] == "transparent":
+                self._canvas.itemconfig("border_parts", fill=bg_color, outline=bg_color)
             else:
                 self._canvas.itemconfig("border_parts",
-                                        fill=self._apply_appearance_mode(self._border_color),
-                                        outline=self._apply_appearance_mode(self._border_color))
+                                        fill=self._apply_appearance_mode(self._theme_info["border_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["border_color"]))
 
             self._canvas.itemconfig("inner_parts",
-                                    fill=self._apply_appearance_mode(self._fg_color),
-                                    outline=self._apply_appearance_mode(self._fg_color))
+                                    fill=self._apply_appearance_mode(self._theme_info["fg_color"]),
+                                    outline=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
-            if self._progress_color == "transparent":
+            if self._theme_info["progress_color"] == "transparent":
                 self._canvas.itemconfig("progress_parts",
-                                        fill=self._apply_appearance_mode(self._fg_color),
-                                        outline=self._apply_appearance_mode(self._fg_color))
+                                        fill=self._apply_appearance_mode(self._theme_info["fg_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["fg_color"]))
             else:
                 self._canvas.itemconfig("progress_parts",
-                                        fill=self._apply_appearance_mode(self._progress_color),
-                                        outline=self._apply_appearance_mode(self._progress_color))
+                                        fill=self._apply_appearance_mode(self._theme_info["progress_color"]),
+                                        outline=self._apply_appearance_mode(self._theme_info["progress_color"]))
 
             self._canvas.itemconfig("slider_parts",
-                                    fill=self._apply_appearance_mode(self._button_color),
-                                    outline=self._apply_appearance_mode(self._button_color))
+                                    fill=self._apply_appearance_mode(self._theme_info["button_color"]),
+                                    outline=self._apply_appearance_mode(self._theme_info["button_color"]))
 
             if self._state == tkinter.DISABLED:
-                self._text_label.configure(fg=self._apply_appearance_mode(self._text_color_disabled))
+                self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color_disabled"]))
             else:
-                self._text_label.configure(fg=self._apply_appearance_mode(self._text_color))
+                self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]))
 
-            self._text_label.configure(bg=self._apply_appearance_mode(self._bg_color))
+            self._text_label.configure(bg=bg_color)
 
-    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkSwitchArgs]) -> None:
         require_new_state = False
 
         if "switch_width" in kwargs:
-            self._switch_width = kwargs.pop("switch_width")
-            self._canvas.configure(width=self._apply_widget_scaling(self._switch_width))
+            self._theme_info["switch_width"] = kwargs.pop("switch_width")
+            self._canvas.configure(width=self._apply_widget_scaling(self._theme_info["switch_width"]))
             require_redraw = True
 
         if "switch_height" in kwargs:
-            self._switch_height = kwargs.pop("switch_height")
-            self._canvas.configure(height=self._apply_widget_scaling(self._switch_height))
+            self._theme_info["switch_height"] = kwargs.pop("switch_height")
+            self._canvas.configure(height=self._apply_widget_scaling(self._theme_info["switch_height"]))
             require_redraw = True
 
         if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
+            self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
 
         if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
+            self._theme_info["border_width"] = kwargs.pop("border_width")
             require_redraw = True
 
         if "button_length" in kwargs:
-            self._button_length = kwargs.pop("button_length")
+            self._theme_info["button_length"] = kwargs.pop("button_length")
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._border_color = self._check_color_type(kwargs.pop("border_color"), transparency=True)
+            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"), transparency=True)
             require_redraw = True
 
         if "progress_color" in kwargs:
-            self._progress_color = self._check_color_type(kwargs.pop("progress_color"), transparency=True)
+            self._theme_info["progress_color"] = self._check_color_type(kwargs.pop("progress_color"), transparency=True)
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._button_color = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._button_hover_color = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._text_color = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._text_color_disabled = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
             require_redraw = True
 
         if "text" in kwargs:
-            self._text = kwargs.pop("text")
-            self._text_label.configure(text=self._text)
+            self._theme_info["text"] = kwargs.pop("text")
+            self._text_label.configure(text=self._theme_info["text"])
 
         if "font" in kwargs:
-            if isinstance(self._font, CTkFont):
-                self._font.remove_size_configure_callback(self._update_font)
-            self._font = self._check_font_type(kwargs.pop("font"))
-            if isinstance(self._font, CTkFont):
-                self._font.add_size_configure_callback(self._update_font)
+            self._font.remove_size_configure_callback(self._update_font)
+            self._font = CTkFont.from_parameter(kwargs.pop("font"))
+            self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
         if "textvariable" in kwargs:
@@ -341,7 +327,7 @@ class CTkSwitch(CTkBaseClass):
                 require_new_state = True
 
         if "hover" in kwargs:
-            self._hover = kwargs.pop("hover")
+            self._theme_info["hover"] = kwargs.pop("hover")
 
         if "command" in kwargs:
             self._command = kwargs.pop("command")
@@ -357,51 +343,22 @@ class CTkSwitch(CTkBaseClass):
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name == "switch_width":
-            return self._switch_width
-        elif attribute_name == "switch_height":
-            return self._switch_height
-        elif attribute_name == "corner_radius":
-            return self._corner_radius
-        elif attribute_name == "border_width":
-            return self._border_width
-        elif attribute_name == "button_length":
-            return self._button_length
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "border_color":
-            return self._border_color
-        elif attribute_name == "progress_color":
-            return self._progress_color
-        elif attribute_name == "button_color":
-            return self._button_color
-        elif attribute_name == "button_hover_color":
-            return self._button_hover_color
-        elif attribute_name == "text_color":
-            return self._text_color
-        elif attribute_name == "text_color_disabled":
-            return self._text_color_disabled
-
-        elif attribute_name == "text":
-            return self._text
-        elif attribute_name == "font":
+        if attribute_name == "font":
             return self._font
         elif attribute_name == "textvariable":
             return self._textvariable
+        elif attribute_name == "state":
+            return self._state
         elif attribute_name == "onvalue":
             return self._onvalue
         elif attribute_name == "offvalue":
             return self._offvalue
         elif attribute_name == "variable":
             return self._variable
-        elif attribute_name == "hover":
-            return self._hover
         elif attribute_name == "command":
             return self._command
-        elif attribute_name == "state":
-            return self._state
-
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)
 
@@ -431,17 +388,17 @@ class CTkSwitch(CTkBaseClass):
         return self._onvalue if self._check_state else self._offvalue
 
     def _on_enter(self, _: tkinter.Event | None = None) -> None:
-        if self._hover is True and self._state == "normal":
+        if self._theme_info["hover"] is True and self._state == "normal":
             self._hover_state = True
             self._canvas.itemconfig("slider_parts",
-                                    fill=self._apply_appearance_mode(self._button_hover_color),
-                                    outline=self._apply_appearance_mode(self._button_hover_color))
+                                    fill=self._apply_appearance_mode(self._theme_info["button_hover_color"]),
+                                    outline=self._apply_appearance_mode(self._theme_info["button_hover_color"]))
 
     def _on_leave(self, _: tkinter.Event | None = None) -> None:
         self._hover_state = False
         self._canvas.itemconfig("slider_parts",
-                                fill=self._apply_appearance_mode(self._button_color),
-                                outline=self._apply_appearance_mode(self._button_color))
+                                fill=self._apply_appearance_mode(self._theme_info["button_color"]),
+                                outline=self._apply_appearance_mode(self._theme_info["button_color"]))
 
     def _variable_callback(self, *_: str) -> None:
         if not self._variable_callback_blocked:
