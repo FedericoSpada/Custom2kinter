@@ -1,15 +1,15 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./documentation_images/CustomTkinter_logo_dark.png">
-    <img src="./documentation_images/CustomTkinter_logo_light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/CustomTkinter_logo_dark.png">
+    <img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/CustomTkinter_logo_light.png">
   </picture>
 </p>
 
 <div align="center">
   
-![PyPI](https://img.shields.io/pypi/v/customtkinter)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/customtkinter?color=green&label=downloads)
-![Downloads last 6 month](https://static.pepy.tech/personalized-badge/customtkinter?period=total&units=international_system&left_color=grey&right_color=green&left_text=total%20downloads)
+![PyPI](https://img.shields.io/pypi/v/custom2kinter)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/custom2kinter?color=green&label=downloads)
+![Total Downloads](https://static.pepy.tech/personalized-badge/custom2kinter?period=total&units=international_system&left_color=grey&right_color=green&left_text=total%20downloads)
 ![PyPI - License](https://img.shields.io/badge/license-MIT-blue)
 ![Minimum Python Version](https://shields.io/badge/Minimum_Python-3.7-blue)
 
@@ -17,36 +17,35 @@
 
 | Current Developers | Contact |
 |----------------------------------------------|-|
-| Tom Schimansky | contact@customtkinter.tomschimansky.com |
 | Federico Spada | www.linkedin.com/in/federicospada13 |
 
-<a href="https://www.paypal.com/donate/?hosted_button_id=LK5QAZYRN2R2A"><img src="documentation_images/paypal_donate_button.png" width=170 alt="Paypal donation button"></a>
+<a href="https://www.paypal.com/donate/?hosted_button_id=DRC8XDXN7SEH4"><img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/paypal_donate_button.png" width=250 alt="PayPal donation button"></a>
 
 
 </div>
 
 ---
 
-<div align="center">
-
-<h2>
-Official website: https://customtkinter.tomschimansky.com/
-</h2>
-
-</div>
-
-CustomTkinter is a python UI-library based on Tkinter, which provides new, modern and
+Custom2kinter is a python UI-library based on Tkinter, which provides new, modern and
 fully customizable widgets. They are created and used like normal Tkinter widgets and
 can also be used in combination with normal Tkinter elements. The widgets
 and the window colors either adapt to the system appearance or the manually set mode
-('light', 'dark'), and all CustomTkinter widgets and windows support HighDPI scaling
-(Windows, macOS). With CustomTkinter you'll get a consistent and modern look across all
+('light', 'dark'), and all Custom2kinter widgets and windows support HighDPI scaling
+(Windows, macOS). With Custom2kinter you'll get a consistent and modern look across all
 desktop platforms (Windows, macOS, Linux).
 
-![](documentation_images/complex_example_dark_Windows.png)
+This project was created to continue the development of [CustomTkinter](https://pypi.org/project/customtkinter), since the
+original author lost interest in it. The first release of this library is v5.3.0,
+which continues the old numeration, and it is fully compatible with the last released
+version of the original library.\
+They can't live together in the same environment, so be sure to uninstall ```customtkinter```
+before installing ```custom2kinter```. This library is still imported using the original
+name, so existing code doesn't need to be updated.
+
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/complex_example_dark_Windows.png)
 | _`complex_example.py` on Windows 11 with dark mode and 'blue' theme_
 
-![](documentation_images/complex_example_light_macOS.png)
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/complex_example_light_macOS.png)
 | _`complex_example.py` on macOS in light mode and standard 'blue' theme_
 ###
 
@@ -54,9 +53,9 @@ desktop platforms (Windows, macOS, Linux).
 ## Installation
 Install the module with pip:
 ```
-pip3 install customtkinter
+pip3 install custom2kinter
 ```
-**Update existing installation:** ```pip3 install customtkinter --upgrade```\
+**Update existing installation:** ```pip3 install custom2kinter --upgrade```\
 (update as often as possible because this library is under active development)
 
 ## Documentation
@@ -66,7 +65,7 @@ The **official** documentation can be found here:
 **➡️ https://customtkinter.tomschimansky.com/documentation**.
 
 ## Example Program
-To test customtkinter you can try this simple example with only a single button:
+To test custom2kinter you can try this simple example with only a single button:
 ```python
 import customtkinter
 
@@ -87,9 +86,9 @@ app.mainloop()
 ```
 which results in the following window on macOS:
 
-<img src="documentation_images/single_button_macOS.png" width="400"/>
+<img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/single_button_macOS.png" width="400"/>
 
-In the [examples folder](https://github.com/TomSchimansky/CustomTkinter/tree/master/examples), you
+In the [examples folder](https://github.com/FedericoSpada/Custom2kinter/tree/master/examples), you
 can find more example programs and in the [Documentation](https://github.com/TomSchimansky/CustomTkinter/wiki)
 you can find further information on the appearance mode, scaling, themes and all widgets.
 
@@ -102,7 +101,7 @@ ctk.run_showroom()
 
 ### Appearance mode change and scaling change
 
-CustomTkinter can adapt to the Windows 10/11 light or dark mode:
+Custom2kinter can adapt to the Windows 10/11 light or dark mode:
 
 https://user-images.githubusercontent.com/66446067/204672968-6584f360-4c52-434f-9c16-25761341368b.mp4
 
@@ -123,19 +122,19 @@ pass a PhotoImage object to the CTkButton with the ``image`` argument.
 If you want no text at all you have to set ``text=""`` or you specify
 how to position the text and image at once with the ``compound`` option:
 
-![](documentation_images/image_example_dark_Windows.png)
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/image_example_dark_Windows.png)
 | _`image_example.py` on Windows 11_
 ###
 
 ### Scrollable Frames
 Scrollable frames are possible in vertical or horizontal orientation and can be combined
 with any other widgets.
-![](documentation_images/scrollable_frame_example_Windows.png)
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/scrollable_frame_example_Windows.png)
 | _`scrollable_frame_example.py` on Windows 11_
 
 ### Integration of TkinterMapView widget
 In the following example I used a TkinterMapView which integrates
-well with a CustomTkinter program. It's a tile based map widget which displays
+well with a Custom2kinter program. It's a tile based map widget which displays
 OpenStreetMap or other tile based maps:
 
 https://user-images.githubusercontent.com/66446067/204675835-1584a8da-5acc-4993-b4a9-e70f06fa14b0.mp4

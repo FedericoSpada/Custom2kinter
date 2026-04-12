@@ -14,15 +14,15 @@ tbump 5.2.3
 ```
 
 Create pull request to merge `/develop` into `/master` branch on Github.
-- approval by owner (Tom), merge to `/master`
+- approval by owner, merge to `/master`
 
 
-Publish new version to PyPI (Tom):
+Publish new version to PyPI:
 ```
 python -m pip install --upgrade build
+python -m pip install --upgrade twine
 rm -r dist
 python -m build
 python -m twine upload dist/*
 ```
 Finally: Update documentation for new features.
-- upload to website by Tom
