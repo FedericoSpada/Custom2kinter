@@ -4,13 +4,7 @@ All notable changes to this project will be documented in this file!
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-ToDo:
- - cursor configuring
- - overwrite winfo methods
- - set icon (self.call("wm", "iconphoto", self._w, tkinter.PhotoImage(file="test_images/CustomTkinter_logo_single.png")))
- - add option to change label position for checkbox, switch, radiobutton #628
-
-## [5.3.0] - 2026-01-21
+## [5.3.0] - 2026-04-12
 ### Added
  - Showroom App, immediately available with the library installation
  - Gold theme

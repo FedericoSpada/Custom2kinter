@@ -1,9 +1,66 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools >= 77.0.3", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "custom2kinter"
+version = "5.3.0"
+authors = [
+   {name="Tom Schimansky"},
+   {name="Federico Spada"},
+]
+maintainers = [
+   {name="Federico Spada"},
+]
+description = "Create modern looking GUIs with Python"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+   "Programming Language :: Python :: 3.7",
+   "Programming Language :: Python :: 3.8",
+   "Programming Language :: Python :: 3.9",
+   "Programming Language :: Python :: 3.10",
+   "Programming Language :: Python :: 3.11",
+   "Programming Language :: Python :: 3.12",
+   "Programming Language :: Python :: 3.13",
+   "Programming Language :: Python :: 3.14",
+   "Programming Language :: Python :: 3.15",
+   "Development Status :: 5 - Production/Stable",
+   "Operating System :: OS Independent",
+   "Intended Audience :: Developers",
+]
+dependencies = [
+   "darkdetect",
+   "typing_extensions",
+   "packaging",
+]
+keywords = ["GUI", "Tkinter", "simple", "modern"]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/FedericoSpada/Custom2kinter"
+Changelog = "https://github.com/FedericoSpada/Custom2kinter/blob/master/CHANGELOG.md"
+Issues = "https://github.com/FedericoSpada/Custom2kinter/issues"
+Documentation = "https://customtkinter.tomschimansky.com/documentation"
+
+[tool.setuptools]
+packages = [
+   "customtkinter",
+   "customtkinter.windows",
+   "customtkinter.windows.widgets",
+   "customtkinter.windows.widgets.appearance_mode",
+   "customtkinter.windows.widgets.core_rendering",
+   "customtkinter.windows.widgets.core_widget_classes",
+   "customtkinter.windows.widgets.font",
+   "customtkinter.windows.widgets.image",
+   "customtkinter.windows.widgets.scaling",
+   "customtkinter.windows.widgets.theme",
+   "customtkinter.windows.widgets.utility",
+]
+
 [tool.tbump]
-github_url = "https://github.com/TomSchimansky/CustomTkinter"
+github_url = "https://github.com/FedericoSpada/Custom2kinter"
 
 [tool.tbump.version]
 current = "5.3.0"
@@ -27,7 +84,8 @@ tag_template = "v{new_version}"
 # section containing the path of the file, relative to the
 # tbump.toml location.
 [[tool.tbump.file]]
-src = "setup.cfg"
+src = "pyproject.toml"
+search = "version = \"{current_version}\""
 
 [[tool.tbump.file]]
 src = "customtkinter/__init__.py"
