@@ -9,7 +9,7 @@ from typing_extensions import TypedDict, Unpack
 from ..appearance_mode import CTkAppearanceModeBaseClass
 from ..scaling import CTkScalingBaseClass
 from ..theme import ColorType, ThemeManager
-from ..font.ctk_font import CTkFont, FontType
+from ..font import CTkFont, FontType
 from ..utility import pop_from_dict_by_set
 
 

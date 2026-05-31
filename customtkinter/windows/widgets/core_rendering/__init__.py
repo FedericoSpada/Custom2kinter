@@ -9,6 +9,9 @@ from .draw_engine import BorderedRoundedRect
 from .draw_engine import Checkmark
 from .draw_engine import RoundedRect
 
+from .draw_engine import DrawingMethodType
+from .draw_engine import SectionType
+
 CTkCanvas.init_font_character_mapping()
 
 # determine draw method based on current platform

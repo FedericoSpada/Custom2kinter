@@ -30,11 +30,11 @@ class CTkScalingBaseClass:
         self.__scaling: float = 1.0
 
         if self.__scaling_type == "widget":
-            ScalingTracker.add_widget(self._set_scaling, self)  # add callback for automatic scaling changes
+            ScalingTracker.add_widget(self._set_scaling, self)
             self.__scaling = ScalingTracker.get_widget_scaling(self)
         elif self.__scaling_type == "window":
             ScalingTracker.activate_high_dpi_awareness()  # make process DPI aware
-            ScalingTracker.add_window(self._set_scaling, self)  # add callback for automatic scaling changes
+            ScalingTracker.add_window(self._set_scaling, self)
             self.__scaling = ScalingTracker.get_window_scaling(self)
 
     def destroy(self) -> None:

@@ -8,7 +8,7 @@ from typing_extensions import Literal, TypedDict, Unpack
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
-from .font.ctk_font import CTkFont, FontType
+from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import get_proper_cursor
 
@@ -29,6 +29,7 @@ class CTkComboBoxArgs(TypedDict, total=False):
     hover: bool
     font: FontType
     justify: Literal["left", "center", "right"]
+    compound: Literal["left", "right"]
     dropdown: DropdownMenuArgs
 
 
@@ -69,7 +70,7 @@ class CTkComboBox(CTkWidget):
         self._values: list[str] = [] if values is None else values
         self._command: Callable[[str], None] | None = command
         self._variable: tkinter.StringVar | None = variable
-        self._applied_right_section_width: int = -1
+        self._applied_button_width: int = -1
         self._close_on_next_click: bool = False
 
         # configure grid system (1x1)
@@ -111,12 +112,14 @@ class CTkComboBox(CTkWidget):
 
     def _create_bindings(self, sequence: str | None = None) -> None:
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
-        if sequence is None:
-            self._rounded_rect.bind("<Enter>", self._on_enter, section="right")
-            self._rounded_rect.bind("<Leave>", self._on_leave, section="right")
-            self._rounded_rect.bind("<Button-1>", self.invoke, section="right")
+        if sequence is None or sequence == "<Enter>":
+            self._rounded_rect.bind("<Enter>", self._on_enter, section=self._theme_info["compound"])
             self._arrow.bind("<Enter>", self._on_enter)
+        if sequence is None or sequence == "<Leave>":
+            self._rounded_rect.bind("<Leave>", self._on_leave, section=self._theme_info["compound"])
             self._arrow.bind("<Leave>", self._on_leave)
+        if sequence is None or sequence == "<Button-1>":
+            self._rounded_rect.bind("<Button-1>", self.invoke, section=self._theme_info["compound"])
             self._arrow.bind("<Button-1>", self.invoke)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
@@ -151,19 +154,27 @@ class CTkComboBox(CTkWidget):
     def _draw(self, force_colors_update: bool = False) -> None:
         super()._draw(force_colors_update)
 
+        compound = self._theme_info["compound"]
+        not_compound = "left" if compound == "right" else "right"
+        left_section_width = self._current_width - self._current_height if compound == "right" else self._current_height
+
         requires_recoloring_1 = self._rounded_rect.update(self._current_width,
                                                           self._current_height,
                                                           self._apply_scaling(self._theme_info["corner_radius"]),
                                                           self._apply_scaling(self._theme_info["border_width"]),
-                                                          left_section_width=self._current_width - self._current_height)
+                                                          left_section_width=left_section_width)
 
-        requires_recoloring_2 = self._arrow.update((self._rounded_rect.info.get("left_section_width", 0) + self._current_width) / 2,
+        if compound == "right":
+            button_middle_point = (self._rounded_rect.info.get("left_section_width", 0) + self._current_width) / 2
+        else:
+            button_middle_point = self._rounded_rect.info.get("left_section_width", 0) / 2
+        requires_recoloring_2 = self._arrow.update(button_middle_point,
                                                    self._current_height / 2,
                                                    self._current_height / 3,
                                                    180)
 
         if (self._rounded_rect.info["spacings_changed"] or
-            abs(self._applied_right_section_width - self._rounded_rect.info.get("right_section_width", 0)) > 1):
+            abs(self._applied_button_width - self._rounded_rect.info.get(f"{compound}_section_width", 0)) > 1):
             self._update_geometry()
 
         if force_colors_update or requires_recoloring_1 or requires_recoloring_2:
@@ -177,10 +188,10 @@ class CTkComboBox(CTkWidget):
             text_color_disabled = self._apply_appearance_mode(self._theme_info["text_color_disabled"])
 
             self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
-            self._rounded_rect.set_main_color(fg_color, "left")
-            self._rounded_rect.set_border_color(border_color, "left")
-            self._rounded_rect.set_main_color(button_color, "right")
-            self._rounded_rect.set_border_color(button_color, "right")
+            self._rounded_rect.set_main_color(fg_color, not_compound)
+            self._rounded_rect.set_border_color(border_color, not_compound)
+            self._rounded_rect.set_main_color(button_color, compound)
+            self._rounded_rect.set_border_color(button_color, compound)
             self._arrow.set_color(text_color_disabled if self._state == tkinter.DISABLED else text_color)
 
             self._entry.configure(bg=fg_color,
@@ -192,12 +203,16 @@ class CTkComboBox(CTkWidget):
                                   insertbackground=text_color)
 
     def _update_geometry(self) -> None:
-        self._applied_right_section_width = self._rounded_rect.info.get("right_section_width", 0)
+        compound = self._theme_info["compound"]
+        self._applied_button_width = self._rounded_rect.info.get(f"{compound}_section_width", 0)
+
         spacing = self._rounded_rect.info.get("inscribed_spacing", 0)
         border_spacing = self._apply_scaling(self._theme_info["border_spacing"])
+        padx = (spacing + border_spacing,
+                self._applied_button_width + border_spacing)
+
         self._entry.grid(row=0, column=0, sticky="ew",
-                         padx=(spacing + border_spacing,
-                               self._applied_right_section_width + border_spacing),
+                         padx=padx if compound == "right" else padx[::-1],
                          pady=spacing)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkComboBoxArgs]) -> None:
@@ -268,6 +283,12 @@ class CTkComboBox(CTkWidget):
         if "justify" in kwargs:
             self._entry.configure(justify=kwargs.pop("justify"))
 
+        if "compound" in kwargs:
+            self._theme_info["compound"] = kwargs.pop("compound")
+            self._create_bindings()
+            self._applied_button_width = -1
+            require_redraw = True
+
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
@@ -298,8 +319,8 @@ class CTkComboBox(CTkWidget):
             if self._theme_info["hover"]:
                 # set color of button parts to hover color
                 color = self._apply_appearance_mode(self._theme_info["button_hover_color"])
-                self._rounded_rect.set_main_color(color, "right")
-                self._rounded_rect.set_border_color(color, "right")
+                self._rounded_rect.set_main_color(color, self._theme_info["compound"])
+                self._rounded_rect.set_border_color(color, self._theme_info["compound"])
 
     def _on_leave(self, _: tkinter.Event | None = None) -> None:
         cursor = get_proper_cursor("normal")
@@ -308,8 +329,8 @@ class CTkComboBox(CTkWidget):
 
         # restore color of button parts
         color = self._apply_appearance_mode(self._theme_info["button_color"])
-        self._rounded_rect.set_main_color(color, "right")
-        self._rounded_rect.set_border_color(color, "right")
+        self._rounded_rect.set_main_color(color, self._theme_info["compound"])
+        self._rounded_rect.set_border_color(color, self._theme_info["compound"])
 
     def _dropdown_callback(self, value: str) -> None:
         self.set(value)

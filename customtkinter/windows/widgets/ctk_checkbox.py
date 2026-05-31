@@ -6,7 +6,7 @@ from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Checkmark
-from .font.ctk_font import CTkFont, FontType
+from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import get_proper_cursor
 
@@ -29,6 +29,7 @@ class CTkCheckBoxArgs(TypedDict, total=False):
     hover: bool
     text: str
     font: FontType
+    compound: Literal["left", "right", "top", "bottom"]
 
 
 class CTkCheckBox(CTkWidget):
@@ -76,19 +77,16 @@ class CTkCheckBox(CTkWidget):
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
 
-        self._update_geometry()
-
         self._bg_canvas = CTkCanvas(master=self,
                                     highlightthickness=0,
                                     width=self._apply_scaling(self._desired_width),
                                     height=self._apply_scaling(self._desired_height))
-        self._bg_canvas.grid(row=0, column=0, columnspan=3, sticky="nswe")
+        self._bg_canvas.grid(row=0, column=0, rowspan=3, columnspan=3, sticky="nswe")
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
                                  width=self._apply_scaling(self._theme_info["checkbox_width"]),
                                  height=self._apply_scaling(self._theme_info["checkbox_height"]))
-        self._canvas.grid(row=0, column=0, sticky="e")
         self._rounded_rect = BorderedRoundedRect(self._canvas)
         self._checkmark = Checkmark(self._canvas)
         self._bind_targets.append(self._canvas)
@@ -98,11 +96,8 @@ class CTkCheckBox(CTkWidget):
                                          padx=0,
                                          pady=0,
                                          text=self._theme_info["text"],
-                                         justify=tkinter.LEFT,
                                          font=self._apply_font_scaling(self._font),
                                          textvariable=self._textvariable)
-        self._text_label.grid(row=0, column=2, sticky="w")
-        self._text_label["anchor"] = "w"
         self._bind_targets.append(self._text_label)
         self._focus_target = self._text_label
 
@@ -113,6 +108,7 @@ class CTkCheckBox(CTkWidget):
 
         self._create_bindings()
         self._set_cursor()
+        self._update_geometry()
         self._draw(force_colors_update=True)
 
     def _create_bindings(self, sequence: str | None = None) -> None:
@@ -130,13 +126,13 @@ class CTkCheckBox(CTkWidget):
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
 
-        self._update_geometry()
         self._text_label.configure(font=self._apply_font_scaling(self._font))
 
         self._bg_canvas.configure(width=self._apply_scaling(self._desired_width),
                                   height=self._apply_scaling(self._desired_height))
         self._canvas.configure(width=self._apply_scaling(self._theme_info["checkbox_width"]),
                                height=self._apply_scaling(self._theme_info["checkbox_height"]))
+        self._update_geometry()
         self._draw()
 
     def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
@@ -187,32 +183,67 @@ class CTkCheckBox(CTkWidget):
             self._bg_canvas.configure(bg=bg_color)
             self._canvas.configure(bg=bg_color)
 
-            if self._check_state:
-                fg_color = self._apply_appearance_mode(self._theme_info["fg_color"])
-                self._rounded_rect.set_main_color(fg_color)
-                self._rounded_rect.set_border_color(fg_color)
-                self._checkmark.set_color(self._apply_appearance_mode(self._theme_info["checkmark_color"]))
-            else:
-                self._rounded_rect.set_main_color(bg_color)
-                self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
-
             if self._state != tkinter.NORMAL:
-                self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color_disabled"]))
+                disabled_color = self._apply_appearance_mode(self._theme_info["text_color_disabled"])
+                main_color = disabled_color if self._check_state else bg_color
+                border_color = disabled_color
+                text_color = disabled_color
             else:
-                self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]))
+                text_color = self._apply_appearance_mode(self._theme_info["text_color"])
+                if self._check_state:
+                    main_color = border_color = self._apply_appearance_mode(self._theme_info["fg_color"])
+                else:
+                    main_color = bg_color
+                    border_color = self._apply_appearance_mode(self._theme_info["border_color"])
 
-            self._text_label.configure(bg=bg_color)
+            self._rounded_rect.set_main_color(main_color)
+            self._rounded_rect.set_border_color(border_color)
+            self._text_label.configure(fg=text_color, bg=bg_color)
 
     def _update_geometry(self) -> None:
-        # configure grid system (1x3)
-        if self._theme_info["text"]:
-            widget_label_spacing = self._apply_scaling(self._theme_info["internal_spacing"])
+        # configure grid system (1x3 or 3x1)
+
+        if self._theme_info["text"] == "":
+            self.grid_rowconfigure(0, weight=1)
+            self.grid_rowconfigure((1, 2), weight=0, minsize=0)
+            self.grid_columnconfigure(0, weight=1)
+            self.grid_columnconfigure((1, 2), weight=0, minsize=0)
+            self._canvas.grid(row=0, column=0)
+            self._text_label.grid_forget()
+
         else:
-            widget_label_spacing = 0
-        self.grid_columnconfigure(0, weight=0)
-        self.grid_columnconfigure(1, weight=0, minsize=widget_label_spacing)
-        self.grid_columnconfigure(2, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+            compound = self._theme_info["compound"]
+            widget_label_spacing = self._apply_scaling(self._theme_info["internal_spacing"])
+
+            if compound in ("left", "right"):
+                self.grid_columnconfigure(0, weight=0 if compound == "left" else 1)
+                self.grid_columnconfigure(1, weight=0, minsize=widget_label_spacing)
+                self.grid_columnconfigure(2, weight=1 if compound == "left" else 0)
+                self.grid_rowconfigure(0, weight=1)
+                self.grid_rowconfigure((1, 2), weight=0, minsize=0)
+
+                self._text_label.configure(justify=compound)
+            else:
+                self.grid_rowconfigure(0, weight=0 if compound == "top" else 1)
+                self.grid_rowconfigure(1, weight=0, minsize=widget_label_spacing)
+                self.grid_rowconfigure(2, weight=1 if compound == "top" else 0)
+                self.grid_columnconfigure(0, weight=1)
+                self.grid_columnconfigure((1, 2), weight=0, minsize=0)
+
+                self._text_label.configure(justify=tkinter.CENTER)
+
+            if compound == "left":
+                self._canvas.grid(row=0, column=0, sticky="e")
+                self._text_label.grid(row=0, column=2, sticky="w")
+            elif compound == "right":
+                self._text_label.grid(row=0, column=0, sticky="e")
+                self._canvas.grid(row=0, column=2, sticky="w")
+            elif compound == "top":
+                self._canvas.grid(row=0, column=0, sticky="s")
+                self._text_label.grid(row=2, column=0, sticky="n")
+            else:
+                self._text_label.grid(row=0, column=0, sticky="s")
+                self._canvas.grid(row=2, column=0, sticky="n")
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkCheckBoxArgs]) -> None:
         require_new_state = False
@@ -273,6 +304,10 @@ class CTkCheckBox(CTkWidget):
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
             self._font.add_size_configure_callback(self._update_font)
             self._update_font()
+
+        if "compound" in kwargs:
+            self._theme_info["compound"] = kwargs.pop("compound")
+            self._update_geometry()
 
         if "textvariable" in kwargs:
             self._textvariable = kwargs.pop("textvariable")
@@ -345,13 +380,14 @@ class CTkCheckBox(CTkWidget):
                 self._rounded_rect.set_border_color(hover_color)
 
     def _on_leave(self, _: tkinter.Event | None = None) -> None:
-        if self._check_state:
-            fg_color = self._apply_appearance_mode(self._theme_info["fg_color"])
-            self._rounded_rect.set_main_color(fg_color)
-            self._rounded_rect.set_border_color(fg_color)
-        else:
-            self._rounded_rect.set_main_color(self._apply_appearance_mode(self._bg_color))
-            self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
+        if self._state == tkinter.NORMAL:
+            if self._check_state:
+                fg_color = self._apply_appearance_mode(self._theme_info["fg_color"])
+                self._rounded_rect.set_main_color(fg_color)
+                self._rounded_rect.set_border_color(fg_color)
+            else:
+                self._rounded_rect.set_main_color(self._apply_appearance_mode(self._bg_color))
+                self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
 
     def _variable_callback(self, *_: str) -> None:
         if not self._variable_callback_blocked:

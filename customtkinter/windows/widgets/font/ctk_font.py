@@ -87,7 +87,7 @@ class CTkFont(Font):
                              "font=customtkinter.CTkFont(family='<name>', size=<size in px>)\n" +
                              "font=('<name>', <size in px>)\n" +
                              "font={'family': '<name>', 'size': <size in px>}\n" +
-                             "font='<theme_key>'\n")
+                             "font='<theme_key>'")
 
     def add_size_configure_callback(self, callback: Callable[[], None]) -> None:
         """ Adds a function that gets called when the font gets configured """

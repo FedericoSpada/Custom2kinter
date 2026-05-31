@@ -1,4 +1,4 @@
-darkdetect~=0.7.0
+darkdetect
 typing-extensions
 packaging
-setuptools
+pillow

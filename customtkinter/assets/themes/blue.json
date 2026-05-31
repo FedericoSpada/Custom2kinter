@@ -16,7 +16,8 @@
     "button": {
       "width": 100
     },
-    "entry": {}
+    "entry": {},
+    "combobox": {}
   },
   "CTkFrame": {
     "width": 200,
@@ -29,12 +30,23 @@
     "border_color": ["gray65", "gray28"]
   },
   "CTkScrollableFrame": {
-    "orientation": "vertical",
     "width": 200,
     "height": 200,
-    "frame": {},
-    "scrollbar": {},
+    "corner_radius": 6,
+    "border_width": 0,
+    "border_spacing": 3,
+    "bg_color": "transparent",
+    "fg_color": ["gray86", "gray17"],
+    "top_fg_color": ["gray81", "gray20"],
+    "border_color": ["gray65", "gray28"],
+    "orientation": "vertical",
+    "activate_scrollbars": true,
+    "scrollbar": {
+      "thickness": 8,
+      "border_width": 0
+    },
     "label": {
+      "corner_radius": 6,
       "fg_color": ["gray78", "gray23"],
       "text": "",
       "anchor": "center"
@@ -71,6 +83,7 @@
     "text": "CTkButton",
     "font": {},
     "anchor": "center",
+    "image": {},
     "compound": "left"
   },
   "CTkLabel": {
@@ -87,6 +100,7 @@
     "text": "CTkLabel",
     "font": {},
     "anchor": "center",
+    "image": {},
     "compound": "center",
     "wraplength": 0
   },
@@ -137,6 +151,7 @@
     "hover": true,
     "font": {},
     "justify": "left",
+    "compound": "right",
     "dropdown": {}
   },
   "CTkOptionMenu": {
@@ -153,6 +168,7 @@
     "hover": true,
     "font": {},
     "anchor": "w",
+    "compound": "right",
     "dropdown": {}
   },
   "CTkCheckBox": {
@@ -172,7 +188,8 @@
     "hover_color": ["#36719F", "#144870"],
     "hover": true,
     "text": "CTkCheckBox",
-    "font": {}
+    "font": {},
+    "compound": "left"
   },
   "CTkSwitch": {
     "orientation": "horizontal",
@@ -194,7 +211,8 @@
     "text_color_disabled": ["gray60", "gray45"],
     "hover": true,
     "text": "CTkSwitch",
-    "font": {}
+    "font": {},
+    "compound": "left"
   },
   "CTkRadioButton": {
     "width": 100,
@@ -213,7 +231,8 @@
     "hover_color": ["#36719F", "#144870"],
     "hover": true,
     "text": "CTkRadioButton",
-    "font": {}
+    "font": {},
+    "compound": "left"
   },
   "CTkProgressBar": {
     "orientation": "horizontal",
@@ -303,5 +322,11 @@
       "underline": false,
       "overstrike": false
     }
+  },
+  "CTkImage": {
+    "width": 20,
+    "height": 20,
+    "light_image": "",
+    "dark_image": ""
   }
 }

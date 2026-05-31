@@ -17,7 +17,7 @@ AnchorType : TypeAlias = Literal["center", "n", "ne", "e", "se", "s", "sw", "w",
 
 
 class ThemeInfo(TypedDict, total=False):
-    orientation: Literal["horizontal", "vertical"]
+    orientation: Literal["horizontal", "vertical", "both"]
     thickness: int
     length: int
     width: int
@@ -63,6 +63,9 @@ class ThemeInfo(TypedDict, total=False):
     slant: Literal["italic", "roman"]
     underline: bool
     overstrike: bool
+    image: Any
+    light_image: Any
+    dark_image: Any
     anchor: AnchorType
     justify: Literal["left", "center", "right"]
     compound: Literal["center", "left", "right", "top", "bottom", "none"]
@@ -72,7 +75,7 @@ class ThemeInfo(TypedDict, total=False):
     button: dict
     dropdown: dict
     entry: dict
-    frame: dict
+    combobox: dict
     label: dict
     scrollbar: dict
     segmented_button: dict

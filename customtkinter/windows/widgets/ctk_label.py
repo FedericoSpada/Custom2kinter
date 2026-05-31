@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import tkinter
-from typing import Any, TYPE_CHECKING
+from typing import Any
 from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect
-from .font.ctk_font import CTkFont, FontType
+from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .image import CTkImage
+from .image import CTkImage, ImageType
 from .utility import pop_from_dict_by_set
-
-if TYPE_CHECKING:
-    from PIL import ImageTk
 
 
 class CTkLabelArgs(TypedDict, total=False):
@@ -29,6 +26,7 @@ class CTkLabelArgs(TypedDict, total=False):
     text: str
     font: FontType
     anchor: AnchorType
+    image: ImageType
     compound: Literal["center", "left", "right", "top", "bottom", "none"]
     wraplength: int
 
@@ -46,7 +44,6 @@ class CTkLabel(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 image: CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | None = None,
                  **kwargs: Unpack[CTkLabelArgs]) -> None:
 
         label_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_label_attributes)
@@ -65,9 +62,8 @@ class CTkLabel(CTkWidget):
                          height=self._theme_info["height"])
 
         # image
-        self._image: CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | str | None = self._check_image_type(image)
-        if isinstance(self._image, CTkImage):
-            self._image.add_configure_callback(self._update_image)
+        self._image: CTkImage = CTkImage.from_parameter(self._theme_info["image"])
+        self._image.add_configure_callback(self._update_image)
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
@@ -134,16 +130,12 @@ class CTkLabel(CTkWidget):
         self._canvas.grid(row=0, column=0, sticky="nswe")
 
     def _update_image(self) -> None:
-        if isinstance(self._image, CTkImage):
-            self._label.configure(image=self._image.create_scaled_photo_image(self.get_scaling(),
-                                                                              self._get_appearance_mode()))
-        elif self._image is not None:
-            self._label.configure(image=self._image)
+        image = self._image.get(self.get_scaling(), self._get_appearance_mode())
+        self._label.configure(image=image)
 
     def destroy(self) -> None:
         self._font.remove_size_configure_callback(self._update_font)
-        if isinstance(self._image, CTkImage):
-            self._image.remove_configure_callback(self._update_image)
+        self._image.remove_configure_callback(self._update_image)
         super().destroy()
 
     def _draw(self, force_colors_update: bool = False) -> None:
@@ -212,11 +204,9 @@ class CTkLabel(CTkWidget):
             self._update_font()
 
         if "image" in kwargs:
-            if isinstance(self._image, CTkImage):
-                self._image.remove_configure_callback(self._update_image)
-            self._image = self._check_image_type(kwargs.pop("image"))
-            if isinstance(self._image, CTkImage):
-                self._image.add_configure_callback(self._update_image)
+            self._image.remove_configure_callback(self._update_image)
+            self._image = CTkImage.from_parameter(kwargs.pop("image"))
+            self._image.add_configure_callback(self._update_image)
             self._update_image()
 
         if "compound" in kwargs:

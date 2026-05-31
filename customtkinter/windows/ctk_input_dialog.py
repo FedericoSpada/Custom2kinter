@@ -7,7 +7,8 @@ from .ctk_toplevel import CTkToplevel
 from .widgets import CTkLabel
 from .widgets.ctk_button import CTkButton, CTkButtonArgs
 from .widgets.ctk_entry import CTkEntry, CTkEntryArgs
-from .widgets.font.ctk_font import CTkFont, FontType
+from .widgets.ctk_combobox import CTkComboBox, CTkComboBoxArgs
+from .widgets.font import CTkFont, FontType
 from .widgets.theme import ColorType, ThemeManager
 
 
@@ -19,6 +20,7 @@ class CTkInputDialogArgs(TypedDict, total=False):
     font: FontType
     button: CTkButtonArgs
     entry: CTkEntryArgs
+    combobox: CTkComboBoxArgs
 
 
 class CTkInputDialog(CTkToplevel):
@@ -30,6 +32,8 @@ class CTkInputDialog(CTkToplevel):
     def __init__(self,
                  master: tkinter.Misc | None = None,
                  theme_key: str | None = None,
+                 default_value: str = "",
+                 values: list[str] | None = None,
                  **kwargs: Unpack[CTkInputDialogArgs]) -> None:
 
         self._theme_id_info: CTkInputDialogArgs = ThemeManager.get_info("CTkInputDialog", theme_key, **kwargs)
@@ -43,18 +47,20 @@ class CTkInputDialog(CTkToplevel):
                          fg_color=self._theme_id_info["fg_color"],
                          title=self._theme_id_info["title"])
 
+        self._default_value: str = default_value
+        self._values: list[str] | None = values
         self._user_input: str | None = None
         self._running: bool = False
 
         self._font: CTkFont = CTkFont.from_parameter(self._theme_id_info["font"])
         self._label: CTkLabel
-        self._entry: CTkEntry
+        self._input: CTkEntry | CTkComboBox
         self._ok_button: CTkButton
         self._cancel_button: CTkButton
 
         self.lift()  # lift window on top
         self.attributes("-topmost", True)  # stay on top
-        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+        self.protocol("WM_DELETE_WINDOW", self._cancel_event)
         self.after(10, self._create_widgets)  # create widgets with slight delay, to avoid white flickering of background
         self.resizable(False, False)
         self.grab_set()  # make other windows not clickable
@@ -72,10 +78,20 @@ class CTkInputDialog(CTkToplevel):
                                font=self._font)
         self._label.grid(row=0, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
 
-        entry_kwargs = self._theme_id_info["entry"]
-        entry_kwargs["font"] = self._font
-        self._entry = CTkEntry(master=self, **entry_kwargs)
-        self._entry.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+        if self._values is None:
+            entry_kwargs = self._theme_id_info["entry"]
+            entry_kwargs["font"] = self._font
+            self._input = CTkEntry(master=self, **entry_kwargs)
+        else:
+            combo_kwargs = self._theme_id_info["combobox"]
+            combo_kwargs["font"] = self._font
+            self._input = CTkComboBox(master=self, values=self._values, state="readonly", **combo_kwargs)
+
+        self._input.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+
+        self._input.set(self._default_value)
+        if self._values is None:
+            self._input.select_range(0, tkinter.END)
 
         button_kwargs = self._theme_id_info["button"]
         button_kwargs["font"] = self._font
@@ -92,15 +108,11 @@ class CTkInputDialog(CTkToplevel):
                                         **button_kwargs)
         self._cancel_button.grid(row=2, column=1, columnspan=1, padx=(10, 20), pady=(0, 20), sticky="ew")
 
-        self.after(150, self._entry.focus)  # set focus to entry with slight delay, otherwise it won't work
-        self._entry.bind("<Return>", self._ok_event)
+        self.after(150, self._input.focus)  # set focus to input widget with slight delay, otherwise it won't work
+        self._input.bind("<Return>", self._ok_event)
 
     def _ok_event(self, _: tkinter.Event | None = None) -> None:
-        self._user_input = self._entry.get()
-        self.grab_release()
-        self.destroy()
-
-    def _on_closing(self) -> None:
+        self._user_input = self._input.get()
         self.grab_release()
         self.destroy()
 

@@ -7,7 +7,7 @@ from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect
-from .font.ctk_font import CTkFont, FontType
+from .font import CTkFont, FontType
 from .ctk_scrollbar import CTkScrollbar, CTkScrollbarArgs
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_set
@@ -98,36 +98,34 @@ class CTkTextbox(CTkWidget):
         scrollbar_kwargs["bg_color"] = self._theme_info["fg_color"]
         scrollbar_kwargs["length"] = 0
 
-        self._hide_y_scrollbar: bool = True
-        scrollbar_kwargs["orientation"] = "vertical"
-        self._y_scrollbar = CTkScrollbar(self, command=self._textbox.yview, **scrollbar_kwargs)
-
-        self._hide_x_scrollbar: bool = True
+        self._hide_hor_scrollbar: bool = True
         scrollbar_kwargs["orientation"] = "horizontal"
-        self._x_scrollbar = CTkScrollbar(self, command=self._textbox.xview, **scrollbar_kwargs)
+        self._hor_scrollbar = CTkScrollbar(self, command=self._textbox.xview, **scrollbar_kwargs)
 
-        self._textbox.configure(xscrollcommand=self._x_scrollbar.set, yscrollcommand=self._y_scrollbar.set)
+        self._hide_ver_scrollbar: bool = True
+        scrollbar_kwargs["orientation"] = "vertical"
+        self._ver_scrollbar = CTkScrollbar(self, command=self._textbox.yview, **scrollbar_kwargs)
 
-        self.after(50, self._check_if_scrollbars_needed, True)
+        self._textbox.configure(xscrollcommand=self._hor_scrollbar.set, yscrollcommand=self._ver_scrollbar.set)
+
+        self._loop_after_id: str = self.after(50, self._check_if_scrollbars_needed, True)
         self._draw(force_colors_update=True)
 
     def _check_if_scrollbars_needed(self, continue_loop: bool = False) -> None:
-        """ Method hides or places the scrollbars if they are needed """
-
         if self._theme_info["activate_scrollbars"]:
-            new_hide_x_scrollbar = self._textbox.xview() == (0.0, 1.0) #x scrollbar not needed
-            new_hide_y_scrollbar = self._textbox.yview() == (0.0, 1.0) #y scrollbar not needed
+            new_hide_hor_scrollbar = self._textbox.xview() == (0.0, 1.0) #horizontal scrollbar not needed
+            new_hide_ver_scrollbar = self._textbox.yview() == (0.0, 1.0) #vertical scrollbar not needed
         else:
-            new_hide_x_scrollbar = True
-            new_hide_y_scrollbar = True
+            new_hide_hor_scrollbar = True
+            new_hide_ver_scrollbar = True
 
-        if new_hide_x_scrollbar != self._hide_x_scrollbar or new_hide_y_scrollbar != self._hide_y_scrollbar:
-            self._hide_x_scrollbar = new_hide_x_scrollbar
-            self._hide_y_scrollbar = new_hide_y_scrollbar
+        if new_hide_hor_scrollbar != self._hide_hor_scrollbar or new_hide_ver_scrollbar != self._hide_ver_scrollbar:
+            self._hide_hor_scrollbar = new_hide_hor_scrollbar
+            self._hide_ver_scrollbar = new_hide_ver_scrollbar
             self._update_geometry()
 
         if self._textbox.winfo_exists() and continue_loop:
-            self.after(self._scrollbar_update_time, self._check_if_scrollbars_needed, True)
+            self._loop_after_id = self.after(self._scrollbar_update_time, self._check_if_scrollbars_needed, True)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -154,6 +152,7 @@ class CTkTextbox(CTkWidget):
         self._canvas.grid(row=0, column=0, rowspan=2, columnspan=2, sticky="nsew")
 
     def destroy(self) -> None:
+        self.after_cancel(self._loop_after_id)
         self._font.remove_size_configure_callback(self._update_font)
         super().destroy()
 
@@ -191,29 +190,29 @@ class CTkTextbox(CTkWidget):
 
         # configure 2x2 grid
         self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=0, minsize=0 if self._hide_x_scrollbar else textbox_spacing)
+        self.grid_rowconfigure(1, weight=0, minsize=textbox_spacing)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=0, minsize=0 if self._hide_y_scrollbar else textbox_spacing)
+        self.grid_columnconfigure(1, weight=0, minsize=textbox_spacing)
 
         self._textbox.grid(row=0, column=0, sticky="nsew",
-                           padx=(textbox_spacing, textbox_spacing if self._hide_y_scrollbar else 0),
-                           pady=(textbox_spacing, textbox_spacing if self._hide_x_scrollbar else 0))
+                           padx=(textbox_spacing, 0),
+                           pady=(textbox_spacing, 0))
 
-        if not self._hide_x_scrollbar:
-            self._x_scrollbar.grid(row=1, column=0, sticky="ew",
-                                   pady=(border_spacing, scrollbar_border),
-                                   padx=(scrollbar_spacing, scrollbar_spacing if self._hide_y_scrollbar else delta_spacing),
-                                   apply_scaling=False)
+        if not self._hide_hor_scrollbar:
+            self._hor_scrollbar.grid(row=1, column=0, sticky="ew",
+                                     pady=(border_spacing, scrollbar_border),
+                                     padx=(scrollbar_spacing, delta_spacing),
+                                     apply_scaling=False)
         else:
-            self._x_scrollbar.grid_forget()
+            self._hor_scrollbar.grid_forget()
 
-        if not self._hide_y_scrollbar:
-            self._y_scrollbar.grid(row=0, column=1, sticky="ns",
-                                   padx=(border_spacing, scrollbar_border),
-                                   pady=(scrollbar_spacing, scrollbar_spacing if self._hide_x_scrollbar else delta_spacing),
-                                   apply_scaling=False)
+        if not self._hide_ver_scrollbar:
+            self._ver_scrollbar.grid(row=0, column=1, sticky="ns",
+                                     padx=(border_spacing, scrollbar_border),
+                                     pady=(scrollbar_spacing, delta_spacing),
+                                     apply_scaling=False)
         else:
-            self._y_scrollbar.grid_forget()
+            self._ver_scrollbar.grid_forget()
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkTextboxArgs]) -> None:
         if "corner_radius" in kwargs:
@@ -230,8 +229,8 @@ class CTkTextbox(CTkWidget):
 
         if "fg_color" in kwargs:
             self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
-            self._x_scrollbar.configure(bg_color=self._theme_info["fg_color"])
-            self._y_scrollbar.configure(bg_color=self._theme_info["fg_color"])
+            self._hor_scrollbar.configure(bg_color=self._theme_info["fg_color"])
+            self._ver_scrollbar.configure(bg_color=self._theme_info["fg_color"])
             require_redraw = True
 
         if "border_color" in kwargs:
@@ -244,8 +243,8 @@ class CTkTextbox(CTkWidget):
 
         if "scrollbar" in kwargs:
             self._theme_info["scrollbar"] = kwargs.pop("scrollbar")
-            self._x_scrollbar.configure(**self._theme_info["scrollbar"])
-            self._y_scrollbar.configure(**self._theme_info["scrollbar"])
+            self._hor_scrollbar.configure(**self._theme_info["scrollbar"])
+            self._ver_scrollbar.configure(**self._theme_info["scrollbar"])
 
         if "activate_scrollbars" in kwargs:
             self._theme_info["activate_scrollbars"] = kwargs.pop("activate_scrollbars")
@@ -264,6 +263,8 @@ class CTkTextbox(CTkWidget):
             return self._font
         elif attribute_name in self._theme_info:
             return self._theme_info[attribute_name]
+        elif attribute_name.startswith("scrollbar_"):
+            return self._ver_scrollbar.cget(attribute_name.removeprefix("scrollbar_"))
         elif attribute_name in self._valid_tk_text_attributes:
             return self._textbox.cget(attribute_name)  # cget of tkinter.Text
         else:

@@ -30,12 +30,13 @@ class CTkProgressBar(CTkWidget):
     For detailed information check out the documentation.
     """
 
+    _update_time: int = 40  # interval in ms, to update progress value
+
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 mode: Literal["determinate", "indeterminate"] = "determinate",
-                 determinate_speed: float = 1.0,
-                 indeterminate_speed: float = 1.0,
+                 mode: Literal["determinate", "indeterminate", "single_run"] = "determinate",
+                 progress_speed: float = 0.5, # [%/s]
                  variable: tkinter.DoubleVar | tkinter.IntVar | None = None,
                  **kwargs: Unpack[CTkProgressBarArgs]) -> None:
 
@@ -61,16 +62,16 @@ class CTkProgressBar(CTkWidget):
         self._variable: tkinter.DoubleVar | tkinter.IntVar | None = variable
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
+        self._is_intvar = isinstance(self._variable, tkinter.IntVar)
 
         # functionality
-        self._mode: Literal["determinate", "indeterminate"] = mode
-        self._determinate_value: float = 0.5  # range 0-1
-        self._determinate_speed: float = determinate_speed  # range 0-1
-        self._indeterminate_value: float = 0.0  # range 0-inf
+        self._mode: Literal["determinate", "indeterminate", "single_run"] = mode
+        self._progress_speed: float = progress_speed # [%/s]
+        self._value: float = 0.0 # range 0-1
         self._indeterminate_width: float = 0.4  # range 0-1
-        self._indeterminate_speed: float = indeterminate_speed  # range 0-1 to travel in 50ms
         self._loop_running: bool = False
         self._loop_after_id: str | None = None
+        self._loop_prev_time: float = 0.0
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
@@ -86,9 +87,7 @@ class CTkProgressBar(CTkWidget):
 
         if self._variable is not None:
             self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
-            self._variable_callback_blocked = True
-            self.set(self._variable.get(), from_variable_callback=True)
-            self._variable_callback_blocked = False
+            self._variable_callback()
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -105,6 +104,7 @@ class CTkProgressBar(CTkWidget):
         self._draw()
 
     def destroy(self) -> None:
+        self.stop()
         if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
 
@@ -122,14 +122,20 @@ class CTkProgressBar(CTkWidget):
         x_start = y_start = info("border_width", 0)
         width = info("inner_width", 0)
         height = info("inner_height", 0)
+        corner_radius = info("inner_corner_radius", 0)
 
-        if self._mode == "determinate":
-            progress_value_1 = 0.0
-            progress_value_2 = self._determinate_value
-        else:
-            progress_value = (math.sin(self._indeterminate_value * math.pi / 40) + 1) / 2
+        if self._mode == "indeterminate":
+            progress_value = (1 - math.cos(2 * math.pi * self._value)) / 2
             progress_value_1 = max(0.0, progress_value - (self._indeterminate_width / 2))
             progress_value_2 = min(1.0, progress_value + (self._indeterminate_width / 2))
+        else:
+            progress_value_1 = 0.0
+            if self._value == 0.0:
+                progress_value_2 = 0.0
+            else:
+                #we correct the value so that the minimal length is 2 * corner_radius
+                current_length = height if self._theme_info["orientation"] == "vertical" else width
+                progress_value_2 = (self._value * (current_length - 2 * corner_radius) + 2 * corner_radius) / current_length
 
         if self._theme_info["orientation"] == "horizontal":
             x_start += width * progress_value_1
@@ -140,7 +146,7 @@ class CTkProgressBar(CTkWidget):
 
         requires_recoloring_2 = self._progress_bar.update(x_start, y_start,
                                                           width, height,
-                                                          info("inner_corner_radius", 0))
+                                                          corner_radius)
 
         if force_colors_update or requires_recoloring_1 or requires_recoloring_2:
             self._rounded_rect.raise_()
@@ -186,27 +192,23 @@ class CTkProgressBar(CTkWidget):
             self._variable = kwargs.pop("variable")
             if self._variable is not None:
                 self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
-                self.set(self._variable.get(), from_variable_callback=True)
+                self._variable_callback()
+            self._is_intvar = isinstance(self._variable, tkinter.IntVar)
 
         if "mode" in kwargs:
             self._mode = kwargs.pop("mode")
             require_redraw = True
 
-        if "determinate_speed" in kwargs:
-            self._determinate_speed = kwargs.pop("determinate_speed")
-
-        if "indeterminate_speed" in kwargs:
-            self._indeterminate_speed = kwargs.pop("indeterminate_speed")
+        if "progress_speed" in kwargs:
+            self._progress_speed = kwargs.pop("progress_speed")
 
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "mode":
             return self._mode
-        elif attribute_name == "determinate_speed":
-            return self._determinate_speed
-        elif attribute_name == "indeterminate_speed":
-            return self._indeterminate_speed
+        elif attribute_name == "progress_speed":
+            return self._progress_speed
         elif attribute_name == "variable":
             return self._variable
         elif attribute_name in self._theme_info:
@@ -216,57 +218,65 @@ class CTkProgressBar(CTkWidget):
 
     def _variable_callback(self, *_: str) -> None:
         if not self._variable_callback_blocked:
-            self.set(self._variable.get(), from_variable_callback=True)
+            value = self._variable.get()
+            self.set(value / 100 if self._is_intvar else value, from_variable_callback=True)
 
     def set(self, value: float, from_variable_callback: bool = False) -> None:
-        """ set determinate value """
-        self._determinate_value = value
-
-        if self._determinate_value > 1.0:
-            self._determinate_value = 1.0
-        elif self._determinate_value < 0.0:
-            self._determinate_value = 0.0
+        """ Sets progress to specified value
+        \nFor 'indeterminate' mode:
+        -   0% -> completely on the left/bottom
+        -  50% -> completely on the right/top
+        - 100% -> again on the left/bottom, ready for a new cycle 
+        \nFor other mode:
+        -   0% -> completely on the left/bottom
+        - 100% -> completely on the right/top """
+        self._value = max(0.0, min(value, 1.0))
 
         self._draw()
 
         if self._variable is not None and not from_variable_callback:
             self._variable_callback_blocked = True
-            self._variable.set(round(self._determinate_value) if isinstance(self._variable, tkinter.IntVar) else self._determinate_value)
+            self._variable.set(round(self._value * 100) if self._is_intvar else self._value)
             self._variable_callback_blocked = False
 
+    def step(self, increment: float) -> None:
+        """ Increases progress by specified value (it can be negative) """
+        self.set(self._value + increment)
+
     def get(self) -> float:
-        """ get determinate value """
-        return self._determinate_value
+        """ Returns current progress value
+        \nFor 'indeterminate' mode:
+        -   0% -> completely on the left/bottom
+        -  50% -> completely on the right/top
+        - 100% -> again on the left/bottom, ready for a new cycle 
+        \nFor other mode:
+        -   0% -> completely on the left/bottom
+        - 100% -> completely on the right/top """
+        return self._value
 
     def start(self) -> None:
-        """ start automatic mode """
+        """ Starts automatic mode from the current value """
         if not self._loop_running:
             self._loop_running = True
             self._internal_loop()
 
     def stop(self) -> None:
-        """ stop automatic mode """
+        """ Stops automatic mode """
         if self._loop_after_id is not None:
             self.after_cancel(self._loop_after_id)
+            self._loop_after_id = None
         self._loop_running = False
 
     def _internal_loop(self) -> None:
         if self._loop_running:
-            if self._mode == "determinate":
-                self._determinate_value += self._determinate_speed / 50.0
-                if self._determinate_value > 1.0:
-                    self._determinate_value -= 1.0
-            else:
-                self._indeterminate_value += self._indeterminate_speed
-            self._draw()
-            self._loop_after_id = self.after(20, self._internal_loop)
+            new_value = self._value + self._progress_speed * self._update_time / 1000.0
+            if new_value > 1.0 and self._mode != "single_run":
+                new_value -= 1.0
 
-    def step(self) -> None:
-        """ increase progress """
-        if self._mode == "determinate":
-            self._determinate_value += self._determinate_speed / 50.0
-            if self._determinate_value > 1.0:
-                self._determinate_value -= 1.0
-        else:
-            self._indeterminate_value += self._indeterminate_speed
-        self._draw()
+            self.set(new_value)
+
+            if self._mode == "single_run" and self._value >= 1.0:
+                self._loop_after_id = None
+                self._loop_running = False
+            else:
+                self._loop_after_id = self.after(self._update_time, self._internal_loop)

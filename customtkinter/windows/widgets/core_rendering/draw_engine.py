@@ -16,7 +16,7 @@ DRAWING_METHODS: list[str] = ["polygons", "font", "circles"]
 DrawingMethodType: TypeAlias = Literal["polygons", "font", "circles"]
 SectionType: TypeAlias = Literal["top", "bottom", "left", "right", "top_left", "top_right", "bottom_right", "bottom_left"]
 
-class RoundedRectInfo(TypedDict, total=True):
+class RoundedRectInfo(TypedDict, total=False):
     x_start: int
     y_start: int
     x_end: int
@@ -29,7 +29,7 @@ class RoundedRectInfo(TypedDict, total=True):
     top_section_height: int
     bottom_section_height: int
 
-class BorderedRoundedRectInfo(RoundedRectInfo, total=True):
+class BorderedRoundedRectInfo(RoundedRectInfo, total=False):
     inner_width: int
     inner_height: int
     inner_corner_radius: int

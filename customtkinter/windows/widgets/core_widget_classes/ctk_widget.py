@@ -2,19 +2,15 @@ from __future__ import annotations
 
 import tkinter
 import tkinter.ttk as ttk
-import warnings
-from typing import Any, Callable, TYPE_CHECKING
-from typing_extensions import TypedDict
+from typing import Any, Callable
+from typing_extensions import Literal, TypedDict, Unpack
 
 from ..appearance_mode import CTkAppearanceModeBaseClass
 from ..scaling import CTkScalingBaseClass
 from .ctk_container import CTkContainer
-from ..theme import ColorType, TransparentColorType
-from ..image import CTkImage
+from ..theme import AnchorType, ColorType, TransparentColorType
 from ..utility import pop_from_dict_by_set, check_kwargs_empty
 
-if TYPE_CHECKING:
-    from PIL import ImageTk
 
 
 class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
@@ -146,16 +142,6 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         else:
             raise ValueError(f"'{attribute_name}' is not a supported argument. Look at the documentation for supported arguments.")
 
-    def _check_image_type(self, image: CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | str | None) -> CTkImage | ImageTk.PhotoImage | tkinter.PhotoImage | str | None:
-        """ Check image type when passed to widget """
-        if image is None or image == "":
-            return image
-        elif isinstance(image, CTkImage):
-            return image
-        else:
-            warnings.warn(f"{type(self).__name__} Warning: Given image is not CTkImage but {type(image)}. Image can not be scaled on HighDPI displays, use CTkImage instead.\n")
-            return image
-
     def _update_dimensions_event(self, event: tkinter.Event) -> None:
         """ Called when the window has been reshaped, and so contained widgets changed dimentions """
         # only redraw if dimensions changed (for performance)
@@ -260,22 +246,21 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
             raise NotImplementedError
         return self._focus_target.focus_force()
 
-    def place(self, apply_scaling: bool = True, **kwargs: Any) -> None:
-        """
-        Place a widget in the parent widget. Use as options:
-        in=master - master relative to which the widget is placed
-        in_=master - see 'in' option description
-        x=amount - locate anchor of this widget at position x of master
-        y=amount - locate anchor of this widget at position y of master
-        relx=amount - locate anchor of this widget between 0.0 and 1.0 relative to width of master (1.0 is right edge)
-        rely=amount - locate anchor of this widget between 0.0 and 1.0 relative to height of master (1.0 is bottom edge)
-        anchor=NSEW (or subset) - position anchor according to given direction
-        width=amount - width of this widget in pixel
-        height=amount - height of this widget in pixel
-        relwidth=amount - width of this widget between 0.0 and 1.0 relative to width of master (1.0 is the same width as the master)
-        relheight=amount - height of this widget between 0.0 and 1.0 relative to height of master (1.0 is the same height as the master)
-        bordermode="inside" or "outside" - whether to take border width of master widget into account
-        """
+    class _PlaceArgs(TypedDict, total=False):
+        x: float | int | str
+        y: float | int | str
+        relx: float | str
+        rely: float | str
+        relwidth: float | str
+        relheight: float | str
+        in_: tkinter.Misc
+        anchor: AnchorType
+        bordermode: Literal["inside", "outside", "ignore"]
+
+    def place(self, apply_scaling: bool = True, **kwargs: Unpack[_PlaceArgs]) -> None:
+        """ Map this widget using the 'place' geometry manager. 
+        Additional information is reported here: https://www.tcl-lang.org/man/tcl8.6/TkCmd/place.htm """
+
         if "width" in kwargs or "height" in kwargs:
             raise ValueError("'width' and 'height' arguments must be passed to the constructor of the widget, not the place method")
         self._last_geometry_manager_call = {"function": super().place, "apply_scaling": apply_scaling, "kwargs": kwargs}
@@ -288,47 +273,49 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         self._last_geometry_manager_call = None
         return super().place_forget()
 
-    def pack(self, apply_scaling: bool = True, **kwargs: Any) -> None:
-        """
-        Pack a widget in the parent widget. Use as options:
-        after=widget - pack it after you have packed widget
-        anchor=NSEW (or subset) - position widget according to given direction
-        before=widget - pack it before you will pack widget
-        expand=bool - expand widget if parent size grows
-        fill=NONE or X or Y or BOTH - fill widget if widget grows
-        in=master - use master to contain this widget
-        in_=master - see 'in' option description
-        ipadx=amount - add internal padding in x direction
-        ipady=amount - add internal padding in y direction
-        padx=amount - add padding in x direction
-        pady=amount - add padding in y direction
-        side=TOP or BOTTOM or LEFT or RIGHT -  where to add this widget.
-        """
+    class _PackArgs(TypedDict, total=False):
+        side: Literal["top", "bottom", "left", "right"]
+        fill: Literal["none", "x", "y", "both"]
+        expand: bool
+        after: tkinter.Misc
+        before: tkinter.Misc
+        in_: tkinter.Misc
+        anchor: AnchorType
+        ipadx: float | int | str
+        ipady: float | int | str
+        padx: float | int | str | tuple[float | int | str, float | int | str]
+        pady: float | int | str | tuple[float | int | str, float | int | str]
+
+    def pack(self, apply_scaling: bool = True, **kwargs: Unpack[_PackArgs]) -> None:
+        """ Map this widget using the 'pack' geometry manager. 
+        Additional information is reported here: https://www.tcl-lang.org/man/tcl8.6/TkCmd/pack.htm """
+
         self._last_geometry_manager_call = {"function": super().pack, "apply_scaling": apply_scaling, "kwargs": kwargs}
         if apply_scaling:
             kwargs = self._apply_argument_scaling(kwargs)
         return super().pack(**kwargs)
 
     def pack_forget(self) -> None:
-        """ Unmap this widget and do not use it for the packing order. """
+        """ Unmap this widget. """
         self._last_geometry_manager_call = None
         return super().pack_forget()
 
-    def grid(self, apply_scaling: bool = True, **kwargs: Any) -> None:
-        """
-        Position a widget in the parent widget in a grid. Use as options:
-        column=number - use cell identified with given column (starting with 0)
-        columnspan=number - this widget will span several columns
-        in=master - use master to contain this widget
-        in_=master - see 'in' option description
-        ipadx=amount - add internal padding in x direction
-        ipady=amount - add internal padding in y direction
-        padx=amount - add padding in x direction
-        pady=amount - add padding in y direction
-        row=number - use cell identified with given row (starting with 0)
-        rowspan=number - this widget will span several rows
-        sticky=NSEW - if cell is larger on which sides will this widget stick to the cell boundary
-        """
+    class _GridArgs(TypedDict, total=False):
+        column: int
+        row: int
+        columnspan: int
+        rowspan: int
+        in_: tkinter.Misc
+        sticky: str
+        ipadx: float | int | str
+        ipady: float | int | str
+        padx: float | int | str | tuple[float | int | str, float | int | str]
+        pady: float | int | str | tuple[float | int | str, float | int | str]
+
+    def grid(self, apply_scaling: bool = True, **kwargs: Unpack[_GridArgs]) -> None:
+        """ Map this widget using the 'grid' geometry manager. 
+        Additional information is reported here: https://www.tcl-lang.org/man/tcl8.6/TkCmd/grid.htm """
+
         self._last_geometry_manager_call = {"function": super().grid, "apply_scaling": apply_scaling, "kwargs": kwargs}
         if apply_scaling:
             kwargs = self._apply_argument_scaling(kwargs)

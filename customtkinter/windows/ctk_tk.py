@@ -15,15 +15,13 @@ from .widgets.core_widget_classes import CTkContainer
 from .widgets.theme import ColorType, ThemeManager
 from .widgets.utility import pop_from_dict_by_set, check_kwargs_empty, parse_geometry_string
 
-CTK_PARENT_CLASS: type = tkinter.Tk
-
 
 class CTkArgs(TypedDict, total=False):
     fg_color: ColorType
     title: str
 
 
-class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContainer):
+class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContainer):
     """
     Main app window with dark titlebar on Windows and macOS.
     For detailed information check out the documentation.
@@ -52,7 +50,7 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTk
         self._enable_macos_dark_title_bar()
 
         # call init methods of super classes
-        CTK_PARENT_CLASS.__init__(self, **tk_kwargs)
+        tkinter.Tk.__init__(self, **tk_kwargs)
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="window")
         CTkContainer.__init__(self, fg_color=self._theme_info["fg_color"])
@@ -103,6 +101,11 @@ class CTk(CTK_PARENT_CLASS, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTk
         tkinter.Tk.destroy(self)
         CTkAppearanceModeBaseClass.destroy(self)
         CTkScalingBaseClass.destroy(self)
+
+        #delete still existing after() tasks (old Python versions don't have after_info)
+        if hasattr(self, "after_info"):
+            for after_id in self.after_info():
+                self.after_cancel(after_id)
 
     def _focus_in_event(self, _: tkinter.Event) -> None:
         # sometimes window looses jumps back on macOS if window is selected from Mission Control, so has to be lifted again

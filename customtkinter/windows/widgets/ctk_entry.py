@@ -6,7 +6,7 @@ from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect
-from .font.ctk_font import CTkFont, FontType
+from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_set
 

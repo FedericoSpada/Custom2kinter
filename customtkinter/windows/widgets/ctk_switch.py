@@ -6,7 +6,7 @@ from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
-from .font.ctk_font import CTkFont, FontType
+from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import get_proper_cursor, get_width_height_from_orientation
 
@@ -32,6 +32,7 @@ class CTkSwitchArgs(TypedDict, total=False):
     hover: bool
     text: str
     font: FontType
+    compound: Literal["left", "right", "top", "bottom"]
 
 
 class CTkSwitch(CTkWidget):
@@ -80,13 +81,11 @@ class CTkSwitch(CTkWidget):
         self._hover_state: bool = False
         self._check_state: bool = False  # True if switch is activated
 
-        self._update_geometry()
-
         self._bg_canvas = CTkCanvas(master=self,
                                     highlightthickness=0,
                                     width=self._apply_scaling(self._desired_width),
                                     height=self._apply_scaling(self._desired_height))
-        self._bg_canvas.grid(row=0, column=0, columnspan=3, sticky="nswe")
+        self._bg_canvas.grid(row=0, column=0, rowspan=3, columnspan=3, sticky="nswe")
 
         width, height = get_width_height_from_orientation(self._theme_info["orientation"],
                                                           self._theme_info["thickness"],
@@ -96,7 +95,6 @@ class CTkSwitch(CTkWidget):
                                  highlightthickness=0,
                                  width=self._apply_scaling(width),
                                  height=self._apply_scaling(height))
-        self._canvas.grid(row=0, column=0, sticky="")
         self._rounded_rect = BorderedRoundedRect(self._canvas)
         self._slider = RoundedRect(self._canvas)
         self._bind_targets.append(self._canvas)
@@ -106,11 +104,8 @@ class CTkSwitch(CTkWidget):
                                          padx=0,
                                          pady=0,
                                          text=self._theme_info["text"],
-                                         justify=tkinter.LEFT,
                                          font=self._apply_font_scaling(self._font),
                                          textvariable=self._textvariable)
-        self._text_label.grid(row=0, column=2, sticky="w")
-        self._text_label["anchor"] = "w"
         self._bind_targets.append(self._text_label)
         self._focus_target = self._text_label
 
@@ -120,6 +115,7 @@ class CTkSwitch(CTkWidget):
 
         self._create_bindings()
         self._set_cursor()
+        self._update_geometry()
         self._draw(force_colors_update=True)
 
     def _create_bindings(self, sequence: str | None = None) -> None:
@@ -141,13 +137,13 @@ class CTkSwitch(CTkWidget):
                                                           self._theme_info["thickness"],
                                                           self._theme_info["length"])
 
-        self._update_geometry()
         self._text_label.configure(font=self._apply_font_scaling(self._font))
 
         self._bg_canvas.configure(width=self._apply_scaling(self._desired_width),
                                   height=self._apply_scaling(self._desired_height))
         self._canvas.configure(width=self._apply_scaling(width),
                                height=self._apply_scaling(height))
+        self._update_geometry()
         self._draw()
 
     def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
@@ -186,27 +182,35 @@ class CTkSwitch(CTkWidget):
                                                           self._apply_scaling(self._theme_info["thickness"]),
                                                           self._apply_scaling(self._theme_info["length"]))
 
+        border_width = self._apply_scaling(self._theme_info["border_width"])
+        button_border_width = -border_width if border_width < 0 else 0
+        border_width = border_width if border_width > 0 else 0
+
         requires_recoloring_1 = self._rounded_rect.update(width,
                                                           height,
                                                           self._apply_scaling(self._theme_info["corner_radius"]),
-                                                          self._apply_scaling(self._theme_info["border_width"]))
+                                                          border_width)
 
-        corner_radius = self._rounded_rect.info.get("corner_radius", 0)
-        button_length = self._apply_scaling(self._theme_info["button_length"]) + 2 * corner_radius
-        spacing = max(0, self._rounded_rect.info.get("flat_spacing", 0) - corner_radius)
+        button_corner_radius = max(0, self._rounded_rect.info.get("corner_radius", 0) - button_border_width)
+        button_length = self._apply_scaling(self._theme_info["button_length"]) + 2 * button_corner_radius
+        spacing = max(button_border_width, self._rounded_rect.info.get("flat_spacing", 0) - button_corner_radius)
+        if button_border_width > 0:
+            spacing += 2 # it looks better in this way
 
         if self._theme_info["orientation"] == "horizontal":
             x_start = spacing + (width - button_length - 2 * spacing) * int(self._check_state)
-            y_start = 0
+            y_start = button_border_width
             width = button_length
+            height = max(0, height - 2 * button_border_width)
         else:
-            x_start = 0
+            x_start = button_border_width
             y_start = spacing + (height - button_length- 2 * spacing) * int(self._check_state)
+            width = max(0, width - 2 * button_border_width)
             height = button_length
 
         requires_recoloring_2 = self._slider.update(x_start, y_start,
                                                     width, height,
-                                                    corner_radius)
+                                                    button_corner_radius)
 
         if force_colors_update or requires_recoloring_1 or requires_recoloring_2:
             self._rounded_rect.raise_()
@@ -232,15 +236,49 @@ class CTkSwitch(CTkWidget):
                 self._text_label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]))
 
     def _update_geometry(self) -> None:
-        # configure grid system (1x3)
-        if self._theme_info["text"]:
-            widget_label_spacing = self._apply_scaling(self._theme_info["internal_spacing"])
+        # configure grid system (1x3 or 3x1)
+
+        if self._theme_info["text"] == "":
+            self.grid_rowconfigure(0, weight=1)
+            self.grid_rowconfigure((1, 2), weight=0, minsize=0)
+            self.grid_columnconfigure(0, weight=1)
+            self.grid_columnconfigure((1, 2), weight=0, minsize=0)
+            self._canvas.grid(row=0, column=0)
+            self._text_label.grid_forget()
+
         else:
-            widget_label_spacing = 0
-        self.grid_columnconfigure(0, weight=0)
-        self.grid_columnconfigure(1, weight=0, minsize=widget_label_spacing)
-        self.grid_columnconfigure(2, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+            compound = self._theme_info["compound"]
+            widget_label_spacing = self._apply_scaling(self._theme_info["internal_spacing"])
+
+            if compound in ("left", "right"):
+                self.grid_columnconfigure(0, weight=0 if compound == "left" else 1)
+                self.grid_columnconfigure(1, weight=0, minsize=widget_label_spacing)
+                self.grid_columnconfigure(2, weight=1 if compound == "left" else 0)
+                self.grid_rowconfigure(0, weight=1)
+                self.grid_rowconfigure((1, 2), weight=0, minsize=0)
+
+                self._text_label.configure(justify=compound)
+            else:
+                self.grid_rowconfigure(0, weight=0 if compound == "top" else 1)
+                self.grid_rowconfigure(1, weight=0, minsize=widget_label_spacing)
+                self.grid_rowconfigure(2, weight=1 if compound == "top" else 0)
+                self.grid_columnconfigure(0, weight=1)
+                self.grid_columnconfigure((1, 2), weight=0, minsize=0)
+
+                self._text_label.configure(justify=tkinter.CENTER)
+
+            if compound == "left":
+                self._canvas.grid(row=0, column=0, sticky="e")
+                self._text_label.grid(row=0, column=2, sticky="w")
+            elif compound == "right":
+                self._text_label.grid(row=0, column=0, sticky="e")
+                self._canvas.grid(row=0, column=2, sticky="w")
+            elif compound == "top":
+                self._canvas.grid(row=0, column=0, sticky="s")
+                self._text_label.grid(row=2, column=0, sticky="n")
+            else:
+                self._text_label.grid(row=0, column=0, sticky="s")
+                self._canvas.grid(row=2, column=0, sticky="n")
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkSwitchArgs]) -> None:
         require_new_state = False
@@ -315,6 +353,10 @@ class CTkSwitch(CTkWidget):
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
             self._font.add_size_configure_callback(self._update_font)
             self._update_font()
+
+        if "compound" in kwargs:
+            self._theme_info["compound"] = kwargs.pop("compound")
+            self._update_geometry()
 
         if "textvariable" in kwargs:
             self._textvariable = kwargs.pop("textvariable")
@@ -405,8 +447,9 @@ class CTkSwitch(CTkWidget):
             self._slider.set_color(self._apply_appearance_mode(self._theme_info["button_hover_color"]))
 
     def _on_leave(self, _: tkinter.Event | None = None) -> None:
-        self._hover_state = False
-        self._slider.set_color(self._apply_appearance_mode(self._theme_info["button_color"]))
+        if self._state == tkinter.NORMAL:
+            self._hover_state = False
+            self._slider.set_color(self._apply_appearance_mode(self._theme_info["button_color"]))
 
     def _variable_callback(self, *_: str) -> None:
         if not self._variable_callback_blocked:

@@ -8,7 +8,7 @@ from typing_extensions import Literal, TypedDict, Unpack
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
-from .font.ctk_font import CTkFont, FontType
+from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .utility import get_proper_cursor
 
@@ -27,6 +27,7 @@ class CTkOptionMenuArgs(TypedDict, total=False):
     hover: bool
     font: FontType
     anchor: AnchorType
+    compound: Literal["left", "right"]
     dropdown: DropdownMenuArgs
 
 
@@ -68,7 +69,7 @@ class CTkOptionMenu(CTkWidget):
         self._variable: tkinter.StringVar | None = variable
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
-        self._applied_right_section_width: int = -1
+        self._applied_button_width: int = -1
         self._values: list[str] = [] if values is None else values
         self._current_value: str = "" if len(self._values) == 0 else self._values[0]
 
@@ -162,19 +163,27 @@ class CTkOptionMenu(CTkWidget):
     def _draw(self, force_colors_update: bool = False) -> None:
         super()._draw(force_colors_update)
 
+        compound = self._theme_info["compound"]
+        not_compound = "left" if compound == "right" else "right"
+        left_section_width = self._current_width - self._current_height if compound == "right" else self._current_height
+
         requires_recoloring_1 = self._rounded_rect.update(self._current_width,
                                                           self._current_height,
                                                           self._apply_scaling(self._theme_info["corner_radius"]),
                                                           0,
-                                                          left_section_width=self._current_width - self._current_height)
+                                                          left_section_width=left_section_width)
 
-        requires_recoloring_2 = self._arrow.update((self._rounded_rect.info.get("left_section_width", 0) + self._current_width) / 2,
+        if compound == "right":
+            button_middle_point = (self._rounded_rect.info.get("left_section_width", 0) + self._current_width) / 2
+        else:
+            button_middle_point = self._rounded_rect.info.get("left_section_width", 0) / 2
+        requires_recoloring_2 = self._arrow.update(button_middle_point,
                                                    self._current_height / 2,
                                                    self._current_height / 3,
                                                    180)
 
         if (self._rounded_rect.info["spacings_changed"] or
-            abs(self._applied_right_section_width - self._rounded_rect.info.get("right_section_width", 0)) > 1):
+            abs(self._applied_button_width - self._rounded_rect.info.get(f"{compound}_section_width", 0)) > 1):
             self._update_geometry()
 
         if force_colors_update or requires_recoloring_1 or requires_recoloring_2:
@@ -189,19 +198,23 @@ class CTkOptionMenu(CTkWidget):
                 text_color = self._apply_appearance_mode(self._theme_info["text_color"])
 
             self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
-            self._rounded_rect.set_main_color(fg_color, "left")
-            self._rounded_rect.set_main_color(button_color, "right")
+            self._rounded_rect.set_main_color(fg_color, not_compound)
+            self._rounded_rect.set_main_color(button_color, compound)
             self._arrow.set_color(text_color)
             self._text_label.configure(fg=text_color, bg=fg_color)
 
         self._canvas.update_idletasks()
 
     def _update_geometry(self) -> None:
-        self._applied_right_section_width = self._rounded_rect.info.get("right_section_width", 0)
+        compound = self._theme_info["compound"]
+        self._applied_button_width = self._rounded_rect.info.get(f"{compound}_section_width", 0)
+
         border_spacing = self._apply_scaling(self._theme_info["border_spacing"])
+        padx=(self._rounded_rect.info.get("inscribed_spacing", 0) + border_spacing,
+              self._applied_button_width + border_spacing)
+
         self._text_label.grid(row=0, column=0, sticky="ew",
-                              padx=(self._rounded_rect.info.get("inscribed_spacing", 0) + border_spacing,
-                                    self._applied_right_section_width + border_spacing))
+                              padx=padx if compound == "right" else padx[::-1])
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkOptionMenuArgs]) -> None:
         if "corner_radius" in kwargs:
@@ -268,6 +281,11 @@ class CTkOptionMenu(CTkWidget):
         if "anchor" in kwargs:
             self._text_label.configure(anchor=kwargs.pop("anchor"))
 
+        if "compound" in kwargs:
+            self._theme_info["compound"] = kwargs.pop("compound")
+            self._applied_button_width = -1
+            require_redraw = True
+
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
@@ -291,10 +309,12 @@ class CTkOptionMenu(CTkWidget):
     def _on_enter(self, _: tkinter.Event | None = None) -> None:
         self._close_on_next_click = self._dropdown_menu.is_open()
         if self._theme_info["hover"] and self._state == tkinter.NORMAL and len(self._values) > 0:
-            self._rounded_rect.set_main_color(self._apply_appearance_mode(self._theme_info["button_hover_color"]), "right")
+            self._rounded_rect.set_main_color(self._apply_appearance_mode(self._theme_info["button_hover_color"]),
+                                              self._theme_info["compound"])
 
     def _on_leave(self, _: tkinter.Event | None = None) -> None:
-        self._rounded_rect.set_main_color(self._apply_appearance_mode(self._theme_info["button_color"]), "right")
+        self._rounded_rect.set_main_color(self._apply_appearance_mode(self._theme_info["button_color"]),
+                                          self._theme_info["compound"])
 
     def _variable_callback(self, *_: str) -> None:
         if not self._variable_callback_blocked:
