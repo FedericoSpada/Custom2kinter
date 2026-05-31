@@ -83,7 +83,6 @@ seg_9.pack(padx=20, pady=20)
 seg_9.configure(state="disabled")
 seg_9.set("2")
 
-seg_9.configure(height=40, width=400,
-                dynamic_resizing=False, font=("Times", -20))
+seg_9.configure(height=40, width=400, font=("Times", -20))
 
 app.mainloop()

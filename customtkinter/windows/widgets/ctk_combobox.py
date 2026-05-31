@@ -1,88 +1,76 @@
+from __future__ import annotations
+
 import tkinter
-import sys
 import copy
-from typing import Union, Tuple, Callable, List, Optional, Any
+from typing import Any, Callable
+from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import DropdownMenu
-from .core_rendering import CTkCanvas
-from .theme import ThemeManager
-from .core_rendering import DrawEngine
-from .core_widget_classes import CTkBaseClass
-from .font import CTkFont
+from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
+from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
+from .font import CTkFont, FontType
+from .theme import ColorType, TransparentColorType, ThemeManager
+from .utility import get_proper_cursor
 
 
-class CTkComboBox(CTkBaseClass):
+class CTkComboBoxArgs(TypedDict, total=False):
+    width: int
+    height: int
+    corner_radius: int
+    border_width: int
+    border_spacing: int
+    bg_color: TransparentColorType
+    fg_color: ColorType
+    border_color: ColorType
+    button_color: ColorType
+    button_hover_color: ColorType
+    text_color: ColorType
+    text_color_disabled: ColorType
+    hover: bool
+    font: FontType
+    justify: Literal["left", "center", "right"]
+    compound: Literal["left", "right"]
+    dropdown: DropdownMenuArgs
+
+
+class CTkComboBox(CTkWidget):
     """
     Combobox with dropdown menu, rounded corners, border, variable support.
     For detailed information check out the documentation.
     """
 
     def __init__(self,
-                 master: Any,
-                 width: int = 140,
-                 height: int = 28,
-                 corner_radius: Optional[int] = None,
-                 border_width: Optional[int] = None,
+                 master: CTkContainer,
+                 theme_key: str | None = None,
+                 state: Literal["normal", "disabled", "readonly"] = "normal",
+                 values: list[str] | None = None,
+                 variable: tkinter.StringVar | None = None,
+                 command: Callable[[str], None] | None = None,
+                 **kwargs: Unpack[CTkComboBoxArgs]) -> None:
 
-                 bg_color: Union[str, Tuple[str, str]] = "transparent",
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 border_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 button_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 button_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 dropdown_fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 dropdown_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 dropdown_text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color_disabled: Optional[Union[str, Tuple[str, str]]] = None,
+        self._theme_info: CTkComboBoxArgs = ThemeManager.get_info("CTkComboBox", theme_key, **kwargs)
 
-                 font: Optional[Union[tuple, CTkFont]] = None,
-                 dropdown_font: Optional[Union[tuple, CTkFont]] = None,
-                 values: Optional[List[str]] = None,
-                 state: str = tkinter.NORMAL,
-                 hover: bool = True,
-                 variable: Union[tkinter.Variable, None] = None,
-                 command: Union[Callable[[str], Any], None] = None,
-                 justify: str = "left",
-                 **kwargs):
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key],
+                                                               transparency=key == "bg_color")
 
-        # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height, **kwargs)
-
-        # shape
-        self._corner_radius = ThemeManager.theme["CTkComboBox"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_width = ThemeManager.theme["CTkComboBox"]["border_width"] if border_width is None else border_width
-
-        # color
-        self._fg_color = ThemeManager.theme["CTkComboBox"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-        self._border_color = ThemeManager.theme["CTkComboBox"]["border_color"] if border_color is None else self._check_color_type(border_color)
-        self._button_color = ThemeManager.theme["CTkComboBox"]["button_color"] if button_color is None else self._check_color_type(button_color)
-        self._button_hover_color = ThemeManager.theme["CTkComboBox"]["button_hover_color"] if button_hover_color is None else self._check_color_type(button_hover_color)
-        self._text_color = ThemeManager.theme["CTkComboBox"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._text_color_disabled = ThemeManager.theme["CTkComboBox"]["text_color_disabled"] if text_color_disabled is None else self._check_color_type(text_color_disabled)
+        super().__init__(master=master,
+                         bg_color=self._theme_info["bg_color"],
+                         width=self._theme_info["width"],
+                         height=self._theme_info["height"])
 
         # font
-        self._font = CTkFont() if font is None else self._check_font_type(font)
-        if isinstance(self._font, CTkFont):
-            self._font.add_size_configure_callback(self._update_font)
+        self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
+        self._font.add_size_configure_callback(self._update_font)
 
-        # callback and hover functionality
-        self._command = command
-        self._variable = variable
-        self._state = state
-        self._hover = hover
-
-        if values is None:
-            self._values = ["CTkComboBox"]
-        else:
-            self._values = values
-
-        self._dropdown_menu = DropdownMenu(master=self,
-                                           values=self._values,
-                                           command=self._dropdown_callback,
-                                           fg_color=dropdown_fg_color,
-                                           hover_color=dropdown_hover_color,
-                                           text_color=dropdown_text_color,
-                                           font=dropdown_font)
+        # functionality
+        self._state: Literal["normal", "disabled", "readonly"] = state
+        self._values: list[str] = [] if values is None else values
+        self._command: Callable[[str], None] | None = command
+        self._variable: tkinter.StringVar | None = variable
+        self._applied_button_width: int = -1
         self._close_on_next_click: bool = False
 
         # configure grid system (1x1)
@@ -91,188 +79,187 @@ class CTkComboBox(CTkBaseClass):
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
-                                 width=self._apply_widget_scaling(self._desired_width),
-                                 height=self._apply_widget_scaling(self._desired_height))
-        self.draw_engine = DrawEngine(self._canvas)
+                                 width=self._apply_scaling(self._desired_width),
+                                 height=self._apply_scaling(self._desired_height))
+        self._canvas.grid(row=0, column=0, sticky="nsew")
+        self._rounded_rect = BorderedRoundedRect(self._canvas)
+        self._arrow = Arrow(self._canvas)
+
+        self._dropdown_menu = DropdownMenu(master=self,
+                                           values=self._values,
+                                           command=self._dropdown_callback,
+                                           **self._theme_info["dropdown"])
 
         self._entry = tkinter.Entry(master=self,
                                     state=self._state,
                                     width=1,
                                     bd=0,
-                                    justify=justify,
+                                    justify=self._theme_info["justify"],
                                     highlightthickness=0,
                                     font=self._apply_font_scaling(self._font))
+        self._bind_targets.append(self._entry)
+        self._focus_target = self._entry
 
-        self._create_grid()
         self._create_bindings()
-        self._draw()  # initial draw
+        self._draw(force_colors_update=True)
 
         if self._variable is not None:
             self._entry.configure(textvariable=self._variable)
-
-        # insert default value
-        if self._variable is None:
+        else:
+            # insert default value
             if len(self._values) > 0:
                 self._entry.insert(0, self._values[0])
-            else:
-                self._entry.insert(0, "CTkComboBox")
 
-    def _create_bindings(self, sequence: Optional[str] = None):
+    def _create_bindings(self, sequence: str | None = None) -> None:
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
-        if sequence is None:
-            self._canvas.tag_bind("right_parts", "<Enter>", self._on_enter)
-            self._canvas.tag_bind("dropdown_arrow", "<Enter>", self._on_enter)
-            self._canvas.tag_bind("right_parts", "<Leave>", self._on_leave)
-            self._canvas.tag_bind("dropdown_arrow", "<Leave>", self._on_leave)
-            self._canvas.tag_bind("right_parts", "<Button-1>", self._clicked)
-            self._canvas.tag_bind("dropdown_arrow", "<Button-1>", self._clicked)
+        if sequence is None or sequence == "<Enter>":
+            self._rounded_rect.bind("<Enter>", self._on_enter, section=self._theme_info["compound"])
+            self._arrow.bind("<Enter>", self._on_enter)
+        if sequence is None or sequence == "<Leave>":
+            self._rounded_rect.bind("<Leave>", self._on_leave, section=self._theme_info["compound"])
+            self._arrow.bind("<Leave>", self._on_leave)
+        if sequence is None or sequence == "<Button-1>":
+            self._rounded_rect.bind("<Button-1>", self.invoke, section=self._theme_info["compound"])
+            self._arrow.bind("<Button-1>", self.invoke)
 
-    def _create_grid(self):
-        self._canvas.grid(row=0, column=0, rowspan=1, columnspan=1, sticky="nsew")
+    def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
+        super()._set_scaling(new_widget_scaling, new_window_scaling)
 
-        left_section_width = self._current_width - self._current_height
-        self._entry.grid(row=0, column=0, rowspan=1, columnspan=1, sticky="ew",
-                         padx=(max(self._apply_widget_scaling(self._corner_radius), self._apply_widget_scaling(3)),
-                               max(self._apply_widget_scaling(self._current_width - left_section_width + 3), self._apply_widget_scaling(3))),
-                         pady=self._apply_widget_scaling(self._border_width))
-
-    def _set_scaling(self, *args, **kwargs):
-        super()._set_scaling(*args, **kwargs)
-
-        # change entry font size and grid padding
+        # change entry font size and canvas sizes
         self._entry.configure(font=self._apply_font_scaling(self._font))
-        self._create_grid()
-
-        self._canvas.configure(width=self._apply_widget_scaling(self._desired_width),
-                               height=self._apply_widget_scaling(self._desired_height))
-        self._draw(no_color_updates=True)
-
-    def _set_dimensions(self, width: int = None, height: int = None):
-        super()._set_dimensions(width, height)
-
-        self._canvas.configure(width=self._apply_widget_scaling(self._desired_width),
-                               height=self._apply_widget_scaling(self._desired_height))
+        self._canvas.configure(width=self._apply_scaling(self._desired_width),
+                               height=self._apply_scaling(self._desired_height))
         self._draw()
 
-    def _update_font(self):
+    def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
+        super()._set_dimensions(width, height)
+
+        self._canvas.configure(width=self._apply_scaling(self._desired_width),
+                               height=self._apply_scaling(self._desired_height))
+        self._draw()
+
+    def _update_font(self) -> None:
         """ pass font to tkinter widgets with applied font scaling and update grid with workaround """
         self._entry.configure(font=self._apply_font_scaling(self._font))
 
         # Workaround to force grid to be resized when text changes size.
         # Otherwise grid will lag and only resizes if other mouse action occurs.
         self._canvas.grid_forget()
-        self._canvas.grid(row=0, column=0, rowspan=1, columnspan=1, sticky="nsew")
+        self._canvas.grid(row=0, column=0, sticky="nsew")
 
-    def destroy(self):
-        if isinstance(self._font, CTkFont):
-            self._font.remove_size_configure_callback(self._update_font)
-
+    def destroy(self) -> None:
+        self._font.remove_size_configure_callback(self._update_font)
         super().destroy()
 
-    def _draw(self, no_color_updates=False):
-        super()._draw(no_color_updates)
+    def _draw(self, force_colors_update: bool = False) -> None:
+        super()._draw(force_colors_update)
 
-        left_section_width = self._current_width - self._current_height
-        requires_recoloring = self.draw_engine.draw_rounded_rect_with_border_vertical_split(self._apply_widget_scaling(self._current_width),
-                                                                                            self._apply_widget_scaling(self._current_height),
-                                                                                            self._apply_widget_scaling(self._corner_radius),
-                                                                                            self._apply_widget_scaling(self._border_width),
-                                                                                            self._apply_widget_scaling(left_section_width))
+        compound = self._theme_info["compound"]
+        not_compound = "left" if compound == "right" else "right"
+        left_section_width = self._current_width - self._current_height if compound == "right" else self._current_height
 
-        requires_recoloring_2 = self.draw_engine.draw_dropdown_arrow(self._apply_widget_scaling(self._current_width - (self._current_height / 2)),
-                                                                     self._apply_widget_scaling(self._current_height / 2),
-                                                                     self._apply_widget_scaling(self._current_height / 3))
+        requires_recoloring_1 = self._rounded_rect.update(self._current_width,
+                                                          self._current_height,
+                                                          self._apply_scaling(self._theme_info["corner_radius"]),
+                                                          self._apply_scaling(self._theme_info["border_width"]),
+                                                          left_section_width=left_section_width)
 
-        if no_color_updates is False or requires_recoloring or requires_recoloring_2:
+        if compound == "right":
+            button_middle_point = (self._rounded_rect.info.get("left_section_width", 0) + self._current_width) / 2
+        else:
+            button_middle_point = self._rounded_rect.info.get("left_section_width", 0) / 2
+        requires_recoloring_2 = self._arrow.update(button_middle_point,
+                                                   self._current_height / 2,
+                                                   self._current_height / 3,
+                                                   180)
+
+        if (self._rounded_rect.info["spacings_changed"] or
+            abs(self._applied_button_width - self._rounded_rect.info.get(f"{compound}_section_width", 0)) > 1):
+            self._update_geometry()
+
+        if force_colors_update or requires_recoloring_1 or requires_recoloring_2:
+            self._rounded_rect.raise_()
+            self._arrow.raise_()
+
+            fg_color = self._apply_appearance_mode(self._theme_info["fg_color"])
+            border_color = self._apply_appearance_mode(self._theme_info["border_color"])
+            button_color = self._apply_appearance_mode(self._theme_info["button_color"])
+            text_color = self._apply_appearance_mode(self._theme_info["text_color"])
+            text_color_disabled = self._apply_appearance_mode(self._theme_info["text_color_disabled"])
 
             self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
+            self._rounded_rect.set_main_color(fg_color, not_compound)
+            self._rounded_rect.set_border_color(border_color, not_compound)
+            self._rounded_rect.set_main_color(button_color, compound)
+            self._rounded_rect.set_border_color(button_color, compound)
+            self._arrow.set_color(text_color_disabled if self._state == tkinter.DISABLED else text_color)
 
-            self._canvas.itemconfig("inner_parts_left",
-                                    outline=self._apply_appearance_mode(self._fg_color),
-                                    fill=self._apply_appearance_mode(self._fg_color))
-            self._canvas.itemconfig("border_parts_left",
-                                    outline=self._apply_appearance_mode(self._border_color),
-                                    fill=self._apply_appearance_mode(self._border_color))
-            self._canvas.itemconfig("inner_parts_right",
-                                    outline=self._apply_appearance_mode(self._button_color),
-                                    fill=self._apply_appearance_mode(self._button_color))
-            self._canvas.itemconfig("border_parts_right",
-                                    outline=self._apply_appearance_mode(self._button_color),
-                                    fill=self._apply_appearance_mode(self._button_color))
+            self._entry.configure(bg=fg_color,
+                                  fg=text_color,
+                                  readonlybackground=fg_color,
+                                  disabledbackground=fg_color,
+                                  disabledforeground=text_color_disabled,
+                                  highlightcolor=fg_color,
+                                  insertbackground=text_color)
 
-            self._entry.configure(bg=self._apply_appearance_mode(self._fg_color),
-                                  fg=self._apply_appearance_mode(self._text_color),
-                                  readonlybackground=self._apply_appearance_mode(self._fg_color),
-                                  disabledbackground=self._apply_appearance_mode(self._fg_color),
-                                  disabledforeground=self._apply_appearance_mode(self._text_color_disabled),
-                                  highlightcolor=self._apply_appearance_mode(self._fg_color),
-                                  insertbackground=self._apply_appearance_mode(self._text_color))
+    def _update_geometry(self) -> None:
+        compound = self._theme_info["compound"]
+        self._applied_button_width = self._rounded_rect.info.get(f"{compound}_section_width", 0)
 
-            if self._state == tkinter.DISABLED:
-                self._canvas.itemconfig("dropdown_arrow",
-                                        fill=self._apply_appearance_mode(self._text_color_disabled))
-            else:
-                self._canvas.itemconfig("dropdown_arrow",
-                                        fill=self._apply_appearance_mode(self._text_color))
+        spacing = self._rounded_rect.info.get("inscribed_spacing", 0)
+        border_spacing = self._apply_scaling(self._theme_info["border_spacing"])
+        padx = (spacing + border_spacing,
+                self._applied_button_width + border_spacing)
 
-    def _open_dropdown_menu(self):
-        self._dropdown_menu.open(self.winfo_rootx(),
-                                 self.winfo_rooty() + self._apply_widget_scaling(self._current_height + 0))
-        self._close_on_next_click = True
+        self._entry.grid(row=0, column=0, sticky="ew",
+                         padx=padx if compound == "right" else padx[::-1],
+                         pady=spacing)
 
-    def configure(self, require_redraw=False, **kwargs):
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkComboBoxArgs]) -> None:
         if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
+            self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
 
         if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
-            self._create_grid()
+            self._theme_info["border_width"] = kwargs.pop("border_width")
             require_redraw = True
 
+        if "border_spacing" in kwargs:
+            self._theme_info["border_spacing"] = kwargs.pop("border_spacing")
+            self._update_geometry()
+
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._border_color = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._button_color = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._button_hover_color = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
             require_redraw = True
 
-        if "dropdown_fg_color" in kwargs:
-            self._dropdown_menu.configure(fg_color=kwargs.pop("dropdown_fg_color"))
-
-        if "dropdown_hover_color" in kwargs:
-            self._dropdown_menu.configure(hover_color=kwargs.pop("dropdown_hover_color"))
-
-        if "dropdown_text_color" in kwargs:
-            self._dropdown_menu.configure(text_color=kwargs.pop("dropdown_text_color"))
+        if "dropdown" in kwargs:
+            self._dropdown_menu.configure(**kwargs.pop("dropdown"))
 
         if "text_color" in kwargs:
-            self._text_color = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._text_color_disabled = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
             require_redraw = True
 
         if "font" in kwargs:
-            if isinstance(self._font, CTkFont):
-                self._font.remove_size_configure_callback(self._update_font)
-            self._font = self._check_font_type(kwargs.pop("font"))
-            if isinstance(self._font, CTkFont):
-                self._font.add_size_configure_callback(self._update_font)
+            self._font.remove_size_configure_callback(self._update_font)
+            self._font = CTkFont.from_parameter(kwargs.pop("font"))
+            self._font.add_size_configure_callback(self._update_font)
             self._update_font()
-
-        if "dropdown_font" in kwargs:
-            self._dropdown_menu.configure(font=kwargs.pop("dropdown_font"))
 
         if "values" in kwargs:
             self._values = kwargs.pop("values")
@@ -284,7 +271,7 @@ class CTkComboBox(CTkBaseClass):
             require_redraw = True
 
         if "hover" in kwargs:
-            self._hover = kwargs.pop("hover")
+            self._theme_info["hover"] = kwargs.pop("hover")
 
         if "variable" in kwargs:
             self._variable = kwargs.pop("variable")
@@ -296,143 +283,93 @@ class CTkComboBox(CTkBaseClass):
         if "justify" in kwargs:
             self._entry.configure(justify=kwargs.pop("justify"))
 
+        if "compound" in kwargs:
+            self._theme_info["compound"] = kwargs.pop("compound")
+            self._create_bindings()
+            self._applied_button_width = -1
+            require_redraw = True
+
         super().configure(require_redraw=require_redraw, **kwargs)
 
-    def cget(self, attribute_name: str) -> any:
-        if attribute_name == "corner_radius":
-            return self._corner_radius
-        elif attribute_name == "border_width":
-            return self._border_width
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "border_color":
-            return self._border_color
-        elif attribute_name == "button_color":
-            return self._button_color
-        elif attribute_name == "button_hover_color":
-            return self._button_hover_color
-        elif attribute_name == "dropdown_fg_color":
-            return self._dropdown_menu.cget("fg_color")
-        elif attribute_name == "dropdown_hover_color":
-            return self._dropdown_menu.cget("hover_color")
-        elif attribute_name == "dropdown_text_color":
-            return self._dropdown_menu.cget("text_color")
-        elif attribute_name == "text_color":
-            return self._text_color
-        elif attribute_name == "text_color_disabled":
-            return self._text_color_disabled
-
-        elif attribute_name == "font":
+    def cget(self, attribute_name: str) -> Any:
+        if attribute_name == "font":
             return self._font
-        elif attribute_name == "dropdown_font":
-            return self._dropdown_menu.cget("font")
-        elif attribute_name == "values":
-            return copy.copy(self._values)
         elif attribute_name == "state":
             return self._state
-        elif attribute_name == "hover":
-            return self._hover
+        elif attribute_name == "values":
+            return copy.copy(self._values)
         elif attribute_name == "variable":
             return self._variable
         elif attribute_name == "command":
             return self._command
-        elif attribute_name == "justify":
-            return self._entry.cget("justify")
-
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
+        elif attribute_name.startswith("dropdown_"):
+            self._dropdown_menu.cget(attribute_name.removeprefix("dropdown_"))
         else:
             return super().cget(attribute_name)
 
-    def _on_enter(self, event=0):
+    def _on_enter(self, _: tkinter.Event | None = None) -> None:
         self._close_on_next_click = self._dropdown_menu.is_open()
-        if self._hover is True and self._state == tkinter.NORMAL and len(self._values) > 0:
-            if sys.platform == "darwin" and len(self._values) > 0 and self._cursor_manipulation_enabled:
-                self._canvas.configure(cursor="pointinghand")
-            elif sys.platform.startswith("win") and len(self._values) > 0 and self._cursor_manipulation_enabled:
-                self._canvas.configure(cursor="hand2")
+        if self._state != tkinter.DISABLED and len(self._values) > 0:
+            cursor = get_proper_cursor("clickable")
+            if cursor is not None:
+                self._canvas.configure(cursor=cursor)
 
-            # set color of inner button parts to hover color
-            self._canvas.itemconfig("inner_parts_right",
-                                    outline=self._apply_appearance_mode(self._button_hover_color),
-                                    fill=self._apply_appearance_mode(self._button_hover_color))
-            self._canvas.itemconfig("border_parts_right",
-                                    outline=self._apply_appearance_mode(self._button_hover_color),
-                                    fill=self._apply_appearance_mode(self._button_hover_color))
+            if self._theme_info["hover"]:
+                # set color of button parts to hover color
+                color = self._apply_appearance_mode(self._theme_info["button_hover_color"])
+                self._rounded_rect.set_main_color(color, self._theme_info["compound"])
+                self._rounded_rect.set_border_color(color, self._theme_info["compound"])
 
-    def _on_leave(self, event=0):
-        if sys.platform == "darwin" and len(self._values) > 0 and self._cursor_manipulation_enabled:
-            self._canvas.configure(cursor="arrow")
-        elif sys.platform.startswith("win") and len(self._values) > 0 and self._cursor_manipulation_enabled:
-            self._canvas.configure(cursor="arrow")
+    def _on_leave(self, _: tkinter.Event | None = None) -> None:
+        cursor = get_proper_cursor("normal")
+        if cursor is not None:
+            self._canvas.configure(cursor=cursor)
 
-        # set color of inner button parts
-        self._canvas.itemconfig("inner_parts_right",
-                                outline=self._apply_appearance_mode(self._button_color),
-                                fill=self._apply_appearance_mode(self._button_color))
-        self._canvas.itemconfig("border_parts_right",
-                                outline=self._apply_appearance_mode(self._button_color),
-                                fill=self._apply_appearance_mode(self._button_color))
+        # restore color of button parts
+        color = self._apply_appearance_mode(self._theme_info["button_color"])
+        self._rounded_rect.set_main_color(color, self._theme_info["compound"])
+        self._rounded_rect.set_border_color(color, self._theme_info["compound"])
 
-    def _dropdown_callback(self, value: str):
-        if self._state == "readonly":
-            self._entry.configure(state="normal")
-            self._entry.delete(0, tkinter.END)
-            self._entry.insert(0, value)
-            self._entry.configure(state="readonly")
-        else:
-            self._entry.delete(0, tkinter.END)
-            self._entry.insert(0, value)
-
+    def _dropdown_callback(self, value: str) -> None:
+        self.set(value)
         if self._command is not None:
             self._command(value)
 
-    def set(self, value: str):
-        if self._state == "readonly":
-            self._entry.configure(state="normal")
+    def set(self, value: str) -> None:
+        """ Changes the content to the desired value, regardless of the widget's state and admissible values. """
+        if self._state == tkinter.NORMAL:
             self._entry.delete(0, tkinter.END)
             self._entry.insert(0, value)
-            self._entry.configure(state="readonly")
         else:
+            self._entry.configure(state=tkinter.NORMAL)
             self._entry.delete(0, tkinter.END)
             self._entry.insert(0, value)
+            self._entry.configure(state=self._state)
 
-    def get(self) -> str:
-        return self._entry.get()
+    def get(self, index: int | None = None) -> str:
+        """ Returns the current value.\n
+        If an index is provided, returns the value in that position. """
+        if index is None:
+            return self._entry.get()
+        else:
+            return self._values[index]
 
-    def index(self, value: Optional[Any] = None) -> int:
-        """ returns index of selected value, raises ValueError if the value is missing
-        if the parameter is provided, returns the associated index or raises ValueError if no value is found """
+    def index(self, value: str | None = None) -> int:
+        """ Returns index of selected value, raises ValueError if the value is missing.\n
+        If the parameter is provided, returns the associated index or raises ValueError if no value is found. """
         if value is None:
-            return self._values.index(self.get())
-        else:
-            return self._values.index(value)
+            value = self.get()
+        return self._values.index(value)
 
-    def _clicked(self, event=None):
+    def invoke(self, _: tkinter.Event | None = None) -> None:
+        """ Toggles the visibility status of the dropdown menu if the widget is not disabled.\n
+        Can be called to simulate the user who clicks on the widget. """
         if self._close_on_next_click:
             self._dropdown_menu.close()
             self._close_on_next_click = False
-        elif self._state is not tkinter.DISABLED and len(self._values) > 0:
-            self._open_dropdown_menu()
-
-    def bind(self, sequence=None, command=None, add=True):
-        """ called on the tkinter.Entry """
-        if not (add == "+" or add is True):
-            raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
-        self._entry.bind(sequence, command, add=True)
-
-    def unbind(self, sequence=None, funcid=None):
-        """ called on the tkinter.Entry """
-        if funcid is not None:
-            raise ValueError("'funcid' argument can only be None, because there is a bug in" +
-                             " tkinter and its not clear whether the internal callbacks will be unbinded or not")
-        self._entry.unbind(sequence, None)  # unbind all callbacks for sequence
-        self._create_bindings(sequence=sequence)  # restore internal callbacks for sequence
-
-    def focus(self):
-        return self._entry.focus()
-
-    def focus_set(self):
-        return self._entry.focus_set()
-
-    def focus_force(self):
-        return self._entry.focus_force()
+        elif self._state != tkinter.DISABLED and len(self._values) > 0:
+            self._dropdown_menu.open(self.winfo_rootx(),
+                                     self.winfo_rooty() + self._current_height)
+            self._close_on_next_click = True

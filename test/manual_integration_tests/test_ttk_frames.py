@@ -50,6 +50,6 @@ button_6 = customtkinter.CTkButton(frame_6, text="ttk.Notebook")
 button_6.pack(pady=20, padx=20)
 
 ttk_style = ttk.Style()
-ttk_style.configure(frame_3.winfo_class(), background='red')
+ttk_style.configure(frame_3.winfo_class(), background="red")
 
 app.mainloop()

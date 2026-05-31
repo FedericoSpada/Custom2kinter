@@ -1,11 +1,26 @@
-from typing import Union, Tuple, Optional
+from __future__ import annotations
 
-from .widgets import CTkLabel
-from .widgets import CTkEntry
-from .widgets import CTkButton
-from .widgets.theme import ThemeManager
+import tkinter
+from typing_extensions import TypedDict, Unpack
+
 from .ctk_toplevel import CTkToplevel
-from .widgets.font import CTkFont
+from .widgets import CTkLabel
+from .widgets.ctk_button import CTkButton, CTkButtonArgs
+from .widgets.ctk_entry import CTkEntry, CTkEntryArgs
+from .widgets.ctk_combobox import CTkComboBox, CTkComboBoxArgs
+from .widgets.font import CTkFont, FontType
+from .widgets.theme import ColorType, ThemeManager
+
+
+class CTkInputDialogArgs(TypedDict, total=False):
+    fg_color: ColorType
+    text_color: ColorType
+    title: str
+    text: str
+    font: FontType
+    button: CTkButtonArgs
+    entry: CTkEntryArgs
+    combobox: CTkComboBoxArgs
 
 
 class CTkInputDialog(CTkToplevel):
@@ -15,45 +30,42 @@ class CTkInputDialog(CTkToplevel):
     """
 
     def __init__(self,
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 button_fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 button_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 button_text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 entry_fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 entry_border_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 entry_text_color: Optional[Union[str, Tuple[str, str]]] = None,
+                 master: tkinter.Misc | None = None,
+                 theme_key: str | None = None,
+                 default_value: str = "",
+                 values: list[str] | None = None,
+                 **kwargs: Unpack[CTkInputDialogArgs]) -> None:
 
-                 title: str = "CTkDialog",
-                 font: Optional[Union[tuple, CTkFont]] = None,
-                 text: str = "CTkDialog"):
+        self._theme_id_info: CTkInputDialogArgs = ThemeManager.get_info("CTkInputDialog", theme_key, **kwargs)
 
-        super().__init__(fg_color=fg_color)
+        #validity checks
+        for key in self._theme_id_info:
+            if "_color" in key:
+                self._theme_id_info[key] = self._check_color_type(self._theme_id_info[key], transparency=False)
 
-        self._fg_color = ThemeManager.theme["CTkToplevel"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-        self._text_color = ThemeManager.theme["CTkLabel"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._button_fg_color = ThemeManager.theme["CTkButton"]["fg_color"] if button_fg_color is None else self._check_color_type(button_fg_color)
-        self._button_hover_color = ThemeManager.theme["CTkButton"]["hover_color"] if button_hover_color is None else self._check_color_type(button_hover_color)
-        self._button_text_color = ThemeManager.theme["CTkButton"]["text_color"] if button_text_color is None else self._check_color_type(button_text_color)
-        self._entry_fg_color = ThemeManager.theme["CTkEntry"]["fg_color"] if entry_fg_color is None else self._check_color_type(entry_fg_color)
-        self._entry_border_color = ThemeManager.theme["CTkEntry"]["border_color"] if entry_border_color is None else self._check_color_type(entry_border_color)
-        self._entry_text_color = ThemeManager.theme["CTkEntry"]["text_color"] if entry_text_color is None else self._check_color_type(entry_text_color)
+        super().__init__(master=master,
+                         fg_color=self._theme_id_info["fg_color"],
+                         title=self._theme_id_info["title"])
 
-        self._user_input: Union[str, None] = None
+        self._default_value: str = default_value
+        self._values: list[str] | None = values
+        self._user_input: str | None = None
         self._running: bool = False
-        self._title = title
-        self._text = text
-        self._font = font
 
-        self.title(self._title)
+        self._font: CTkFont = CTkFont.from_parameter(self._theme_id_info["font"])
+        self._label: CTkLabel
+        self._input: CTkEntry | CTkComboBox
+        self._ok_button: CTkButton
+        self._cancel_button: CTkButton
+
         self.lift()  # lift window on top
         self.attributes("-topmost", True)  # stay on top
-        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+        self.protocol("WM_DELETE_WINDOW", self._cancel_event)
         self.after(10, self._create_widgets)  # create widgets with slight delay, to avoid white flickering of background
         self.resizable(False, False)
         self.grab_set()  # make other windows not clickable
 
-    def _create_widgets(self):
+    def _create_widgets(self) -> None:
         self.grid_columnconfigure((0, 1), weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -61,57 +73,53 @@ class CTkInputDialog(CTkToplevel):
                                width=300,
                                wraplength=300,
                                fg_color="transparent",
-                               text_color=self._text_color,
-                               text=self._text,
+                               text_color=self._theme_id_info["text_color"],
+                               text=self._theme_id_info["text"],
                                font=self._font)
         self._label.grid(row=0, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
 
-        self._entry = CTkEntry(master=self,
-                               width=230,
-                               fg_color=self._entry_fg_color,
-                               border_color=self._entry_border_color,
-                               text_color=self._entry_text_color,
-                               font=self._font)
-        self._entry.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+        if self._values is None:
+            entry_kwargs = self._theme_id_info["entry"]
+            entry_kwargs["font"] = self._font
+            self._input = CTkEntry(master=self, **entry_kwargs)
+        else:
+            combo_kwargs = self._theme_id_info["combobox"]
+            combo_kwargs["font"] = self._font
+            self._input = CTkComboBox(master=self, values=self._values, state="readonly", **combo_kwargs)
+
+        self._input.grid(row=1, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+
+        self._input.set(self._default_value)
+        if self._values is None:
+            self._input.select_range(0, tkinter.END)
+
+        button_kwargs = self._theme_id_info["button"]
+        button_kwargs["font"] = self._font
 
         self._ok_button = CTkButton(master=self,
-                                    width=100,
-                                    border_width=0,
-                                    fg_color=self._button_fg_color,
-                                    hover_color=self._button_hover_color,
-                                    text_color=self._button_text_color,
-                                    text='Ok',
-                                    font=self._font,
-                                    command=self._ok_event)
+                                    command=self._ok_event,
+                                    text="Ok",
+                                    **button_kwargs)
         self._ok_button.grid(row=2, column=0, columnspan=1, padx=(20, 10), pady=(0, 20), sticky="ew")
 
         self._cancel_button = CTkButton(master=self,
-                                        width=100,
-                                        border_width=0,
-                                        fg_color=self._button_fg_color,
-                                        hover_color=self._button_hover_color,
-                                        text_color=self._button_text_color,
-                                        text='Cancel',
-                                        font=self._font,
-                                        command=self._cancel_event)
+                                        command=self._cancel_event,
+                                        text="Cancel",
+                                        **button_kwargs)
         self._cancel_button.grid(row=2, column=1, columnspan=1, padx=(10, 20), pady=(0, 20), sticky="ew")
 
-        self.after(150, lambda: self._entry.focus())  # set focus to entry with slight delay, otherwise it won't work
-        self._entry.bind("<Return>", self._ok_event)
+        self.after(150, self._input.focus)  # set focus to input widget with slight delay, otherwise it won't work
+        self._input.bind("<Return>", self._ok_event)
 
-    def _ok_event(self, event=None):
-        self._user_input = self._entry.get()
+    def _ok_event(self, _: tkinter.Event | None = None) -> None:
+        self._user_input = self._input.get()
         self.grab_release()
         self.destroy()
 
-    def _on_closing(self):
+    def _cancel_event(self) -> None:
         self.grab_release()
         self.destroy()
 
-    def _cancel_event(self):
-        self.grab_release()
-        self.destroy()
-
-    def get_input(self):
+    def get_input(self) -> str | None:
         self.master.wait_window(self)
         return self._user_input

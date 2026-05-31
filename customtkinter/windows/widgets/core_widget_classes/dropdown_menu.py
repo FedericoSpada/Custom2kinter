@@ -1,50 +1,59 @@
-import tkinter
-import copy
-import sys
-from typing import Union, Tuple, Callable, List, Optional
+from __future__ import annotations
 
-from ..theme import ThemeManager
-from ..font import CTkFont
+import tkinter
+import sys
+import copy
+from typing import Any, Callable
+from typing_extensions import TypedDict, Unpack
+
 from ..appearance_mode import CTkAppearanceModeBaseClass
 from ..scaling import CTkScalingBaseClass
+from ..theme import ColorType, ThemeManager
+from ..font import CTkFont, FontType
+from ..utility import pop_from_dict_by_set
+
+
+class DropdownMenuArgs(TypedDict, total=False):
+    fg_color: ColorType
+    hover_color: ColorType
+    text_color: ColorType
+    min_character_width: int
+    font: FontType
 
 
 class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
-    def __init__(self, *args,
-                 min_character_width: int = 18,
 
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 hover_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color: Optional[Union[str, Tuple[str, str]]] = None,
+    # attributes that are passed to and managed by the tkinter menu only:
+    _valid_tk_menu_attributes: set[str] = {"background", "bd", "border", "disabledforeground",
+                                           "foreground", "name", "postcommand", "selectcolor",
+                                           "takefocus", "tearoffcommand", "title", "type"}
 
-                 font: Optional[Union[tuple, CTkFont]] = None,
-                 command: Union[Callable, None] = None,
-                 values: Optional[List[str]] = None,
-                 **kwargs):
+    def __init__(self,
+                 values: list[str] | None = None,
+                 command: Callable[[str], None] | None = None,
+                 **kwargs: Unpack[DropdownMenuArgs]) -> None:
+
+        menu_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_menu_attributes)
+
+        self._theme_info: DropdownMenuArgs = ThemeManager.get_info("DropdownMenu", None, **kwargs)
 
         # call init methods of super classes
-        tkinter.Menu.__init__(self, *args, **kwargs)
+        tkinter.Menu.__init__(self, **menu_kwargs)
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="widget")
 
-        self._min_character_width = min_character_width
-        self._fg_color = ThemeManager.theme["DropdownMenu"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
-        self._hover_color = ThemeManager.theme["DropdownMenu"]["hover_color"] if hover_color is None else self._check_color_type(hover_color)
-        self._text_color = ThemeManager.theme["DropdownMenu"]["text_color"] if text_color is None else self._check_color_type(text_color)
-
         # font
-        self._font = CTkFont() if font is None else self._check_font_type(font)
-        if isinstance(self._font, CTkFont):
-            self._font.add_size_configure_callback(self._update_font)
+        self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
+        self._font.add_size_configure_callback(self._update_font)
+
+        #functionality
+        self._values: list[str] = [] if values is None else values
+        self._command: Callable[[str], None] | None = command
 
         self._configure_menu_for_platforms()
-
-        self._values = values
-        self._command = command
-
         self._add_menu_commands()
 
-    def destroy(self):
+    def destroy(self) -> None:
         if isinstance(self._font, CTkFont):
             self._font.remove_size_configure_callback(self._update_font)
 
@@ -53,11 +62,11 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
         CTkAppearanceModeBaseClass.destroy(self)
         CTkScalingBaseClass.destroy(self)
 
-    def _update_font(self):
+    def _update_font(self) -> None:
         """ pass font to tkinter widgets with applied font scaling """
         super().configure(font=self._apply_font_scaling(self._font))
 
-    def _configure_menu_for_platforms(self):
+    def _configure_menu_for_platforms(self) -> None:
         """ apply platform specific appearance attributes, configure all colors """
 
         if sys.platform == "darwin":
@@ -67,87 +76,84 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
         elif sys.platform.startswith("win"):
             super().configure(tearoff=False,
                               relief="flat",
-                              activebackground=self._apply_appearance_mode(self._hover_color),
-                              borderwidth=self._apply_widget_scaling(4),
-                              activeborderwidth=self._apply_widget_scaling(4),
-                              bg=self._apply_appearance_mode(self._fg_color),
-                              fg=self._apply_appearance_mode(self._text_color),
-                              activeforeground=self._apply_appearance_mode(self._text_color),
+                              activebackground=self._apply_appearance_mode(self._theme_info["hover_color"]),
+                              borderwidth=self._apply_scaling(4),
+                              activeborderwidth=self._apply_scaling(4),
+                              bg=self._apply_appearance_mode(self._theme_info["fg_color"]),
+                              fg=self._apply_appearance_mode(self._theme_info["text_color"]),
+                              activeforeground=self._apply_appearance_mode(self._theme_info["text_color"]),
                               font=self._apply_font_scaling(self._font),
                               cursor="hand2")
 
         else:
             super().configure(tearoff=False,
                               relief="flat",
-                              activebackground=self._apply_appearance_mode(self._hover_color),
+                              activebackground=self._apply_appearance_mode(self._theme_info["hover_color"]),
                               borderwidth=0,
                               activeborderwidth=0,
-                              bg=self._apply_appearance_mode(self._fg_color),
-                              fg=self._apply_appearance_mode(self._text_color),
-                              activeforeground=self._apply_appearance_mode(self._text_color),
+                              bg=self._apply_appearance_mode(self._theme_info["fg_color"]),
+                              fg=self._apply_appearance_mode(self._theme_info["text_color"]),
+                              activeforeground=self._apply_appearance_mode(self._theme_info["text_color"]),
                               font=self._apply_font_scaling(self._font))
 
-    def _add_menu_commands(self):
+    def _add_menu_commands(self) -> None:
         """ delete existing menu labels and createe new labels with command according to values list """
 
         self.delete(0, "end")  # delete all old commands
 
         if sys.platform.startswith("linux"):
             for value in self._values:
-                self.add_command(label="  " + value.ljust(self._min_character_width) + "  ",
+                self.add_command(label="  " + value.ljust(self._theme_info["min_character_width"]) + "  ",
                                  command=lambda v=value: self._button_callback(v),
                                  compound="left")
         else:
             for value in self._values:
-                self.add_command(label=value.ljust(self._min_character_width),
+                self.add_command(label=value.ljust(self._theme_info["min_character_width"]),
                                  command=lambda v=value: self._button_callback(v),
                                  compound="left")
 
-    def _button_callback(self, value):
+    def _button_callback(self, value: str) -> None:
         if self._command is not None:
             self._command(value)
 
-    def open(self, x: Union[int, float], y: Union[int, float]):
-
+    def open(self, x: int | float, y: int | float) -> None:
         if sys.platform == "darwin":
-            y += self._apply_widget_scaling(8)
+            y += self._apply_scaling(8)
         else:
-            y += self._apply_widget_scaling(3)
+            y += self._apply_scaling(3)
 
         if sys.platform == "darwin" or sys.platform.startswith("win"):
             self.post(int(x), int(y))
         else:  # Linux
             self.tk_popup(int(x), int(y))
 
-    def close(self):
+    def close(self) -> None:
         self.unpost()
 
     def is_open(self) -> bool:
         return bool(self.winfo_viewable())
 
-    def configure(self, **kwargs):
+    def configure(self, **kwargs: Unpack[DropdownMenuArgs]) -> None:
         if "min_character_width" in kwargs:
-            self._min_character_width = kwargs.pop("min_character_width")
+            self._theme_info["min_character_width"] = kwargs.pop("min_character_width")
             self._add_menu_commands()
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
-            super().configure(bg=self._apply_appearance_mode(self._fg_color))
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
         if "hover_color" in kwargs:
-            self._hover_color = self._check_color_type(kwargs.pop("hover_color"))
-            super().configure(activebackground=self._apply_appearance_mode(self._hover_color))
+            self._theme_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            super().configure(activebackground=self._apply_appearance_mode(self._theme_info["hover_color"]))
 
         if "text_color" in kwargs:
-            self._text_color = self._check_color_type(kwargs.pop("text_color"))
-            super().configure(fg=self._apply_appearance_mode(self._text_color))
+            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            super().configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]))
 
         if "font" in kwargs:
-            if isinstance(self._font, CTkFont):
-                self._font.remove_size_configure_callback(self._update_font)
-            self._font = self._check_font_type(kwargs.pop("font"))
-            if isinstance(self._font, CTkFont):
-                self._font.add_size_configure_callback(self._update_font)
+            self._font.remove_size_configure_callback(self._update_font)
+            self._font = CTkFont.from_parameter(kwargs.pop("font"))
+            self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
         if "command" in kwargs:
@@ -159,51 +165,22 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
 
         super().configure(**kwargs)
 
-    def cget(self, attribute_name: str) -> any:
-        if attribute_name == "min_character_width":
-            return self._min_character_width
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "hover_color":
-            return self._hover_color
-        elif attribute_name == "text_color":
-            return self._text_color
-
-        elif attribute_name == "font":
+    def cget(self, attribute_name: str) -> Any:
+        if attribute_name == "font":
             return self._font
-        elif attribute_name == "command":
-            return self._command
         elif attribute_name == "values":
             return copy.copy(self._values)
-
+        elif attribute_name == "command":
+            return self._command
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)
 
-    @staticmethod
-    def _check_font_type(font: any):
-        if isinstance(font, CTkFont):
-            return font
-
-        elif type(font) == tuple and len(font) == 1:
-            sys.stderr.write(f"Warning: font {font} given without size, will be extended with default text size of current theme\n")
-            return font[0], ThemeManager.theme["text"]["size"]
-
-        elif type(font) == tuple and 2 <= len(font) <= 3:
-            return font
-
-        else:
-            raise ValueError(f"Wrong font type {type(font)} for font '{font}'\n" +
-                             f"For consistency, Customtkinter requires the font argument to be a tuple of len 2 or 3 or an instance of CTkFont.\n" +
-                             f"\nUsage example:\n" +
-                             f"font=customtkinter.CTkFont(family='<name>', size=<size in px>)\n" +
-                             f"font=('<name>', <size in px>)\n")
-
-    def _set_scaling(self, new_widget_scaling, new_window_scaling):
+    def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
         self._configure_menu_for_platforms()
 
-    def _set_appearance_mode(self, mode_string):
-        """ colors won't update on appearance mode change when dropdown is open, because it's not necessary """
-        super()._set_appearance_mode(mode_string)
+    def _set_appearance_mode(self) -> None:
+        # colors won't update on appearance mode change when dropdown is open, because it's not necessary
         self._configure_menu_for_platforms()

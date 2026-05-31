@@ -3,8 +3,8 @@ import tkinter.ttk as ttk
 import customtkinter
 
 app = customtkinter.CTk()
-app.title('Test OptionMenu ComboBox.py')
-app.geometry('400x500')
+app.title("Test OptionMenu ComboBox.py")
+app.geometry("400x500")
 
 
 def select_callback(choice):
@@ -12,7 +12,7 @@ def select_callback(choice):
     print("display_selected", choice)
 
 
-countries = ['Bahamas', 'Canada', 'Cuba', 'United States', "long sdhfhjgdshjafghdgshfhjdsfj"]
+countries = ["Bahamas", "Canada", "Cuba", "United States", "long sdhfhjgdshjafghdgshfhjdsfj"]
 
 variable = tkinter.StringVar()
 variable.set("test")
@@ -23,8 +23,7 @@ optionmenu_tk.pack(pady=10, padx=10)
 optionmenu_1 = customtkinter.CTkOptionMenu(app, variable=variable, values=countries, command=select_callback)
 optionmenu_1.pack(pady=20, padx=10)
 
-optionmenu_2 = customtkinter.CTkOptionMenu(app, variable=variable, values=countries, command=select_callback,
-                                           dynamic_resizing=False)
+optionmenu_2 = customtkinter.CTkOptionMenu(app, variable=variable, values=countries, command=select_callback)
 optionmenu_2.pack(pady=20, padx=10)
 
 combobox_tk = ttk.Combobox(app, values=countries, textvariable=variable)

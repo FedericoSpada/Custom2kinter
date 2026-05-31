@@ -1,16 +1,33 @@
+from __future__ import annotations
+
 import tkinter
 import copy
-from typing import Union, Tuple, List, Dict, Callable, Optional, Any
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from typing import Any, Callable
+from typing_extensions import Literal, TypedDict, Unpack
 
-from .theme import ThemeManager
-from .font import CTkFont
-from .ctk_button import CTkButton
-from .ctk_frame import CTkFrame
+from .core_widget_classes import CTkContainer
+from .font.ctk_font import FontType
+from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import check_kwargs_empty
+from .ctk_frame import CTkFrame
+from .ctk_button import CTkButton
+
+
+class CTkSegmentedButtonArgs(TypedDict, total=False):
+    orientation: Literal["horizontal", "vertical"]
+    width: int
+    height: int
+    corner_radius: int
+    border_width: int
+    bg_color: TransparentColorType
+    fg_color: ColorType
+    selected_color: ColorType
+    unselected_color: ColorType
+    selected_hover_color: ColorType
+    unselected_hover_color: ColorType
+    text_color: ColorType
+    text_color_disabled: ColorType
+    font: FontType
 
 
 class CTkSegmentedButton(CTkFrame):
@@ -20,187 +37,161 @@ class CTkSegmentedButton(CTkFrame):
     """
 
     def __init__(self,
-                 master: Any,
-                 width: int = 140,
-                 height: int = 28,
-                 corner_radius: Optional[int] = None,
-                 border_width: int = 3,
+                 master: CTkContainer,
+                 theme_key: str | None = None,
+                 state: Literal["normal", "disabled"] = "normal",
+                 values: list[str] | None = None,
+                 variable: tkinter.StringVar | None = None,
+                 command: Callable[[str], None] | None = None,
+                 background_corner_colors: tuple[ColorType, ...] | None = None,
+                 **kwargs: Unpack[CTkSegmentedButtonArgs]) -> None:
 
-                 bg_color: Union[str, Tuple[str, str]] = "transparent",
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 selected_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 selected_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 unselected_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 unselected_hover_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color_disabled: Optional[Union[str, Tuple[str, str]]] = None,
-                 background_corner_colors: Union[Tuple[Union[str, Tuple[str, str]]], None] = None,
+        self._theme_sb_info: CTkSegmentedButtonArgs = ThemeManager.get_info("CTkSegmentedButton", theme_key, **kwargs)
 
-                 font: Optional[Union[tuple, CTkFont]] = None,
-                 values: Optional[list] = None,
-                 variable: Union[tkinter.Variable, None] = None,
-                 dynamic_resizing: bool = True,
-                 command: Union[Callable[[str], Any], None] = None,
-                 state: str = "normal",
-                 orientation: Literal["horizontal", "vertical"] = "horizontal"):
+        #validity checks
+        for key in self._theme_sb_info:
+            if "_color" in key:
+                self._theme_sb_info[key] = self._check_color_type(self._theme_sb_info[key],
+                                                                  transparency=key == "bg_color")
 
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height)
+        super().__init__(master=master,
+                         bg_color=self._theme_sb_info["bg_color"],
+                         fg_color="transparent",
+                         width=self._theme_sb_info["width"],
+                         height=self._theme_sb_info["height"],
+                         corner_radius=self._theme_sb_info["corner_radius"])
 
-        self._sb_fg_color = ThemeManager.theme["CTkSegmentedButton"]["fg_color"] if fg_color is None else self._check_color_type(fg_color)
+        # rendering options
+        self._background_corner_colors: tuple[ColorType, ...] | None = background_corner_colors
 
-        self._sb_selected_color = ThemeManager.theme["CTkSegmentedButton"]["selected_color"] if selected_color is None else self._check_color_type(selected_color)
-        self._sb_selected_hover_color = ThemeManager.theme["CTkSegmentedButton"]["selected_hover_color"] if selected_hover_color is None else self._check_color_type(selected_hover_color)
-
-        self._sb_unselected_color = ThemeManager.theme["CTkSegmentedButton"]["unselected_color"] if unselected_color is None else self._check_color_type(unselected_color)
-        self._sb_unselected_hover_color = ThemeManager.theme["CTkSegmentedButton"]["unselected_hover_color"] if unselected_hover_color is None else self._check_color_type(unselected_hover_color)
-
-        self._sb_text_color = ThemeManager.theme["CTkSegmentedButton"]["text_color"] if text_color is None else self._check_color_type(text_color)
-        self._sb_text_color_disabled = ThemeManager.theme["CTkSegmentedButton"]["text_color_disabled"] if text_color_disabled is None else self._check_color_type(text_color_disabled)
-
-        self._sb_corner_radius = ThemeManager.theme["CTkSegmentedButton"]["corner_radius"] if corner_radius is None else corner_radius
-        self._sb_border_width = ThemeManager.theme["CTkSegmentedButton"]["border_width"] if border_width is None else border_width
-
-        self._background_corner_colors = background_corner_colors  # rendering options for DrawEngine
-
-        self._command: Callable[[str], None] = command
-        self._font = CTkFont() if font is None else font
-        self._state = state
-        self._orientation = orientation
-
-        self._buttons_dict: Dict[str, CTkButton] = {}  # mapped from value to button object
-        if values is None:
-            self._value_list: List[str] = ["CTkSegmentedButton"]
-        else:
-            self._value_list: List[str] = values  # Values ordered like buttons rendered on widget
-
-        self._dynamic_resizing = dynamic_resizing
-        if not self._dynamic_resizing:
-            self.grid_propagate(False)
-
-        self._check_unique_values(self._value_list)
-        self._current_value: str = ""
-        if len(self._value_list) > 0:
-            self._create_buttons_from_values()
-            self._create_button_grid()
-
-        self._variable = variable
+        #functionality
+        self._state: Literal["normal", "disabled"] = state
+        self._command: Callable[[str], None] | None = command
+        self._values: list[str] = [] if values is None else values
+        self._variable: tkinter.StringVar | None = variable
         self._variable_callback_blocked: bool = False
-        self._variable_callback_name: Union[str, None] = None
+        self._variable_callback_name: str | None = None
+        self._buttons_dict: dict[str, CTkButton] = {}  # mapped from value to button object
+
+        self._check_unique_values(self._values)
+        self._current_value: str = ""
+        if len(self._values) > 0:
+            self._create_buttons_from_values()
+            self._update_geometry()
 
         if self._variable is not None:
             self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
             self.set(self._variable.get(), from_variable_callback=True)
 
-        super().configure(corner_radius=self._sb_corner_radius, fg_color="transparent")
-
-    def destroy(self):
-        if self._variable is not None:  # remove old callback
+    def destroy(self) -> None:
+        if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
-
         super().destroy()
 
-    def _set_dimensions(self, width: int = None, height: int = None):
+    def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
         super()._set_dimensions(width, height)
 
-        for button in self._buttons_dict.values():
-            button.configure(height=height)
+        if height is not None:
+            for button in self._buttons_dict.values():
+                button.configure(height=height)
 
-    def _variable_callback(self, var_name, index, mode):
+    def _variable_callback(self, *_: str) -> None:
         if not self._variable_callback_blocked:
             self.set(self._variable.get(), from_variable_callback=True)
 
-    def _get_index_by_value(self, value: str):
-        for index, value_from_list in enumerate(self._value_list):
-            if value_from_list == value:
-                return index
-
-        raise ValueError(f"CTkSegmentedButton does not contain value '{value}'")
-
-    def _configure_button_corners_for_index(self, index: int):
-        if index == 0 and len(self._value_list) == 1:
-            if self._background_corner_colors is None:
-                self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._bg_color, self._bg_color, self._bg_color, self._bg_color))
-            else:
-                self._buttons_dict[self._value_list[index]].configure(background_corner_colors=self._background_corner_colors)
-
-        elif index == 0:
-            if self._background_corner_colors is None:
-                if self._orientation == "vertical":
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._bg_color, self._bg_color, self._sb_fg_color, self._sb_fg_color))
-                else:
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._bg_color, self._sb_fg_color, self._sb_fg_color, self._bg_color))
-            else:
-                if self._orientation == "vertical":
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._background_corner_colors[0], self._background_corner_colors[1], self._sb_fg_color, self._sb_fg_color))
-                else:
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._background_corner_colors[0], self._sb_fg_color, self._sb_fg_color, self._background_corner_colors[3]))
-
-        elif index == len(self._value_list) - 1:
-            if self._background_corner_colors is None:
-                if self._orientation == "vertical":
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._sb_fg_color, self._sb_fg_color, self._bg_color, self._bg_color))
-                else:
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._sb_fg_color, self._bg_color, self._bg_color, self._sb_fg_color))
-            else:
-                if self._orientation == "vertical":
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._sb_fg_color, self._sb_fg_color, self._background_corner_colors[2], self._background_corner_colors[3]))
-                else:
-                    self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._sb_fg_color, self._background_corner_colors[1], self._background_corner_colors[2], self._sb_fg_color))
-
-        else:
-            self._buttons_dict[self._value_list[index]].configure(background_corner_colors=(self._sb_fg_color, self._sb_fg_color, self._sb_fg_color, self._sb_fg_color))
-
-    def _unselect_button_by_value(self, value: str):
-        if value in self._buttons_dict:
-            self._buttons_dict[value].configure(fg_color=self._sb_unselected_color,
-                                                hover_color=self._sb_unselected_hover_color)
-
-    def _select_button_by_value(self, value: str):
-        if self._current_value is not None and self._current_value != "":
-            self._unselect_button_by_value(self._current_value)
-
-        self._current_value = value
-
-        self._buttons_dict[value].configure(fg_color=self._sb_selected_color,
-                                            hover_color=self._sb_selected_hover_color)
-
-    def _create_button(self, index: int, value: str) -> CTkButton:
-        new_button = CTkButton(self,
-                               width=0,
-                               height=self._current_height,
-                               corner_radius=self._sb_corner_radius,
-                               border_width=self._sb_border_width,
-                               fg_color=self._sb_unselected_color,
-                               border_color=self._sb_fg_color,
-                               hover_color=self._sb_unselected_hover_color,
-                               text_color=self._sb_text_color,
-                               text_color_disabled=self._sb_text_color_disabled,
-                               text=value,
-                               font=self._font,
-                               state=self._state,
-                               command=lambda v=value: self.set(v, from_button_callback=True),
-                               background_corner_colors=None,
-                               round_width_to_even_numbers=False,
-                               round_height_to_even_numbers=False)  # DrawEngine rendering option (so that theres no gap between buttons)
-
-        return new_button
-
     @staticmethod
-    def _check_unique_values(values: List[str]):
+    def _check_unique_values(values: list[str]) -> None:
         """ raises exception if values are not unique """
         if len(values) != len(set(values)):
             raise ValueError("CTkSegmentedButton values are not unique")
 
-    def _create_button_grid(self):
+    def _configure_button_corners_for_index(self, index: int) -> None:
+        fg_color = self._theme_sb_info["fg_color"]
+        is_vertical = self._theme_sb_info["orientation"] == "vertical"
+        button = self._buttons_dict[self._values[index]]
+
+        #just one button
+        if index == 0 and len(self._values) == 1:
+            if self._background_corner_colors is None:
+                button.configure(background_corner_colors=(self._bg_color, self._bg_color, self._bg_color, self._bg_color))
+            else:
+                button.configure(background_corner_colors=self._background_corner_colors)
+
+        #first button (left/top)
+        elif index == 0:
+            if self._background_corner_colors is None:
+                if is_vertical:
+                    button.configure(background_corner_colors=(self._bg_color, self._bg_color, fg_color, fg_color))
+                else:
+                    button.configure(background_corner_colors=(self._bg_color, fg_color, fg_color, self._bg_color))
+            else:
+                if is_vertical:
+                    button.configure(background_corner_colors=(self._background_corner_colors[0], self._background_corner_colors[1], fg_color, fg_color))
+                else:
+                    button.configure(background_corner_colors=(self._background_corner_colors[0], fg_color, fg_color, self._background_corner_colors[3]))
+
+        #last button (right/bottom)
+        elif index == len(self._values) - 1:
+            if self._background_corner_colors is None:
+                if is_vertical:
+                    button.configure(background_corner_colors=(fg_color, fg_color, self._bg_color, self._bg_color))
+                else:
+                    button.configure(background_corner_colors=(fg_color, self._bg_color, self._bg_color, fg_color))
+            else:
+                if is_vertical:
+                    button.configure(background_corner_colors=(fg_color, fg_color, self._background_corner_colors[2], self._background_corner_colors[3]))
+                else:
+                    button.configure(background_corner_colors=(fg_color, self._background_corner_colors[1], self._background_corner_colors[2], fg_color))
+
+        #button in the middle
+        else:
+            button.configure(background_corner_colors=(fg_color, fg_color, fg_color, fg_color))
+
+    def _unselect_button_by_value(self, value: str) -> None:
+        if value in self._buttons_dict:
+            self._buttons_dict[value].configure(fg_color=self._theme_sb_info["unselected_color"],
+                                                hover_color=self._theme_sb_info["unselected_hover_color"])
+
+    def _select_button_by_value(self, value: str) -> None:
+        self._unselect_button_by_value(self._current_value)
+        self._current_value = value
+        if value in self._buttons_dict:
+            self._buttons_dict[value].configure(fg_color=self._theme_sb_info["selected_color"],
+                                                hover_color=self._theme_sb_info["selected_hover_color"])
+
+    def _create_button(self, value: str) -> CTkButton:
+        new_button = CTkButton(self,
+                               width=0,
+                               height=self._desired_height,
+                               corner_radius=self._theme_sb_info["corner_radius"],
+                               border_width=self._theme_sb_info["border_width"],
+                               fg_color=self._theme_sb_info["unselected_color"],
+                               border_color=self._theme_sb_info["fg_color"],
+                               hover_color=self._theme_sb_info["unselected_hover_color"],
+                               text_color=self._theme_sb_info["text_color"],
+                               text_color_disabled=self._theme_sb_info["text_color_disabled"],
+                               text=value,
+                               font=self._theme_sb_info["font"],
+                               state=self._state,
+                               command=lambda v=value: self.set(v, from_button_callback=True))
+        return new_button
+
+    def _create_buttons_from_values(self) -> None:
+        self._buttons_dict.clear()
+        for index, value in enumerate(self._values):
+            self._buttons_dict[value] = self._create_button(value)
+            self._configure_button_corners_for_index(index)
+
+    def _update_geometry(self) -> None:
         number_of_columns, number_of_rows = self.grid_size()
-        if self._orientation == "vertical":
+        if self._theme_sb_info["orientation"] == "vertical":
             # remove minsize from every grid cell in the first column
             for n in range(number_of_rows):
                 self.grid_rowconfigure(n, weight=1, minsize=0)
             self.grid_columnconfigure(0, weight=1)
 
-            for index, value in enumerate(self._value_list):
-                self.grid_rowconfigure(index, weight=1, minsize=self._current_height)
+            for index, value in enumerate(self._values):
+                self.grid_rowconfigure(index, weight=1, minsize=self._reverse_scaling(self._current_height))
                 self._buttons_dict[value].grid(row=index, column=0, sticky="nsew")
         else:
             # remove minsize from every grid cell in the first row
@@ -208,81 +199,75 @@ class CTkSegmentedButton(CTkFrame):
                 self.grid_columnconfigure(n, weight=1, minsize=0)
             self.grid_rowconfigure(0, weight=1)
 
-            for index, value in enumerate(self._value_list):
-                self.grid_columnconfigure(index, weight=1, minsize=self._current_height)
+            for index, value in enumerate(self._values):
+                self.grid_columnconfigure(index, weight=1, minsize=self._reverse_scaling(self._current_height))
                 self._buttons_dict[value].grid(row=0, column=index, sticky="nsew")
 
-    def _create_buttons_from_values(self):
-        assert len(self._buttons_dict) == 0
-        assert len(self._value_list) > 0
-
-        for index, value in enumerate(self._value_list):
-            self._buttons_dict[value] = self._create_button(index, value)
-            self._configure_button_corners_for_index(index)
-
-    def configure(self, **kwargs):
+    def configure(self, **kwargs: Unpack[CTkSegmentedButtonArgs]) -> None:
         if "width" in kwargs:
-            super().configure(width=kwargs.pop("width"))
+            self._theme_sb_info["width"] = kwargs.pop("width")
+            super().configure(width=self._theme_sb_info["width"])
 
         if "height" in kwargs:
-            super().configure(height=kwargs.pop("height"))
+            self._theme_sb_info["height"] = kwargs.pop("height")
+            super().configure(height=self._theme_sb_info["height"])
 
         if "corner_radius" in kwargs:
-            self._sb_corner_radius = kwargs.pop("corner_radius")
-            super().configure(corner_radius=self._sb_corner_radius)
+            self._theme_sb_info["corner_radius"] = kwargs.pop("corner_radius")
+            super().configure(corner_radius=self._theme_sb_info["corner_radius"])
             for button in self._buttons_dict.values():
-                button.configure(corner_radius=self._sb_corner_radius)
+                button.configure(corner_radius=self._theme_sb_info["corner_radius"])
 
         if "border_width" in kwargs:
-            self._sb_border_width = kwargs.pop("border_width")
+            self._theme_sb_info["border_width"] = kwargs.pop("border_width")
             for button in self._buttons_dict.values():
-                button.configure(border_width=self._sb_border_width)
+                button.configure(border_width=self._theme_sb_info["border_width"])
 
         if "bg_color" in kwargs:
-            super().configure(bg_color=kwargs.pop("bg_color"))
+            self._theme_sb_info["bg_color"] = kwargs.pop("bg_color")
+            super().configure(bg_color=self._theme_sb_info["bg_color"])
             if len(self._buttons_dict) > 0:
                 self._configure_button_corners_for_index(0)
             if len(self._buttons_dict) > 1:
-                max_index = len(self._buttons_dict) - 1
-                self._configure_button_corners_for_index(max_index)
+                self._configure_button_corners_for_index(len(self._buttons_dict) - 1)
 
         if "fg_color" in kwargs:
-            self._sb_fg_color = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_sb_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
             for index, button in enumerate(self._buttons_dict.values()):
-                button.configure(border_color=self._sb_fg_color)
+                button.configure(border_color=self._theme_sb_info["fg_color"])
                 self._configure_button_corners_for_index(index)
 
         if "selected_color" in kwargs:
-            self._sb_selected_color = self._check_color_type(kwargs.pop("selected_color"))
+            self._theme_sb_info["selected_color"] = self._check_color_type(kwargs.pop("selected_color"))
             if self._current_value in self._buttons_dict:
-                self._buttons_dict[self._current_value].configure(fg_color=self._sb_selected_color)
+                self._buttons_dict[self._current_value].configure(fg_color=self._theme_sb_info["selected_color"])
 
         if "selected_hover_color" in kwargs:
-            self._sb_selected_hover_color = self._check_color_type(kwargs.pop("selected_hover_color"))
+            self._theme_sb_info["selected_hover_color"] = self._check_color_type(kwargs.pop("selected_hover_color"))
             if self._current_value in self._buttons_dict:
-                self._buttons_dict[self._current_value].configure(hover_color=self._sb_selected_hover_color)
+                self._buttons_dict[self._current_value].configure(hover_color=self._theme_sb_info["selected_hover_color"])
 
         if "unselected_color" in kwargs:
-            self._sb_unselected_color = self._check_color_type(kwargs.pop("unselected_color"))
+            self._theme_sb_info["unselected_color"] = self._check_color_type(kwargs.pop("unselected_color"))
             for value, button in self._buttons_dict.items():
                 if value != self._current_value:
-                    button.configure(fg_color=self._sb_unselected_color)
+                    button.configure(fg_color=self._theme_sb_info["unselected_color"])
 
         if "unselected_hover_color" in kwargs:
-            self._sb_unselected_hover_color = self._check_color_type(kwargs.pop("unselected_hover_color"))
+            self._theme_sb_info["unselected_hover_color"] = self._check_color_type(kwargs.pop("unselected_hover_color"))
             for value, button in self._buttons_dict.items():
                 if value != self._current_value:
-                    button.configure(hover_color=self._sb_unselected_hover_color)
+                    button.configure(hover_color=self._theme_sb_info["unselected_hover_color"])
 
         if "text_color" in kwargs:
-            self._sb_text_color = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_sb_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             for button in self._buttons_dict.values():
-                button.configure(text_color=self._sb_text_color)
+                button.configure(text_color=self._theme_sb_info["text_color"])
 
         if "text_color_disabled" in kwargs:
-            self._sb_text_color_disabled = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_sb_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
             for button in self._buttons_dict.values():
-                button.configure(text_color_disabled=self._sb_text_color_disabled)
+                button.configure(text_color_disabled=self._theme_sb_info["text_color_disabled"])
 
         if "background_corner_colors" in kwargs:
             self._background_corner_colors = kwargs.pop("background_corner_colors")
@@ -290,39 +275,31 @@ class CTkSegmentedButton(CTkFrame):
                 self._configure_button_corners_for_index(i)
 
         if "font" in kwargs:
-            self._font = kwargs.pop("font")
+            font = kwargs.pop("font")
             for button in self._buttons_dict.values():
-                button.configure(font=self._font)
+                button.configure(font=font)
 
         if "values" in kwargs:
             for button in self._buttons_dict.values():
                 button.destroy()
-            self._buttons_dict.clear()
-            self._value_list = kwargs.pop("values")
+            self._values = kwargs.pop("values")
 
-            self._check_unique_values(self._value_list)
+            self._check_unique_values(self._values)
 
-            if len(self._value_list) > 0:
+            if len(self._values) > 0:
                 self._create_buttons_from_values()
-                self._create_button_grid()
+                self._update_geometry()
 
-            if self._current_value in self._value_list:
+            if self._current_value in self._values:
                 self._select_button_by_value(self._current_value)
 
         if "variable" in kwargs:
             if self._variable is not None:  # remove old callback
                 self._variable.trace_remove("write", self._variable_callback_name)
             self._variable = kwargs.pop("variable")
-            if self._variable is not None and self._variable != "":
+            if self._variable is not None:
                 self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
                 self.set(self._variable.get(), from_variable_callback=True)
-
-        if "dynamic_resizing" in kwargs:
-            self._dynamic_resizing = kwargs.pop("dynamic_resizing")
-            if not self._dynamic_resizing:
-                self.grid_propagate(False)
-            else:
-                self.grid_propagate(True)
 
         if "command" in kwargs:
             self._command = kwargs.pop("command")
@@ -334,142 +311,105 @@ class CTkSegmentedButton(CTkFrame):
 
         check_kwargs_empty(kwargs, raise_error=True)
 
-    def cget(self, attribute_name: str) -> any:
-        if attribute_name == "corner_radius":
-            return self._sb_corner_radius
-        elif attribute_name == "border_width":
-            return self._sb_border_width
-
-        elif attribute_name == "fg_color":
-            return self._sb_fg_color
-        elif attribute_name == "selected_color":
-            return self._sb_selected_color
-        elif attribute_name == "selected_hover_color":
-            return self._sb_selected_hover_color
-        elif attribute_name == "unselected_color":
-            return self._sb_unselected_color
-        elif attribute_name == "unselected_hover_color":
-            return self._sb_unselected_hover_color
-        elif attribute_name == "text_color":
-            return self._sb_text_color
-        elif attribute_name == "text_color_disabled":
-            return self._sb_text_color_disabled
-        elif attribute_name == "background_corner_colors":
-            return self._background_corner_colors
-
-        elif attribute_name == "font":
-            return self._font
+    def cget(self, attribute_name: str) -> Any:
+        if attribute_name == "state":
+            return self._state
         elif attribute_name == "values":
-            return copy.copy(self._value_list)
+            return copy.copy(self._values)
         elif attribute_name == "variable":
             return self._variable
-        elif attribute_name == "dynamic_resizing":
-            return self._dynamic_resizing
         elif attribute_name == "command":
             return self._command
-        elif attribute_name == "state":
-            return self._state
-        elif attribute_name == "orientation":
-            return self._orientation
-
+        elif attribute_name == "background_corner_colors":
+            return self._background_corner_colors
+        elif attribute_name in self._theme_sb_info:
+            return self._theme_sb_info[attribute_name]
         else:
             return super().cget(attribute_name)
 
-    def set(self, value: str, from_variable_callback: bool = False, from_button_callback: bool = False):
-        if value == self._current_value:
-            return
-        elif value in self._buttons_dict:
+    def set(self, value: str, from_variable_callback: bool = False, from_button_callback: bool = False) -> None:
+        """ Changes the selected value to the desired one, regardless of the widget's state and admissible values. """
+        if value != self._current_value:
             self._select_button_by_value(value)
 
             if self._variable is not None and not from_variable_callback:
                 self._variable_callback_blocked = True
                 self._variable.set(value)
                 self._variable_callback_blocked = False
+
+            if from_button_callback:
+                if self._command is not None:
+                    self._command(self._current_value)
+
+    def get(self, index: int | None = None) -> str:
+        """ Returns the current value.\n
+        If an index is provided, returns the value in that position. """
+        if index is None:
+            return self._current_value
         else:
-            if self._current_value in self._buttons_dict:
-                self._unselect_button_by_value(self._current_value)
-            self._current_value = value
+            return self._values[index]
 
-            if self._variable is not None and not from_variable_callback:
-                self._variable_callback_blocked = True
-                self._variable.set(value)
-                self._variable_callback_blocked = False
-
-        if from_button_callback:
-            if self._command is not None:
-                self._command(self._current_value)
-
-    def get(self) -> str:
-        return self._current_value
-
-    def index(self, value: Optional[str] = None) -> int:
-        """ returns index of selected value, raises ValueError if the value is missing
-        if the parameter is provided, returns the associated index or raises ValueError if no value is found """
+    def index(self, value: str | None = None) -> int:
+        """ Returns index of selected value, raises ValueError if the value is missing.\n
+        If the parameter is provided, returns the associated index or raises ValueError if no value is found. """
         if value is None:
-            return self._value_list.index(self._current_value)
-        else:
-            return self._value_list.index(value)
+            value = self._current_value
+        return self._values.index(value)
 
-    def insert(self, index: int, value: str):
-        if value not in self._buttons_dict:
-            if value != "":
-                self._value_list.insert(index, value)
-                self._buttons_dict[value] = self._create_button(index, value)
-
-                self._configure_button_corners_for_index(index)
-                if index > 0:
-                    self._configure_button_corners_for_index(index - 1)
-                if index < len(self._buttons_dict) - 1:
-                    self._configure_button_corners_for_index(index + 1)
-
-                self._create_button_grid()
-
-                if value == self._current_value:
-                    self._select_button_by_value(self._current_value)
-            else:
-                raise ValueError(f"CTkSegmentedButton can not insert value ''")
-        else:
-            raise ValueError(f"CTkSegmentedButton can not insert value '{value}', already part of the values")
-        
-    def len(self) -> int:
-        """ returns the number of defined buttons """
-        return len(self._value_list)
-
-    def move(self, new_index: int, value: str):
-        if 0 <= new_index < len(self._value_list):
-            if value in self._buttons_dict:
-                self.delete(value)
-                self.insert(new_index, value)
-            else:
-                raise ValueError(f"CTkSegmentedButton has no value named '{value}'")
-        else:
-            raise ValueError(f"CTkSegmentedButton new_index {new_index} not in range of value list with len {len(self._value_list)}")
-
-    def delete(self, value: str):
+    def insert(self, index: int, value: str) -> None:
+        """ Creates new button with given value at position index. """
+        if value == "":
+            raise ValueError("CTkSegmentedButton can not insert value ''")
         if value in self._buttons_dict:
-            self._buttons_dict[value].destroy()
-            self._buttons_dict.pop(value)
-            index_to_remove = self._get_index_by_value(value)
-            self._value_list.pop(index_to_remove)
+            raise ValueError(f"CTkSegmentedButton can not insert value '{value}', already part of the values")
 
-            # removed index was outer right element
-            if index_to_remove == len(self._buttons_dict) and len(self._buttons_dict) > 0:
-                self._configure_button_corners_for_index(index_to_remove - 1)
+        self._values.insert(index, value)
+        self._buttons_dict[value] = self._create_button(value)
 
-            # removed index was outer left element
-            if index_to_remove == 0 and len(self._buttons_dict) > 0:
-                self._configure_button_corners_for_index(0)
+        self._configure_button_corners_for_index(index)
+        if index > 0:
+            self._configure_button_corners_for_index(index - 1)
+        if index < len(self._buttons_dict) - 1:
+            self._configure_button_corners_for_index(index + 1)
 
-            #if index_to_remove <= len(self._buttons_dict) - 1:
-            #    self._configure_button_corners_for_index(index_to_remove)
+        self._update_geometry()
 
-            self._create_button_grid()
-        else:
+        if value == self._current_value:
+            self._select_button_by_value(self._current_value)
+
+    def add(self, value: str) -> CTkFrame:
+        """ Appends new button with given value. """
+        return self.insert(len(self._buttons_dict), value)
+
+    def delete(self, value: str) -> None:
+        """ Deletes button by value. """
+        if value not in self._buttons_dict:
             raise ValueError(f"CTkSegmentedButton does not contain value '{value}'")
 
-    def bind(self, sequence=None, command=None, add=None):
-        raise NotImplementedError
+        self._buttons_dict.pop(value).destroy()
+        index_to_remove = self.index(value)
+        self._values.pop(index_to_remove)
 
-    def unbind(self, sequence=None, funcid=None):
-        raise NotImplementedError
+        #there are still buttons
+        if len(self._buttons_dict) > 0:
+            # removed index was first element (left or top)
+            if index_to_remove == 0:
+                self._configure_button_corners_for_index(0)
+            # removed index was last element (right or bottom)
+            elif index_to_remove == len(self._buttons_dict):
+                self._configure_button_corners_for_index(index_to_remove - 1)
 
+        self._update_geometry()
+
+    def len(self) -> int:
+        """ Returns the number of defined buttons. """
+        return len(self._values)
+
+    def move(self, new_index: int, value: str) -> None:
+        if not 0 <= new_index < len(self._values):
+            raise ValueError(f"CTkSegmentedButton new_index {new_index} not in range of value list with len {len(self._values)}")
+        if value not in self._buttons_dict:
+            raise ValueError(f"CTkSegmentedButton has no value named '{value}'")
+
+        self.delete(value)
+        self.insert(new_index, value)

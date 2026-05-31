@@ -1,83 +1,73 @@
+from __future__ import annotations
+
 import tkinter
-from typing import Union, Tuple, Callable, Optional, Any
+from typing import Any
+from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_rendering import CTkCanvas
-from .theme import ThemeManager
-from .core_rendering import DrawEngine
-from .core_widget_classes import CTkBaseClass
-from .font import CTkFont
-from .image import CTkImage
-from .utility import pop_from_dict_by_set, check_kwargs_empty
+from .core_widget_classes import CTkContainer, CTkWidget
+from .core_rendering import CTkCanvas, BorderedRoundedRect
+from .font import CTkFont, FontType
+from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
+from .image import CTkImage, ImageType
+from .utility import pop_from_dict_by_set
 
 
-class CTkLabel(CTkBaseClass):
+class CTkLabelArgs(TypedDict, total=False):
+    width: int
+    height: int
+    corner_radius: int
+    border_width: int
+    border_spacing: int
+    bg_color: TransparentColorType
+    fg_color: TransparentColorType
+    border_color: ColorType
+    text_color: ColorType
+    text_color_disabled: ColorType
+    text: str
+    font: FontType
+    anchor: AnchorType
+    image: ImageType
+    compound: Literal["center", "left", "right", "top", "bottom", "none"]
+    wraplength: int
+
+
+class CTkLabel(CTkWidget):
     """
-    Label with rounded corners. Default is fg_color=None (transparent fg_color).
+    Label with rounded corners.
     For detailed information check out the documentation.
-
-    state argument will probably be removed because it has no effect
     """
 
     # attributes that are passed to and managed by the tkinter entry only:
-    _valid_tk_label_attributes = {"cursor", "justify", "padx", "pady",
-                                  "textvariable", "state", "takefocus", "underline"}
+    _valid_tk_label_attributes: set[str] = {"cursor", "justify", "padx", "pady",
+                                            "textvariable", "state", "takefocus", "underline"}
 
     def __init__(self,
-                 master: Any,
-                 width: int = 0,
-                 height: int = 28,
-                 corner_radius: Optional[int] = None,
-                 border_width: Optional[int] = None,
+                 master: CTkContainer,
+                 theme_key: str | None = None,
+                 **kwargs: Unpack[CTkLabelArgs]) -> None:
 
-                 bg_color: Union[str, Tuple[str, str]] = "transparent",
-                 fg_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 border_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color: Optional[Union[str, Tuple[str, str]]] = None,
-                 text_color_disabled: Optional[Union[str, Tuple[str, str]]] = None,
+        label_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_label_attributes)
 
-                 text: str = "CTkLabel",
-                 font: Optional[Union[tuple, CTkFont]] = None,
-                 image: Union[CTkImage, None] = None,
-                 compound: str = "center",
-                 anchor: str = "center",  # label anchor: center, n, e, s, w
-                 wraplength: int = 0,
-                 **kwargs):
+        self._theme_info: CTkLabelArgs = ThemeManager.get_info("CTkLabel", theme_key, **kwargs)
 
-        # transfer basic functionality (_bg_color, size, __appearance_mode, scaling) to CTkBaseClass
-        super().__init__(master=master, bg_color=bg_color, width=width, height=height)
+        #validity checks
+        for key in self._theme_info:
+            if "_color" in key:
+                self._theme_info[key] = self._check_color_type(self._theme_info[key],
+                                                               transparency=key in ("fg_color", "bg_color"))
 
-        # color
-        self._fg_color = ThemeManager.theme["CTkLabel"]["fg_color"] if fg_color is None else self._check_color_type(fg_color, transparency=True)
-        self._border_color: Union[str, Tuple[str, str]] = ThemeManager.theme["CTkLabel"]["border_color"] if border_color is None else self._check_color_type(border_color)
-        self._text_color = ThemeManager.theme["CTkLabel"]["text_color"] if text_color is None else self._check_color_type(text_color)
-
-        if text_color_disabled is None:
-            if "text_color_disabled" in ThemeManager.theme["CTkLabel"]:
-                self._text_color_disabled = ThemeManager.theme["CTkLabel"]["text_color_disabled"]
-            else:
-                self._text_color_disabled = self._text_color
-        else:
-            self._text_color_disabled = self._check_color_type(text_color_disabled)
-
-        # shape
-        self._corner_radius = ThemeManager.theme["CTkLabel"]["corner_radius"] if corner_radius is None else corner_radius
-        self._border_width: int = ThemeManager.theme["CTkLabel"]["border_width"] if border_width is None else border_width
-
-        # text
-        self._anchor = anchor
-        self._text = text
-        self._wraplength = wraplength
+        super().__init__(master=master,
+                         bg_color=self._theme_info["bg_color"],
+                         width=self._theme_info["width"],
+                         height=self._theme_info["height"])
 
         # image
-        self._image = self._check_image_type(image)
-        self._compound = compound
-        if isinstance(self._image, CTkImage):
-            self._image.add_configure_callback(self._update_image)
+        self._image: CTkImage = CTkImage.from_parameter(self._theme_info["image"])
+        self._image.add_configure_callback(self._update_image)
 
         # font
-        self._font = CTkFont() if font is None else self._check_font_type(font)
-        if isinstance(self._font, CTkFont):
-            self._font.add_size_configure_callback(self._update_font)
+        self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
+        self._font.add_size_configure_callback(self._update_font)
 
         # configure grid system (1x1)
         self.grid_rowconfigure(0, weight=1)
@@ -85,53 +75,52 @@ class CTkLabel(CTkBaseClass):
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
-                                 width=self._apply_widget_scaling(self._desired_width),
-                                 height=self._apply_widget_scaling(self._desired_height))
+                                 width=self._apply_scaling(self._desired_width),
+                                 height=self._apply_scaling(self._desired_height))
         self._canvas.grid(row=0, column=0, sticky="nswe")
-        self._draw_engine = DrawEngine(self._canvas)
+        self._rounded_rect = BorderedRoundedRect(self._canvas)
+        self._bind_targets.append(self._canvas)
 
         self._label = tkinter.Label(master=self,
                                     highlightthickness=0,
                                     padx=0,
                                     pady=0,
                                     borderwidth=0,
-                                    anchor=self._anchor,
-                                    compound=self._compound,
-                                    wraplength=self._apply_widget_scaling(self._wraplength),
-                                    text=self._text,
+                                    anchor=self._theme_info["anchor"],
+                                    compound=self._theme_info["compound"],
+                                    wraplength=self._apply_scaling(self._theme_info["wraplength"]),
+                                    text=self._theme_info["text"],
                                     font=self._apply_font_scaling(self._font))
-        self._label.configure(**pop_from_dict_by_set(kwargs, self._valid_tk_label_attributes))
+        self._label.configure(**label_kwargs)
+        self._bind_targets.append(self._label)
+        self._focus_target = self._label
 
-        check_kwargs_empty(kwargs, raise_error=True)
+        self._update_image()
+        self._draw(force_colors_update=True)
 
-        self._create_grid()
+    def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
+        super()._set_scaling(new_widget_scaling, new_window_scaling)
+
+        self._canvas.configure(width=self._apply_scaling(self._desired_width),
+                               height=self._apply_scaling(self._desired_height))
+        self._label.configure(font=self._apply_font_scaling(self._font))
+        self._label.configure(wraplength=self._apply_scaling(self._theme_info["wraplength"]))
+
         self._update_image()
         self._draw()
 
-    def _set_scaling(self, *args, **kwargs):
-        super()._set_scaling(*args, **kwargs)
-
-        self._canvas.configure(width=self._apply_widget_scaling(self._desired_width), height=self._apply_widget_scaling(self._desired_height))
-        self._label.configure(font=self._apply_font_scaling(self._font))
-        self._label.configure(wraplength=self._apply_widget_scaling(self._wraplength))
-
-        self._create_grid()
-        self._update_image()
-        self._draw(no_color_updates=True)
-
-    def _set_appearance_mode(self, mode_string):
-        super()._set_appearance_mode(mode_string)
+    def _set_appearance_mode(self) -> None:
+        super()._set_appearance_mode()
         self._update_image()
 
-    def _set_dimensions(self, width=None, height=None):
+    def _set_dimensions(self, width: int | float | None = None, height: int | float | None = None) -> None:
         super()._set_dimensions(width, height)
 
-        self._canvas.configure(width=self._apply_widget_scaling(self._desired_width),
-                               height=self._apply_widget_scaling(self._desired_height))
-        self._create_grid()
+        self._canvas.configure(width=self._apply_scaling(self._desired_width),
+                               height=self._apply_scaling(self._desired_height))
         self._draw()
 
-    def _update_font(self):
+    def _update_font(self) -> None:
         """ pass font to tkinter widgets with applied font scaling and update grid with workaround """
         self._label.configure(font=self._apply_font_scaling(self._font))
 
@@ -140,176 +129,110 @@ class CTkLabel(CTkBaseClass):
         self._canvas.grid_forget()
         self._canvas.grid(row=0, column=0, sticky="nswe")
 
-    def _update_image(self):
-        if isinstance(self._image, CTkImage):
-            self._label.configure(image=self._image.create_scaled_photo_image(self._get_widget_scaling(),
-                                                                              self._get_appearance_mode()))
-        elif self._image is not None:
-            self._label.configure(image=self._image)
+    def _update_image(self) -> None:
+        image = self._image.get(self.get_scaling(), self._get_appearance_mode())
+        self._label.configure(image=image)
 
-    def destroy(self):
-        if isinstance(self._font, CTkFont):
-            self._font.remove_size_configure_callback(self._update_font)
+    def destroy(self) -> None:
+        self._font.remove_size_configure_callback(self._update_font)
+        self._image.remove_configure_callback(self._update_image)
         super().destroy()
 
-    def _create_grid(self):
-        """ configure grid system (1x1) """
+    def _draw(self, force_colors_update: bool = False) -> None:
+        super()._draw(force_colors_update)
 
-        text_label_grid_sticky = self._anchor if self._anchor != "center" else ""
-        self._label.grid(row=0, column=0, sticky=text_label_grid_sticky,
-                         padx=self._apply_widget_scaling(min(self._corner_radius, round(self._current_height / 2))))
+        requires_recoloring = self._rounded_rect.update(self._current_width,
+                                                        self._current_height,
+                                                        self._apply_scaling(self._theme_info["corner_radius"]),
+                                                        self._apply_scaling(self._theme_info["border_width"]))
 
-    def _draw(self, no_color_updates=False):
-        super()._draw(no_color_updates)
+        if self._rounded_rect.info["spacings_changed"]:
+            self._update_geometry()
 
-        requires_recoloring = self._draw_engine.draw_rounded_rect_with_border(self._apply_widget_scaling(self._current_width),
-                                                                              self._apply_widget_scaling(self._current_height),
-                                                                              self._apply_widget_scaling(self._corner_radius),
-                                                                              self._apply_widget_scaling(self._border_width))
-
-        if no_color_updates is False or requires_recoloring:
+        if force_colors_update or requires_recoloring:
+            fg_color = self._apply_appearance_mode(self._theme_info["fg_color"], if_transparent=self._bg_color)
 
             self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
+            self._rounded_rect.set_main_color(fg_color)
+            self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
+            self._label.configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]),
+                                  disabledforeground=self._apply_appearance_mode(self._theme_info["text_color_disabled"]),
+                                  bg=fg_color)
 
-            # set color for the button border parts (outline)
-            self._canvas.itemconfig("border_parts",
-                                    outline=self._apply_appearance_mode(self._border_color),
-                                    fill=self._apply_appearance_mode(self._border_color))
+    def _update_geometry(self) -> None:
+        sticky = self._theme_info["anchor"] if self._theme_info["anchor"] != "center" else ""
+        spacing = self._rounded_rect.info.get("inscribed_spacing", 0) + self._apply_scaling(self._theme_info["border_spacing"])
+        self._label.grid(row=0, column=0, sticky=sticky, padx=spacing, pady=spacing)
 
-            # set color for inner parts
-            if self._fg_color == "transparent":
-                self._canvas.itemconfig("inner_parts",
-                                        outline=self._apply_appearance_mode(self._bg_color),
-                                        fill=self._apply_appearance_mode(self._bg_color))
-
-                self._label.configure(fg=self._apply_appearance_mode(self._text_color),
-                                      disabledforeground=self._apply_appearance_mode(self._text_color_disabled),
-                                      bg=self._apply_appearance_mode(self._bg_color))
-            else:
-                self._canvas.itemconfig("inner_parts",
-                                        outline=self._apply_appearance_mode(self._fg_color),
-                                        fill=self._apply_appearance_mode(self._fg_color))
-
-                self._label.configure(fg=self._apply_appearance_mode(self._text_color),
-                                      disabledforeground=self._apply_appearance_mode(self._text_color_disabled),
-                                      bg=self._apply_appearance_mode(self._fg_color))
-
-    def configure(self, require_redraw=False, **kwargs):
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkLabelArgs]) -> None:
         if "corner_radius" in kwargs:
-            self._corner_radius = kwargs.pop("corner_radius")
-            self._create_grid()
+            self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
 
         if "border_width" in kwargs:
-            self._border_width = kwargs.pop("border_width")
-            self._create_grid()
+            self._theme_info["border_width"] = kwargs.pop("border_width")
             require_redraw = True
 
+        if "border_spacing" in kwargs:
+            self._theme_info["border_spacing"] = kwargs.pop("border_spacing")
+            self._update_geometry()
+
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._border_color = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._text_color = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._text_color_disabled = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
             require_redraw = True
 
         if "text" in kwargs:
-            self._text = kwargs.pop("text")
-            self._label.configure(text=self._text)
+            self._theme_info["text"] = kwargs.pop("text")
+            self._label.configure(text=self._theme_info["text"])
 
         if "font" in kwargs:
-            if isinstance(self._font, CTkFont):
-                self._font.remove_size_configure_callback(self._update_font)
-            self._font = self._check_font_type(kwargs.pop("font"))
-            if isinstance(self._font, CTkFont):
-                self._font.add_size_configure_callback(self._update_font)
+            self._font.remove_size_configure_callback(self._update_font)
+            self._font = CTkFont.from_parameter(kwargs.pop("font"))
+            self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
         if "image" in kwargs:
-            if isinstance(self._image, CTkImage):
-                self._image.remove_configure_callback(self._update_image)
-            self._image = self._check_image_type(kwargs.pop("image"))
-            if isinstance(self._image, CTkImage):
-                self._image.add_configure_callback(self._update_image)
+            self._image.remove_configure_callback(self._update_image)
+            self._image = CTkImage.from_parameter(kwargs.pop("image"))
+            self._image.add_configure_callback(self._update_image)
             self._update_image()
 
         if "compound" in kwargs:
-            self._compound = kwargs.pop("compound")
-            self._label.configure(compound=self._compound)
+            self._theme_info["compound"] = kwargs.pop("compound")
+            self._label.configure(compound=self._theme_info["compound"])
 
         if "anchor" in kwargs:
-            self._anchor = kwargs.pop("anchor")
-            self._label.configure(anchor=self._anchor)
-            self._create_grid()
+            self._theme_info["anchor"] = kwargs.pop("anchor")
+            self._label.configure(anchor=self._theme_info["anchor"])
+            self._update_geometry()
 
         if "wraplength" in kwargs:
-            self._wraplength = kwargs.pop("wraplength")
-            self._label.configure(wraplength=self._apply_widget_scaling(self._wraplength))
+            self._theme_info["wraplength"] = kwargs.pop("wraplength")
+            self._label.configure(wraplength=self._apply_scaling(self._theme_info["wraplength"]))
 
         self._label.configure(**pop_from_dict_by_set(kwargs, self._valid_tk_label_attributes))  # configure tkinter.Label
-        super().configure(require_redraw=require_redraw, **kwargs)  # configure CTkBaseClass
+        super().configure(require_redraw=require_redraw, **kwargs)
 
-    def cget(self, attribute_name: str) -> any:
-        if attribute_name == "corner_radius":
-            return self._corner_radius
-        elif attribute_name == "border_width":
-            return self._border_width
-
-        elif attribute_name == "fg_color":
-            return self._fg_color
-        elif attribute_name == "border_color":
-            return self._border_color
-        elif attribute_name == "text_color":
-            return self._text_color
-        elif attribute_name == "text_color_disabled":
-            return self._text_color_disabled
-
-        elif attribute_name == "text":
-            return self._text
-        elif attribute_name == "font":
+    def cget(self, attribute_name: str) -> Any:
+        if attribute_name == "font":
             return self._font
         elif attribute_name == "image":
             return self._image
-        elif attribute_name == "compound":
-            return self._compound
-        elif attribute_name == "anchor":
-            return self._anchor
-        elif attribute_name == "wraplength":
-            return self._wraplength
-
+        elif attribute_name in self._theme_info:
+            return self._theme_info[attribute_name]
         elif attribute_name in self._valid_tk_label_attributes:
             return self._label.cget(attribute_name)  # cget of tkinter.Label
         else:
-            return super().cget(attribute_name)  # cget of CTkBaseClass
-
-    def bind(self, sequence: str = None, command: Callable = None, add: str = True):
-        """ called on the tkinter.Label and tkinter.Canvas """
-        if not (add == "+" or add is True):
-            raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
-        self._canvas.bind(sequence, command, add=True)
-        self._label.bind(sequence, command, add=True)
-
-    def unbind(self, sequence: str = None, funcid: Optional[str] = None):
-        """ called on the tkinter.Label and tkinter.Canvas """
-        if funcid is not None:
-            raise ValueError("'funcid' argument can only be None, because there is a bug in" +
-                             " tkinter and its not clear whether the internal callbacks will be unbinded or not")
-        self._canvas.unbind(sequence, None)
-        self._label.unbind(sequence, None)
-
-    def focus(self):
-        return self._label.focus()
-
-    def focus_set(self):
-        return self._label.focus_set()
-
-    def focus_force(self):
-        return self._label.focus_force()
+            return super().cget(attribute_name)

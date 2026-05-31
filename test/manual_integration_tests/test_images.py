@@ -6,10 +6,10 @@ import os
 file_path = os.path.dirname(os.path.realpath(__file__))
 image_1 = customtkinter.CTkImage(light_image=Image.open(file_path + "/test_images/add_folder_dark.png"),
                                  dark_image=Image.open(file_path + "/test_images/add_folder_light.png"),
-                                 size=(30, 30))
+                                 width=30, height=30)
 image_1.configure(dark_image=Image.open(file_path + "/test_images/add_folder_light.png"))
 image_2 = customtkinter.CTkImage(light_image=Image.open(file_path + "/test_images/bg_gradient.jpg"),
-                                 size=(30, 50))
+                                 width=30, height=50)
 
 app = customtkinter.CTk()
 app.geometry("500x900")

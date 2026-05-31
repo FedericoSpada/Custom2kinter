@@ -1,1 +1,7 @@
-from .utility_functions import pop_from_dict_by_set, check_kwargs_empty
+from .utility_functions import pop_from_dict_by_set
+from .utility_functions import check_kwargs_empty
+from .utility_functions import deep_update
+from .utility_functions import parse_geometry_string
+from .utility_functions import get_window_root_of_widget
+from .utility_functions import get_proper_cursor
+from .utility_functions import get_width_height_from_orientation

@@ -18,8 +18,9 @@ class App(customtkinter.CTk):
 
         # load and create background image
         current_path = os.path.dirname(os.path.realpath(__file__))
-        self.bg_image = customtkinter.CTkImage(Image.open(current_path + "/test_images/bg_gradient.jpg"),
-                                               size=(self.width, self.height))
+        self.bg_image = customtkinter.CTkImage(light_image=Image.open(current_path + "/test_images/bg_gradient.jpg"),
+                                               width=self.width,
+                                               height=self.height)
         self.bg_image_label = customtkinter.CTkLabel(self, image=self.bg_image)
         self.bg_image_label.grid(row=0, column=0)
 

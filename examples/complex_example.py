@@ -62,7 +62,7 @@ class App(customtkinter.CTk):
         self.tabview.tab("CTkTabview").grid_columnconfigure(0, weight=1)  # configure grid of individual tabs
         self.tabview.tab("Tab 2").grid_columnconfigure(0, weight=1)
 
-        self.optionmenu_1 = customtkinter.CTkOptionMenu(self.tabview.tab("CTkTabview"), dynamic_resizing=False,
+        self.optionmenu_1 = customtkinter.CTkOptionMenu(self.tabview.tab("CTkTabview"),
                                                         values=["Value 1", "Value 2", "Value Long Long Long"])
         self.optionmenu_1.grid(row=0, column=0, padx=20, pady=(20, 10))
         self.combobox_1 = customtkinter.CTkComboBox(self.tabview.tab("CTkTabview"),
