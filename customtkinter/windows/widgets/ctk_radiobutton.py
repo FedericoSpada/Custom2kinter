@@ -8,10 +8,10 @@ from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkRadioButtonArgs(TypedDict, total=False):
+class CTkRadioButtonThemedArgs(TypedDict, total=False):
     width: int
     height: int
     radiobutton_width: int
@@ -31,6 +31,13 @@ class CTkRadioButtonArgs(TypedDict, total=False):
     font: FontType
     compound: Literal["left", "right", "top", "bottom"]
 
+class CTkRadioButtonArgs(CTkRadioButtonThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    value: int | float | str | bool
+    textvariable: tkinter.StringVar | None
+    variable: tkinter.Variable | None
+    command: Callable[[], None] | None
+
 
 class CTkRadioButton(CTkWidget):
     """
@@ -41,14 +48,10 @@ class CTkRadioButton(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 textvariable: tkinter.StringVar | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 value: int | float | str | bool = 0,
-                 variable: tkinter.Variable | None = None,
-                 command: Callable[[], None] | None = None,
                  **kwargs: Unpack[CTkRadioButtonArgs]) -> None:
 
-        self._theme_info: CTkRadioButtonArgs = ThemeManager.get_info("CTkRadioButton", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkRadioButtonThemedArgs.__annotations__)
+        self._theme_info: CTkRadioButtonThemedArgs = ThemeManager.get_info("CTkRadioButton", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -66,11 +69,11 @@ class CTkRadioButton(CTkWidget):
         self._font.add_size_configure_callback(self._update_font)
 
         # functionality
-        self._state: Literal["normal", "disabled"] = state
-        self._command: Callable[[], None] | None = command
-        self._value: int | float | str | bool = value
-        self._textvariable: tkinter.StringVar | None = textvariable
-        self._variable: tkinter.Variable | None = variable
+        self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
+        self._command: Callable[[], None] | None = kwargs.pop("command", None)
+        self._value: int | float | str | bool = kwargs.pop("value", 0)
+        self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
+        self._variable: tkinter.Variable | None = kwargs.pop("variable", None)
         self._variable_callback_name: str | None = None
         self._variable_callback_blocked: bool = False
         self._check_state: bool = False
@@ -102,6 +105,9 @@ class CTkRadioButton(CTkWidget):
         if self._variable is not None:
             self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
             self._check_state = self._variable.get() == self._value
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._create_bindings()
         self._set_cursor()

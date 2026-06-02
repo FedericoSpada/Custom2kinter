@@ -8,12 +8,12 @@ from typing_extensions import Literal, TypedDict, Unpack
 from .core_widget_classes import CTkContainer
 from .font.ctk_font import FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import check_kwargs_empty
 from .ctk_frame import CTkFrame
 from .ctk_button import CTkButton
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkSegmentedButtonArgs(TypedDict, total=False):
+class CTkSegmentedButtonThemedArgs(TypedDict, total=False):
     orientation: Literal["horizontal", "vertical"]
     width: int
     height: int
@@ -29,6 +29,13 @@ class CTkSegmentedButtonArgs(TypedDict, total=False):
     text_color_disabled: ColorType
     font: FontType
 
+class CTkSegmentedButtonArgs(CTkSegmentedButtonThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    values: list[str] | None
+    variable: tkinter.StringVar | None
+    command: Callable[[str], None] | None
+    background_corner_colors: tuple[ColorType, ...] | None
+
 
 class CTkSegmentedButton(CTkFrame):
     """
@@ -39,14 +46,10 @@ class CTkSegmentedButton(CTkFrame):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 values: list[str] | None = None,
-                 variable: tkinter.StringVar | None = None,
-                 command: Callable[[str], None] | None = None,
-                 background_corner_colors: tuple[ColorType, ...] | None = None,
                  **kwargs: Unpack[CTkSegmentedButtonArgs]) -> None:
 
-        self._theme_sb_info: CTkSegmentedButtonArgs = ThemeManager.get_info("CTkSegmentedButton", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkSegmentedButtonThemedArgs.__annotations__)
+        self._theme_sb_info: CTkSegmentedButtonThemedArgs = ThemeManager.get_info("CTkSegmentedButton", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_sb_info:
@@ -62,16 +65,19 @@ class CTkSegmentedButton(CTkFrame):
                          corner_radius=self._theme_sb_info["corner_radius"])
 
         # rendering options
-        self._background_corner_colors: tuple[ColorType, ...] | None = background_corner_colors
+        self._background_corner_colors: tuple[ColorType, ...] | None = kwargs.pop("background_corner_colors", None)
 
         #functionality
-        self._state: Literal["normal", "disabled"] = state
-        self._command: Callable[[str], None] | None = command
-        self._values: list[str] = [] if values is None else values
-        self._variable: tkinter.StringVar | None = variable
+        self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
+        self._command: Callable[[str], None] | None = kwargs.pop("command", None)
+        self._values: list[str] = kwargs.pop("values", [])
+        self._variable: tkinter.StringVar | None = kwargs.pop("variable", None)
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
         self._buttons_dict: dict[str, CTkButton] = {}  # mapped from value to button object
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._check_unique_values(self._values)
         self._current_value: str = ""
@@ -294,7 +300,7 @@ class CTkSegmentedButton(CTkFrame):
                 self._select_button_by_value(self._current_value)
 
         if "variable" in kwargs:
-            if self._variable is not None:  # remove old callback
+            if self._variable is not None:
                 self._variable.trace_remove("write", self._variable_callback_name)
             self._variable = kwargs.pop("variable")
             if self._variable is not None:
@@ -377,9 +383,9 @@ class CTkSegmentedButton(CTkFrame):
         if value == self._current_value:
             self._select_button_by_value(self._current_value)
 
-    def add(self, value: str) -> CTkFrame:
+    def add(self, value: str) -> None:
         """ Appends new button with given value. """
-        return self.insert(len(self._buttons_dict), value)
+        self.insert(len(self._buttons_dict), value)
 
     def delete(self, value: str) -> None:
         """ Deletes button by value. """

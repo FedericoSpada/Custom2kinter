@@ -8,10 +8,10 @@ from typing_extensions import Literal, TypedDict, Unpack
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import get_proper_cursor, get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, get_width_height_from_orientation
 
 
-class CTkSliderArgs(TypedDict, total=False):
+class CTkSliderThemedArgs(TypedDict, total=False):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -26,6 +26,15 @@ class CTkSliderArgs(TypedDict, total=False):
     progress_color: TransparentColorType
     hover: bool
 
+class CTkSliderArgs(CTkSliderThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    from_: int | float
+    to: int | float
+    number_of_steps: int | None
+    scroll_step: float | None
+    variable: tkinter.IntVar | tkinter.DoubleVar | None
+    command: Callable[[float], None] | None
+
 
 class CTkSlider(CTkWidget):
     """
@@ -36,16 +45,10 @@ class CTkSlider(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 from_: int | float = 0.0,
-                 to: int | float = 1.0,
-                 number_of_steps: int | None = None,
-                 scroll_step: float | None = None,
-                 variable: tkinter.IntVar | tkinter.DoubleVar | None = None,
-                 command: Callable[[float], None] | None = None,
                  **kwargs: Unpack[CTkSliderArgs]) -> None:
 
-        self._theme_info: CTkSliderArgs = ThemeManager.get_info("CTkSlider", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkSliderThemedArgs.__annotations__)
+        self._theme_info: CTkSliderThemedArgs = ThemeManager.get_info("CTkSlider", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -64,16 +67,16 @@ class CTkSlider(CTkWidget):
                          height=height)
 
         #functionality
-        self._state: Literal["normal", "disabled"] = state
-        self._command: Callable[[float], None] | None = command
-        self._variable: tkinter.IntVar | tkinter.DoubleVar = variable
+        self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
+        self._command: Callable[[float], None] | None = kwargs.pop("command", None)
+        self._variable: tkinter.IntVar | tkinter.DoubleVar = kwargs.pop("variable", None)
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
         self._value: float = 0.5  # initial value of slider in percent
-        self._from: int | float = from_
-        self._to: int | float = to
-        self._number_of_steps: int | None = number_of_steps
-        self._scroll_step: float = (1 / (20 if number_of_steps is None else number_of_steps)) if scroll_step is None else scroll_step
+        self._from: int | float = kwargs.pop("from_", 0.0)
+        self._to: int | float = kwargs.pop("to", 1.0)
+        self._number_of_steps: int | None = kwargs.pop("number_of_steps", None)
+        self._scroll_step: float = kwargs.pop("scroll_step", (1 / (20 if self._number_of_steps is None else self._number_of_steps)))
         self._output_value: float = self._from + (self._value * (self._to - self._from))
         self._hover_state: bool = False
         self._motion_center_offset: float = 0.0
@@ -84,10 +87,13 @@ class CTkSlider(CTkWidget):
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.place(x=0, y=0, relwidth=1, relheight=1)
         self._rounded_rect = BorderedRoundedRect(self._canvas)
-        self._progress_bar = RoundedRect(self._canvas)
+        self._progress_bar = RoundedRect(self._canvas, events_transparent=True)
         self._slider = RoundedRect(self._canvas)
         self._bind_targets.append(self._canvas)
         self._focus_target = self._canvas
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._create_bindings()
         self._set_cursor()
@@ -107,7 +113,6 @@ class CTkSlider(CTkWidget):
             self._canvas.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<Button-1>":
             self._rounded_rect.bind("<Button-1>", self._clicked)
-            self._progress_bar.bind("<Button-1>", self._clicked)
             self._slider.bind("<Button-1>", self._clicked_slider)
         if sequence is None or sequence == "<B1-Motion>":
             self._canvas.bind("<B1-Motion>", self._on_motion)

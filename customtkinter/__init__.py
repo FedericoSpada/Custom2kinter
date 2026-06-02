@@ -128,7 +128,8 @@ class _Showroom(CTk):
         self.new_instance_requested: bool = False
 
         customtkinter_directory = os.path.dirname(os.path.abspath(__file__))
-        self.image = CTkImage(light_image=os.path.join(customtkinter_directory, "assets", "icons", "CustomTkinter_icon_Windows.ico"))
+        self.image = CTkImage(light_image=os.path.join(customtkinter_directory, "assets", "icons", "CustomTkinter_icon_Windows.ico"),
+                              height=20)
 
         # create sidebar frame with widgets
         self.sidebar_frame = CTkFrame(self, width=140, corner_radius=0)
@@ -151,6 +152,13 @@ class _Showroom(CTk):
                                                 command=self._change_drawing)
         self.drawing_optionmenu.set(BaseShape.preferred_drawing_method)
 
+        py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        self.versions_label = CTkLabel(self.sidebar_frame,
+                                       text=f"Library v{__version__}\nPython v{py_version}",
+                                       text_color=("gray66", "gray37"),
+                                       anchor="w",
+                                       justify="left")
+
         self.sidebar_frame.pack(side=LEFT, fill=Y)
         self.logo_label.pack(side=TOP, fill=X, padx=5, pady=5)
         self.theme_label.pack(side=TOP, fill=X, padx=20, pady=(20, 5))
@@ -161,6 +169,8 @@ class _Showroom(CTk):
         self.scaling_optionmenu.pack(side=TOP, fill=X, padx=20, pady=(0, 10))
         self.drawing_label.pack(side=TOP, fill=X, padx=20, pady=(20, 5))
         self.drawing_optionmenu.pack(side=TOP, fill=X, padx=20, pady=(0, 10))
+
+        self.versions_label.pack(side=BOTTOM, fill=X, padx=20, pady=(20, 5))
 
         # create main tabview
         self.main_tabview = CTkTabview(self)
@@ -196,7 +206,7 @@ class _Showroom(CTk):
         self.combobox_3.set("disabled")
         self.optionmenu1 = CTkOptionMenu(self.choices_frame, values=["CTkOptionMenu", "Value 2", "Value 3"])
         self.optionmenu2 = CTkOptionMenu(self.choices_frame, values=["disabled", "Value 2", "Value 3"], state="disabled", corner_radius=1000)
-        self.optionmenu3 = CTkOptionMenu(self.choices_frame, values=["compound left", "Value 2", "Value 3"], compound="left")
+        self.optionmenu3 = CTkOptionMenu(self.choices_frame, values=["compound left", "anchor e", "Value 3"], compound="left", anchor="e")
         self.seg_button1 = CTkSegmentedButton(self.choices_frame, values=["CTkSegmentedButton", "Value 2", "Value 3"])
         self.seg_button1.set("CTkSegmentedButton")
         self.seg_button2 = CTkSegmentedButton(self.choices_frame, values=["vertical", "Max radius", "Value 3"], orientation="vertical", corner_radius=1000, height=35)
@@ -360,6 +370,8 @@ class _Showroom(CTk):
         toplevel = CTkToplevel(self, title="CTkToplevel")
         toplevel.geometry(f"{500}x{250}")
         toplevel.resizable(True, True)
+        label = CTkLabel(toplevel, text="A new window that can contains anything")
+        label.pack(padx=5, pady=5)
         self.after(50, toplevel.lift)
 
     def _open_input_dialog_1(self) -> None:

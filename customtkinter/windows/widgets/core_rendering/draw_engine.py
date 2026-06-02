@@ -60,6 +60,7 @@ class BaseShape:
 
     canvas: CTkCanvas
     drawing_method: DrawingMethodType = None
+    events_transparent: bool = False  # mouse events are transferred to the shape below
 
     _name: str = field(default="", init=False)
 
@@ -154,6 +155,7 @@ class RoundedRect(BaseShape):
         y_center_b = y_end - corner_radius
         x_mid = x_start + left_section_width
         y_mid = y_start + top_section_height
+        state = "disabled" if self.events_transparent else "normal"
 
         #update info
         self.info["y_start"] = y_start
@@ -170,11 +172,11 @@ class RoundedRect(BaseShape):
 
         if corner_radius > 0:
             if self.drawing_method == "polygons":
-                requires_recoloring_1 = self._polygons_method(x_center_l, x_center_r, y_center_t, y_center_b, corner_radius, split_mode)
+                requires_recoloring_1 = self._polygons_method(x_center_l, x_center_r, y_center_t, y_center_b, corner_radius, split_mode, state)
             elif self.drawing_method == "font":
-                requires_recoloring_1 = self._font_method(x_center_l, x_center_r, y_center_t, y_center_b, corner_radius)
+                requires_recoloring_1 = self._font_method(x_center_l, x_center_r, y_center_t, y_center_b, corner_radius, state)
             else:
-                requires_recoloring_1 = self._circles_method(x_start, y_start, x_end, y_end, corner_radius)
+                requires_recoloring_1 = self._circles_method(x_start, y_start, x_end, y_end, corner_radius, state)
         else:
             requires_recoloring_1 = False
             for vsec, hsec, n in itertools.product(("t", "b"), ("l", "r"), (1, 2)):
@@ -185,7 +187,8 @@ class RoundedRect(BaseShape):
             requires_recoloring_2 = False
         else:
             requires_recoloring_2 = self._common_rectangles(x_start, x_mid, x_end, x_center_l, x_center_r,
-                                                            y_start, y_mid, y_end, y_center_t, y_center_b)
+                                                            y_start, y_mid, y_end, y_center_t, y_center_b,
+                                                            state)
 
         if requires_recoloring_1 or requires_recoloring_2:
             for vsec, hsec, n in itertools.product(("t", "b"), ("l", "r"), (1, 2)):
@@ -216,19 +219,24 @@ class RoundedRect(BaseShape):
                          y_center_t: int,
                          y_center_b: int,
                          corner_radius: int,
-                         split_mode: bool) -> bool:
+                         split_mode: bool,
+                         state: Literal["normal", "disabled", "hidden"]) -> bool:
         requires_recoloring = False
         t = self._tags
 
         if not self.canvas.find_withtag(t["oval_tl_1"]):
-            self.canvas.create_polygon((0, 0, 0, 0), tags=(t["oval_tl_1"], t["top_left"], t["top"], t["left"], self._name), joinstyle=tkinter.ROUND)
+            self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+                                       tags=(t["oval_tl_1"], t["top_left"], t["top"], t["left"], self._name))
             requires_recoloring = True
 
         if split_mode:
             if not self.canvas.find_withtag(t["oval_tr_1"]):
-                self.canvas.create_polygon((0, 0, 0, 0), tags=(t["oval_tr_1"], t["top_right"], t["top"], t["right"], self._name), joinstyle=tkinter.ROUND)
-                self.canvas.create_polygon((0, 0, 0, 0), tags=(t["oval_br_1"], t["bottom_right"], t["bottom"], t["right"], self._name), joinstyle=tkinter.ROUND)
-                self.canvas.create_polygon((0, 0, 0, 0), tags=(t["oval_bl_1"], t["bottom_left"], t["bottom"], t["left"], self._name), joinstyle=tkinter.ROUND)
+                self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+                                           tags=(t["oval_tr_1"], t["top_right"], t["top"], t["right"], self._name))
+                self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+                                           tags=(t["oval_br_1"], t["bottom_right"], t["bottom"], t["right"], self._name))
+                self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+                                           tags=(t["oval_bl_1"], t["bottom_left"], t["bottom"], t["left"], self._name))
                 requires_recoloring = True
         else:
             self.canvas.delete(t["oval_tr_1"], t["oval_br_1"], t["oval_bl_1"],
@@ -258,7 +266,8 @@ class RoundedRect(BaseShape):
                      x_center_r: int,
                      y_center_t: int,
                      y_center_b: int,
-                     corner_radius: int) -> bool:
+                     corner_radius: int,
+                     state: Literal["normal", "disabled", "hidden"]) -> bool:
         requires_recoloring = False
         t = self._tags
 
@@ -284,6 +293,8 @@ class RoundedRect(BaseShape):
                 if not self.canvas.find_withtag(tags1[0]):
                     self.canvas.create_aa_circle(0, 0, 0, tags=tags1, anchor=tkinter.CENTER)
                     self.canvas.create_aa_circle(0, 0, 0, tags=tags2, anchor=tkinter.CENTER, angle=180)
+                    self.canvas.itemconfigure(tags1[0], state=state)
+                    self.canvas.itemconfigure(tags2[0], state=state)
                     requires_recoloring = True
                 self.canvas.coords(tags1[0], *coordinates)
                 self.canvas.coords(tags2[0], *coordinates)
@@ -297,7 +308,8 @@ class RoundedRect(BaseShape):
                         y_start: int,
                         x_end: int,
                         y_end: int,
-                        corner_radius: int) -> bool:
+                        corner_radius: int,
+                        state: Literal["normal", "disabled", "hidden"]) -> bool:
         requires_recoloring = False
         t = self._tags
 
@@ -321,7 +333,7 @@ class RoundedRect(BaseShape):
 
             if not already_drawn:
                 if not self.canvas.find_withtag(tags[0]):
-                    self.canvas.create_oval(0, 0, 0, 0, width=0, tags=tags)
+                    self.canvas.create_oval(0, 0, 0, 0, width=0, state=state, tags=tags)
                     requires_recoloring = True
                 self.canvas.coords(tags[0], *coordinates)
             else:
@@ -330,7 +342,8 @@ class RoundedRect(BaseShape):
         return requires_recoloring
 
     def _common_rectangles(self, x_start: int, x_mid: int, x_end: int, x_center_l: int, x_center_r: int,
-                                 y_start: int, y_mid: int, y_end: int, y_center_t: int, y_center_b: int) -> bool:
+                                 y_start: int, y_mid: int, y_end: int, y_center_t: int, y_center_b: int,
+                                 state: Literal["normal", "disabled", "hidden"]) -> bool:
         requires_recoloring = False
         t = self._tags
 
@@ -351,7 +364,7 @@ class RoundedRect(BaseShape):
             #if rect is at least 1-pixel high/wide
             if coordinates[2] > coordinates[0] and coordinates[3] > coordinates[1]:
                 if not self.canvas.find_withtag(tags[0]):
-                    self.canvas.create_rectangle((0, 0, 0, 0), width=0, tags=tags)
+                    self.canvas.create_rectangle((0, 0, 0, 0), width=0, state=state, tags=tags)
                     requires_recoloring = True
                 self.canvas.coords(tags[0], *coordinates)
             else:
@@ -376,7 +389,7 @@ class BorderedRoundedRect(BaseShape):
         super().__post_init__()
 
         for attribute in ("_border", "_main"):
-            super().__setattr__(attribute, RoundedRect(self.canvas, self.drawing_method))
+            super().__setattr__(attribute, RoundedRect(self.canvas, self.drawing_method, self.events_transparent))
 
     def update(self,
                width: float | int,
@@ -509,6 +522,7 @@ class Arrow(BaseShape):
         x_position = round(x_position)
         y_position = round(y_position)
         size = round(size)
+        state = "disabled" if self.events_transparent else "normal"
         requires_recoloring = False
 
         if self.drawing_method == "font":
@@ -517,7 +531,8 @@ class Arrow(BaseShape):
                                         font=("CustomTkinter_shapes_font", -size),
                                         angle=180-angle,
                                         tags=self._name,
-                                        anchor=tkinter.CENTER)
+                                        anchor=tkinter.CENTER,
+                                        state=state)
                 requires_recoloring = True
 
             self.canvas.coords(self._name, x_position, y_position)
@@ -529,7 +544,8 @@ class Arrow(BaseShape):
                                         tags=self._name,
                                         width=round(size / 4),
                                         joinstyle=tkinter.ROUND,
-                                        capstyle=tkinter.ROUND)
+                                        capstyle=tkinter.ROUND,
+                                        state=state)
                 requires_recoloring = True
 
             #points for arrow centered in (0, 0) pointing up
@@ -564,6 +580,7 @@ class Bar(BaseShape):
         x_position = round(x_position)
         y_position = round(y_position)
         size = round(size)
+        state = "disabled" if self.events_transparent else "normal"
         requires_recoloring = False
 
         if self.drawing_method == "font":
@@ -572,7 +589,8 @@ class Bar(BaseShape):
                                         font=("CustomTkinter_shapes_font", -size),
                                         angle=90-angle,
                                         tags=self._name,
-                                        anchor=tkinter.CENTER)
+                                        anchor=tkinter.CENTER,
+                                        state=state)
                 requires_recoloring = True
 
             self.canvas.coords(self._name, x_position, y_position)
@@ -584,7 +602,8 @@ class Bar(BaseShape):
                                         tags=self._name,
                                         width=round(size / 6),
                                         joinstyle=tkinter.ROUND,
-                                        capstyle=tkinter.ROUND)
+                                        capstyle=tkinter.ROUND,
+                                        state=state)
                 requires_recoloring = True
 
             #points for vertical line centered in (0, 0)
@@ -615,6 +634,7 @@ class Checkmark(BaseShape):
         x_position = round(x_position)
         y_position = round(y_position)
         size = round(size)
+        state = "disabled" if self.events_transparent else "normal"
         requires_recoloring = False
 
         if self.drawing_method == "font":
@@ -622,7 +642,8 @@ class Checkmark(BaseShape):
                 self.canvas.create_text(0, 0, text="Z",
                                         font=("CustomTkinter_shapes_font", -size),
                                         tags=self._name,
-                                        anchor=tkinter.CENTER)
+                                        anchor=tkinter.CENTER,
+                                        state=state)
                 requires_recoloring = True
 
             self.canvas.coords(self._name, x_position, y_position)
@@ -634,7 +655,8 @@ class Checkmark(BaseShape):
                                         tags=self._name,
                                         width=round(size / 5),
                                         joinstyle=tkinter.MITER,
-                                        capstyle=tkinter.ROUND)
+                                        capstyle=tkinter.ROUND,
+                                        state=state)
                 requires_recoloring = True
 
             radius = size / 2.8

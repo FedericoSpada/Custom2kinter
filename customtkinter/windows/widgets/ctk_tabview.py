@@ -9,9 +9,10 @@ from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .ctk_frame import CTkFrame
 from .ctk_segmented_button import CTkSegmentedButton, CTkSegmentedButtonArgs
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkTabviewArgs(TypedDict, total=False):
+class CTkTabviewThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -22,6 +23,10 @@ class CTkTabviewArgs(TypedDict, total=False):
     border_color: ColorType
     anchor: AnchorType
     segmented_button: CTkSegmentedButtonArgs
+
+class CTkTabviewArgs(CTkTabviewThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    command: Callable[[str], None] | None
 
 
 class CTkTabview(CTkWidget, CTkContainer):
@@ -36,11 +41,10 @@ class CTkTabview(CTkWidget, CTkContainer):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 command: Callable[[str], None] | None = None,
                  **kwargs: Unpack[CTkTabviewArgs]) -> None:
 
-        self._theme_info: CTkTabviewArgs = ThemeManager.get_info("CTkTabview", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkTabviewThemedArgs.__annotations__)
+        self._theme_info: CTkTabviewThemedArgs = ThemeManager.get_info("CTkTabview", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -64,7 +68,7 @@ class CTkTabview(CTkWidget, CTkContainer):
             self._fg_color = self._theme_info["top_fg_color"]
 
         #functionality
-        self._command: Callable[[str], None] | None = command
+        self._command: Callable[[str], None] | None = kwargs.pop("command", None)
         self._tab_dict: dict[str, CTkFrame] = {}
         self._name_list: list[str] = []  # list of unique tab names in order of tabs
         self._current_name: str = ""
@@ -80,8 +84,12 @@ class CTkTabview(CTkWidget, CTkContainer):
         self._segmented_button = CTkSegmentedButton(self,
                                                     values=[],
                                                     command=self._segmented_button_callback,
-                                                    state=state,
+                                                    state=kwargs.pop("state", "normal"),
                                                     **self._theme_info["segmented_button"])
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
+
         self._configure_segmented_button_background_corners()
         self._update_geometry()
         self._draw(force_colors_update=True)
@@ -195,7 +203,7 @@ class CTkTabview(CTkWidget, CTkContainer):
             self._tab_dict[self._current_name].grid(row=row, column=0, sticky="nsew", padx=pad, pady=pad)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkTabviewArgs]) -> None:
-        propagate_required = False
+        require_propagate = False
 
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
@@ -208,17 +216,14 @@ class CTkTabview(CTkWidget, CTkContainer):
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             require_redraw = True
-            propagate_required = True
+            require_propagate = True
 
         if "bg_color" in kwargs:
-            propagate_required = True
+            require_propagate = True
 
         if "border_color" in kwargs:
             self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
             require_redraw = True
-
-        if "segmented_button" in kwargs:
-            self._segmented_button.configure(**kwargs.pop("segmented_button"))
 
         if "command" in kwargs:
             self._command = kwargs.pop("command")
@@ -227,12 +232,16 @@ class CTkTabview(CTkWidget, CTkContainer):
             self._theme_info["anchor"] = kwargs.pop("anchor")
             self._update_geometry()
             require_redraw = True
+            require_propagate = True
 
         if "state" in kwargs:
             self._segmented_button.configure(state=kwargs.pop("state"))
 
+        if "segmented_button" in kwargs:
+            self._segmented_button.configure(**kwargs.pop("segmented_button"))
+
         super().configure(require_redraw=require_redraw, **kwargs)
-        if propagate_required:
+        if require_propagate:
             self.propagate_fg_color(self.winfo_children())
             self._configure_segmented_button_background_corners()
 

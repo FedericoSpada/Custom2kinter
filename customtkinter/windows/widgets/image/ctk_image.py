@@ -10,8 +10,8 @@ from ..utility import check_kwargs_empty
 
 
 class CTkImageArgs(TypedDict, total=False):
-    width: int
-    height: int
+    width: int   #'0' means original dimension or proper value to preserve aspect ratio
+    height: int  #'0' means original dimension or proper value to preserve aspect ratio
     light_image: Image.Image | Path | str | None
     dark_image: Image.Image | Path | str | None
 
@@ -108,7 +108,7 @@ class CTkImage:
         for callback in self._configure_callback_list:
             callback()
 
-        check_kwargs_empty(kwargs, True)
+        check_kwargs_empty(kwargs, raise_error=True)
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name in self._theme_info:
@@ -127,8 +127,19 @@ class CTkImage:
         if image is None:
             image = ""
         else:
-            size = (round(self._theme_info["width"] * scaling_factor),
-                    round(self._theme_info["height"] * scaling_factor))
+            width = self._theme_info["width"]
+            height = self._theme_info["height"]
+
+            #change 0s to proper values
+            if width == 0 and height == 0:
+                width = image.width
+                height = image.height
+            elif width == 0:
+                width = round(image.width * height / image.height)
+            elif height == 0:
+                height = round(image.height * width / image.width)
+
+            size = (round(width * scaling_factor), round(height * scaling_factor))
             key = (*size, id(image))
             if key in self._scaled_photo_images:
                 image = self._scaled_photo_images[key]

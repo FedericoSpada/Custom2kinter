@@ -9,19 +9,24 @@ from .appearance_mode import CTkAppearanceModeBaseClass
 from .scaling import CTkScalingBaseClass
 from .core_widget_classes import CTkContainer
 from .theme import ColorType, ThemeManager
-from .ctk_frame import CTkFrame, CTkFrameArgs
+from .ctk_frame import CTkFrame, CTkFrameThemedArgs
 from .ctk_scrollbar import CTkScrollbar, CTkScrollbarArgs
 from .ctk_slider import CTkSlider
 from .ctk_textbox import CTkTextbox
 from .ctk_label import CTkLabel, CTkLabelArgs
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkScrollableFrameArgs(CTkFrameArgs, total=False):
+class CTkScrollableFrameThemedArgs(CTkFrameThemedArgs, total=False):
     border_spacing: int
     orientation: Literal["horizontal", "vertical", "both"]
     activate_scrollbars: bool
     scrollbar: CTkScrollbarArgs
     label: CTkLabelArgs
+
+class CTkScrollableFrameArgs(CTkScrollableFrameThemedArgs, total=False):
+    scrollable_width: int   #required if 'place' geometry manager is used
+    scrollable_height: int  #required if 'place' geometry manager is used
 
 
 class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContainer):
@@ -33,12 +38,13 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
                  theme_key: str | None = None,
                  **kwargs: Unpack[CTkScrollableFrameArgs]) -> None:
 
-        self._theme_info: CTkScrollableFrameArgs = ThemeManager.get_info("CTkScrollableFrame", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkScrollableFrameThemedArgs.__annotations__)
+        self._theme_info: CTkScrollableFrameThemedArgs = ThemeManager.get_info("CTkScrollableFrame", theme_key, **theme_args)
 
         # parent frame
         # In theory, this IS a CTkFrame, but we can't inherit it because we would inherit tkinter.Frame twice,
         # which is collapsed into just a single one, but we actually need two separate frames.
-        frame_kwargs = {key: self._theme_info[key] for key in CTkFrameArgs.__annotations__}
+        frame_kwargs = {key: self._theme_info[key] for key in CTkFrameThemedArgs.__annotations__}
         self._parent_frame = CTkFrame(master=master, **frame_kwargs)
         self._pf_original_configure: Callable = self._parent_frame.configure
         self._parent_frame.configure = self._parent_frame_configure
@@ -64,13 +70,17 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         self._parent_canvas.configure(xscrollcommand=self._hor_scrollbar.set, yscrollcommand=self._ver_scrollbar.set)
 
         # label
-        label_kwargs = self._theme_info["label"]
-        self._label = CTkLabel(self._parent_frame, **label_kwargs)
+        self._label = CTkLabel(self._parent_frame, **self._theme_info["label"])
 
-        tkinter.Frame.__init__(self, master=self._parent_canvas, highlightthickness=0)
+        tkinter.Frame.__init__(self, master=self._parent_canvas, highlightthickness=0,
+                               width=kwargs.pop("scrollable_width", 0),
+                               height=kwargs.pop("scrollable_height", 0))
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="widget")
         CTkContainer.__init__(self, fg_color="transparent")
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._update_geometry()
         self._create_bindings()
@@ -230,7 +240,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         self._parent_frame.configure(**kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name in CTkFrameArgs.__annotations__:
+        if attribute_name in CTkFrameThemedArgs.__annotations__:
             return self._parent_frame.cget(attribute_name)
         elif attribute_name in self._theme_info:
             return self._theme_info[attribute_name]
@@ -239,7 +249,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         elif attribute_name.startswith("label_"):
             return self._label.cget(attribute_name.removeprefix("label_"))
         else:
-            raise ValueError(f"'{attribute_name}' is not a supported argument. Look at the documentation for supported arguments.")
+            return self._parent_frame.cget(attribute_name)
 
     def get_fg_color(self) -> ColorType:
         return self._parent_frame.get_fg_color()

@@ -8,10 +8,10 @@ from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Checkmark
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkCheckBoxArgs(TypedDict, total=False):
+class CTkCheckBoxThemedArgs(TypedDict, total=False):
     width: int
     height: int
     checkbox_width: int
@@ -31,6 +31,14 @@ class CTkCheckBoxArgs(TypedDict, total=False):
     font: FontType
     compound: Literal["left", "right", "top", "bottom"]
 
+class CTkCheckBoxArgs(CTkCheckBoxThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    onvalue: int | float | str | bool
+    offvalue: int | float | str | bool
+    textvariable: tkinter.Variable | None
+    variable: tkinter.Variable | None
+    command: Callable[[], None] | None
+
 
 class CTkCheckBox(CTkWidget):
     """
@@ -41,15 +49,10 @@ class CTkCheckBox(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 textvariable: tkinter.Variable | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 onvalue: int | float | str | bool = 1,
-                 offvalue: int | float | str | bool = 0,
-                 variable: tkinter.Variable | None = None,
-                 command: Callable[[], None] | None = None,
                  **kwargs: Unpack[CTkCheckBoxArgs]) -> None:
 
-        self._theme_info: CTkCheckBoxArgs = ThemeManager.get_info("CTkCheckBox", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkCheckBoxThemedArgs.__annotations__)
+        self._theme_info: CTkCheckBoxThemedArgs = ThemeManager.get_info("CTkCheckBox", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -63,17 +66,17 @@ class CTkCheckBox(CTkWidget):
                          height=self._theme_info["height"])
 
         # text and font
-        self._textvariable: tkinter.Variable | None = textvariable
+        self._textvariable: tkinter.Variable | None = kwargs.pop("textvariable", None)
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
         self._font.add_size_configure_callback(self._update_font)
 
         # functionality
-        self._state: Literal["normal", "disabled"] = state
-        self._command: Callable[[], None] | None = command
+        self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
+        self._command: Callable[[], None] | None = kwargs.pop("command", None)
         self._check_state: bool = False
-        self._onvalue: int | float | str | bool = onvalue
-        self._offvalue: int | float | str | bool = offvalue
-        self._variable: tkinter.Variable | None = variable
+        self._onvalue: int | float | str | bool = kwargs.pop("onvalue", 1)
+        self._offvalue: int | float | str | bool = kwargs.pop("offvalue", 0)
+        self._variable: tkinter.Variable | None = kwargs.pop("variable", None)
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
 
@@ -88,7 +91,7 @@ class CTkCheckBox(CTkWidget):
                                  width=self._apply_scaling(self._theme_info["checkbox_width"]),
                                  height=self._apply_scaling(self._theme_info["checkbox_height"]))
         self._rounded_rect = BorderedRoundedRect(self._canvas)
-        self._checkmark = Checkmark(self._canvas)
+        self._checkmark = Checkmark(self._canvas, events_transparent=True)
         self._bind_targets.append(self._canvas)
 
         self._text_label = tkinter.Label(master=self,
@@ -105,6 +108,9 @@ class CTkCheckBox(CTkWidget):
         if self._variable is not None:
             self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
             self._check_state = self._variable.get() == self._onvalue
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._create_bindings()
         self._set_cursor()
@@ -334,7 +340,7 @@ class CTkCheckBox(CTkWidget):
 
         if "variable" in kwargs:
             if self._variable is not None:
-                self._variable.trace_remove("write", self._variable_callback_name)  # remove old variable callback
+                self._variable.trace_remove("write", self._variable_callback_name)
             self._variable = kwargs.pop("variable")
             if self._variable is not None:
                 self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)

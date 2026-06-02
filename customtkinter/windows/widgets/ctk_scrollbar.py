@@ -8,10 +8,10 @@ from typing_extensions import Literal, TypedDict, Unpack
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
 
 
-class CTkScrollbarArgs(TypedDict, total=False):
+class CTkScrollbarThemedArgs(TypedDict, total=False):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -25,6 +25,9 @@ class CTkScrollbarArgs(TypedDict, total=False):
     border_color: TransparentColorType
     hover: bool
 
+class CTkScrollbarArgs(CTkScrollbarThemedArgs, total=False):
+    command: Callable[[str, int | float, str], None] | None
+
 
 class CTkScrollbar(CTkWidget):
     """
@@ -36,10 +39,10 @@ class CTkScrollbar(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 command: Callable[[str, int | float, str], None] | None = None,
                  **kwargs: Unpack[CTkScrollbarArgs]) -> None:
 
-        self._theme_info: CTkScrollbarArgs = ThemeManager.get_info("CTkScrollbar", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkScrollbarThemedArgs.__annotations__)
+        self._theme_info: CTkScrollbarThemedArgs = ThemeManager.get_info("CTkScrollbar", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -58,7 +61,7 @@ class CTkScrollbar(CTkWidget):
                          height=height)
 
         # functionality
-        self._command: Callable[[str, int | float, str], None] | None = command
+        self._command: Callable[[str, int | float, str], None] | None = kwargs.pop("command", None)
         self._start_value: float = 0.0  # 0 to 1
         self._end_value: float = 1.0  # 0 to 1
         self._motion_center_offset: float = 0.0
@@ -73,6 +76,9 @@ class CTkScrollbar(CTkWidget):
         self._slider = RoundedRect(self._canvas)
         self._bind_targets.append(self._canvas)
         self._focus_target = self._canvas
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._create_bindings()
         self._draw(force_colors_update=True)

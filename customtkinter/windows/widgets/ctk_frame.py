@@ -7,9 +7,10 @@ from typing_extensions import TypedDict, Unpack
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkFrameArgs(TypedDict, total=False):
+class CTkFrameThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -18,6 +19,9 @@ class CTkFrameArgs(TypedDict, total=False):
     fg_color: TransparentColorType
     top_fg_color: ColorType
     border_color: ColorType
+
+class CTkFrameArgs(CTkFrameThemedArgs, total=False):
+    background_corner_colors: tuple[ColorType, ...] | None
 
 
 class CTkFrame(CTkWidget, CTkContainer):
@@ -31,10 +35,10 @@ class CTkFrame(CTkWidget, CTkContainer):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 background_corner_colors: tuple[ColorType, ...] | None = None,
                  **kwargs: Unpack[CTkFrameArgs]) -> None:
 
-        self._theme_info: CTkFrameArgs = ThemeManager.get_info("CTkFrame", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkFrameThemedArgs.__annotations__)
+        self._theme_info: CTkFrameThemedArgs = ThemeManager.get_info("CTkFrame", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -57,7 +61,7 @@ class CTkFrame(CTkWidget, CTkContainer):
             self.master.get_fg_color() == self._fg_color):
             self._fg_color = self._theme_info["top_fg_color"]
 
-        self._background_corner_colors: tuple[ColorType, ...] | None = background_corner_colors
+        self._background_corner_colors: tuple[ColorType, ...] | None = kwargs.pop("background_corner_colors", None)
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
@@ -68,6 +72,9 @@ class CTkFrame(CTkWidget, CTkContainer):
         self._rounded_rect = BorderedRoundedRect(self._canvas)
         self._bind_targets.append(self._canvas)
         self._focus_target = self._canvas
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._draw(force_colors_update=True)
 
@@ -128,7 +135,7 @@ class CTkFrame(CTkWidget, CTkContainer):
             self._rounded_rect.set_main_color(self._apply_appearance_mode(self.get_fg_color()))
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkFrameArgs]) -> None:
-        propagate_required = False
+        require_propagate = False
 
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
@@ -141,12 +148,12 @@ class CTkFrame(CTkWidget, CTkContainer):
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
             require_redraw = True
-            propagate_required = True
+            require_propagate = True
 
         if "bg_color" in kwargs:
             #only if fg_color is transparent, bg_color is actually used by children widgets
             if self._fg_color == "transparent":
-                propagate_required = True
+                require_propagate = True
 
         if "border_color" in kwargs:
             self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
@@ -157,7 +164,7 @@ class CTkFrame(CTkWidget, CTkContainer):
             require_redraw = True
 
         super().configure(require_redraw=require_redraw, **kwargs)
-        if propagate_required:
+        if require_propagate:
             self.propagate_fg_color(self.winfo_children())
 
     def cget(self, attribute_name: str) -> Any:

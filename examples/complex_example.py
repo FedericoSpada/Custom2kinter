@@ -106,7 +106,7 @@ class App(customtkinter.CTk):
         self.progressbar_3.grid(row=0, column=2, rowspan=5, padx=(10, 20), pady=(10, 10), sticky="ns")
 
         # create scrollable frame
-        self.scrollable_frame = customtkinter.CTkScrollableFrame(self, label_text="CTkScrollableFrame")
+        self.scrollable_frame = customtkinter.CTkScrollableFrame(self, label={"text": "CTkScrollableFrame"})
         self.scrollable_frame.grid(row=1, column=2, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.scrollable_frame.grid_columnconfigure(0, weight=1)
         self.scrollable_frame_switches = []
@@ -138,7 +138,7 @@ class App(customtkinter.CTk):
         self.combobox_1.set("CTkComboBox")
         self.slider_1.configure(command=self.progressbar_2.set)
         self.slider_2.configure(command=self.progressbar_3.set)
-        self.progressbar_1.configure(mode="indeterminnate")
+        self.progressbar_1.configure(mode="indeterminate")
         self.progressbar_1.start()
         self.textbox.insert("0.0", "CTkTextbox\n\n" + "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.\n\n" * 20)
         self.seg_button_1.configure(values=["CTkSegmentedButton", "Value 2", "Value 3"])

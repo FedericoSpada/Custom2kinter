@@ -10,9 +10,10 @@ from .widgets.ctk_entry import CTkEntry, CTkEntryArgs
 from .widgets.ctk_combobox import CTkComboBox, CTkComboBoxArgs
 from .widgets.font import CTkFont, FontType
 from .widgets.theme import ColorType, ThemeManager
+from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkInputDialogArgs(TypedDict, total=False):
+class CTkInputDialogThemedArgs(TypedDict, total=False):
     fg_color: ColorType
     text_color: ColorType
     title: str
@@ -21,6 +22,10 @@ class CTkInputDialogArgs(TypedDict, total=False):
     button: CTkButtonArgs
     entry: CTkEntryArgs
     combobox: CTkComboBoxArgs
+
+class CTkInputDialogArgs(TypedDict, total=False):
+    default_value: str
+    values: list[str] | None
 
 
 class CTkInputDialog(CTkToplevel):
@@ -32,11 +37,10 @@ class CTkInputDialog(CTkToplevel):
     def __init__(self,
                  master: tkinter.Misc | None = None,
                  theme_key: str | None = None,
-                 default_value: str = "",
-                 values: list[str] | None = None,
                  **kwargs: Unpack[CTkInputDialogArgs]) -> None:
 
-        self._theme_id_info: CTkInputDialogArgs = ThemeManager.get_info("CTkInputDialog", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkInputDialogThemedArgs.__annotations__)
+        self._theme_id_info: CTkInputDialogThemedArgs = ThemeManager.get_info("CTkInputDialog", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_id_info:
@@ -47,8 +51,8 @@ class CTkInputDialog(CTkToplevel):
                          fg_color=self._theme_id_info["fg_color"],
                          title=self._theme_id_info["title"])
 
-        self._default_value: str = default_value
-        self._values: list[str] | None = values
+        self._default_value: str = kwargs.pop("default_value", "")
+        self._values: list[str] | None = kwargs.pop("values", None)
         self._user_input: str | None = None
         self._running: bool = False
 
@@ -57,6 +61,9 @@ class CTkInputDialog(CTkToplevel):
         self._input: CTkEntry | CTkComboBox
         self._ok_button: CTkButton
         self._cancel_button: CTkButton
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self.lift()  # lift window on top
         self.attributes("-topmost", True)  # stay on top

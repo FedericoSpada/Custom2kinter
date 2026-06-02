@@ -13,12 +13,43 @@ from .widgets.appearance_mode import CTkAppearanceModeBaseClass
 from .widgets.scaling import CTkScalingBaseClass
 from .widgets.core_widget_classes import CTkContainer
 from .widgets.theme import ColorType, ThemeManager
-from .widgets.utility import pop_from_dict_by_set, check_kwargs_empty, parse_geometry_string
+from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty, parse_geometry_string
 
 
-class CTkArgs(TypedDict, total=False):
+class CTkThemedArgs(TypedDict, total=False):
     fg_color: ColorType
     title: str
+
+class ValidTkArgs(TypedDict, total=False):
+    use: int | str | None
+    #--- Constructor only ---
+    baseName: str | None
+    className: str
+    screenName: str | None
+    useTk: bool
+    sync: bool
+    #--- Configure only ---
+    bd: float | str
+    border: float | str
+    borderwidth: float | str
+    class_: str
+    cursor: str
+    height: float | str
+    width: float | str
+    padx: float | int | str
+    pady: float | int | str
+    highlightthickness: float | str
+    highlightbackground: str
+    highlightcolor: str
+    menu: tkinter.Menu
+    relief: Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]
+    takefocus: bool
+    container: bool
+    screen: str
+    visual: str | tuple[str, int]
+
+class CTkArgs(CTkThemedArgs, ValidTkArgs, total=False):
+    pass
 
 
 class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContainer):
@@ -27,20 +58,13 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
     For detailed information check out the documentation.
     """
 
-    _valid_tk_constructor_arguments: set[str] = {"screenName", "baseName", "className", "useTk", "sync", "use"}
-
-    _valid_tk_configure_arguments: set[str] = {"bd", "borderwidth", "class", "menu", "relief", "screen",
-                                               "use", "container", "cursor", "height",
-                                               "highlightthickness", "padx", "pady", "takefocus", "visual", "width"}
-
     _deactivate_macos_window_header_manipulation: bool = False
     _deactivate_windows_window_header_manipulation: bool = False
 
     def __init__(self, **kwargs: Unpack[CTkArgs]) -> None:
 
-        tk_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_constructor_arguments)
-
-        self._theme_info: CTkArgs = ThemeManager.get_info("CTk", None, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkThemedArgs.__annotations__)
+        self._theme_info: CTkThemedArgs = ThemeManager.get_info("CTk", None, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -50,7 +74,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         self._enable_macos_dark_title_bar()
 
         # call init methods of super classes
-        tkinter.Tk.__init__(self, **tk_kwargs)
+        tkinter.Tk.__init__(self, **pop_from_dict_by_iterable(kwargs, ValidTkArgs.__annotations__))
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="window")
         CTkContainer.__init__(self, fg_color=self._theme_info["fg_color"])
@@ -78,6 +102,9 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         self._iconify_called_before_window_exists: bool = False  # indicates if iconify() was called before window is first shown through update() or mainloop()
         self._block_update_dimensions_event: bool = False
         self.focused_widget_before_widthdraw: tkinter.Misc | None = None
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         # Windows only
         if sys.platform.startswith("win"):
@@ -217,8 +244,11 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
 
             self.propagate_fg_color(self.winfo_children())
 
-        super().configure(**pop_from_dict_by_set(kwargs, self._valid_tk_configure_arguments))
-        check_kwargs_empty(kwargs)
+        if "title" in kwargs:
+            self.title(kwargs.pop("title"))
+
+        super().configure(**pop_from_dict_by_iterable(kwargs, ValidTkArgs.__annotations__))
+        check_kwargs_empty(kwargs, raise_error=True)
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "fg_color":

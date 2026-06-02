@@ -9,10 +9,10 @@ from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .font import CTkFont, FontType
 from .image import CTkImage, ImageType
-from .utility import get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkButtonArgs(TypedDict, total=False):
+class CTkButtonThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -32,6 +32,12 @@ class CTkButtonArgs(TypedDict, total=False):
     image: ImageType
     compound: Literal["left", "right", "top", "bottom"]
 
+class CTkButtonArgs(CTkButtonThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    textvariable: tkinter.Variable | None
+    command: Callable[[], None] | None
+    background_corner_colors: tuple[ColorType, ...] | None
+
 
 class CTkButton(CTkWidget):
     """
@@ -42,13 +48,10 @@ class CTkButton(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 textvariable: tkinter.Variable | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 command: Callable[[], None] | None = None,
-                 background_corner_colors: tuple[ColorType, ...] | None = None,
                  **kwargs: Unpack[CTkButtonArgs]) -> None:
 
-        self._theme_info: CTkButtonArgs = ThemeManager.get_info("CTkButton", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkButtonThemedArgs.__annotations__)
+        self._theme_info: CTkButtonThemedArgs = ThemeManager.get_info("CTkButton", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -62,7 +65,7 @@ class CTkButton(CTkWidget):
                          height=self._theme_info["height"])
 
         # rendering options
-        self._background_corner_colors: tuple[ColorType, ...] | None = background_corner_colors
+        self._background_corner_colors: tuple[ColorType, ...] | None = kwargs.pop("background_corner_colors", None)
 
         # canvas
         self._canvas = CTkCanvas(master=self,
@@ -76,7 +79,7 @@ class CTkButton(CTkWidget):
         self._focus_target = self._canvas
 
         # text and font
-        self._textvariable: tkinter.Variable | None = textvariable
+        self._textvariable: tkinter.Variable | None = kwargs.pop("textvariable", None)
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
         self._font.add_size_configure_callback(self._update_font)
         self._text_label = tkinter.Label(master=self,
@@ -96,10 +99,13 @@ class CTkButton(CTkWidget):
         self._bind_targets.append(self._image_label)
 
         # functionality
-        self._state: Literal["normal", "disabled"] = state
-        self._command: Callable[[], None] | None = command
+        self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
+        self._command: Callable[[], None] | None = kwargs.pop("command", None)
         self._click_animation_running: bool = False
         self._mouse_inside: bool = False
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         # configure cursor and initial draw
         self._create_bindings()

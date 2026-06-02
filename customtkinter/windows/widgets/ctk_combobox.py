@@ -10,10 +10,11 @@ from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import get_proper_cursor
+from .ctk_entry import ValidTkEntryArgs
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkComboBoxArgs(TypedDict, total=False):
+class CTkComboBoxThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -32,6 +33,12 @@ class CTkComboBoxArgs(TypedDict, total=False):
     compound: Literal["left", "right"]
     dropdown: DropdownMenuArgs
 
+class CTkComboBoxArgs(CTkComboBoxThemedArgs, ValidTkEntryArgs, total=False):
+    state: Literal["normal", "disabled", "readonly"] = "normal"
+    values: list[str]
+    variable: tkinter.StringVar
+    command: Callable[[str], None] | None
+
 
 class CTkComboBox(CTkWidget):
     """
@@ -42,13 +49,10 @@ class CTkComboBox(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 state: Literal["normal", "disabled", "readonly"] = "normal",
-                 values: list[str] | None = None,
-                 variable: tkinter.StringVar | None = None,
-                 command: Callable[[str], None] | None = None,
                  **kwargs: Unpack[CTkComboBoxArgs]) -> None:
 
-        self._theme_info: CTkComboBoxArgs = ThemeManager.get_info("CTkComboBox", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkComboBoxThemedArgs.__annotations__)
+        self._theme_info: CTkComboBoxThemedArgs = ThemeManager.get_info("CTkComboBox", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -66,10 +70,10 @@ class CTkComboBox(CTkWidget):
         self._font.add_size_configure_callback(self._update_font)
 
         # functionality
-        self._state: Literal["normal", "disabled", "readonly"] = state
-        self._values: list[str] = [] if values is None else values
-        self._command: Callable[[str], None] | None = command
-        self._variable: tkinter.StringVar | None = variable
+        self._state: Literal["normal", "disabled", "readonly"] = kwargs.pop("state", "normal")
+        self._values: list[str] = kwargs.pop("values", [])
+        self._command: Callable[[str], None] | None = kwargs.pop("command", None)
+        self._variable: tkinter.StringVar | None = kwargs.pop("variable", None)
         self._applied_button_width: int = -1
         self._close_on_next_click: bool = False
 
@@ -83,7 +87,7 @@ class CTkComboBox(CTkWidget):
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.grid(row=0, column=0, sticky="nsew")
         self._rounded_rect = BorderedRoundedRect(self._canvas)
-        self._arrow = Arrow(self._canvas)
+        self._arrow = Arrow(self._canvas, events_transparent=True)
 
         self._dropdown_menu = DropdownMenu(master=self,
                                            values=self._values,
@@ -96,9 +100,13 @@ class CTkComboBox(CTkWidget):
                                     bd=0,
                                     justify=self._theme_info["justify"],
                                     highlightthickness=0,
-                                    font=self._apply_font_scaling(self._font))
+                                    font=self._apply_font_scaling(self._font),
+                                    **pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
         self._bind_targets.append(self._entry)
         self._focus_target = self._entry
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._create_bindings()
         self._draw(force_colors_update=True)
@@ -114,13 +122,10 @@ class CTkComboBox(CTkWidget):
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None or sequence == "<Enter>":
             self._rounded_rect.bind("<Enter>", self._on_enter, section=self._theme_info["compound"])
-            self._arrow.bind("<Enter>", self._on_enter)
         if sequence is None or sequence == "<Leave>":
             self._rounded_rect.bind("<Leave>", self._on_leave, section=self._theme_info["compound"])
-            self._arrow.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<Button-1>":
             self._rounded_rect.bind("<Button-1>", self.invoke, section=self._theme_info["compound"])
-            self._arrow.bind("<Button-1>", self.invoke)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -244,9 +249,6 @@ class CTkComboBox(CTkWidget):
             self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
             require_redraw = True
 
-        if "dropdown" in kwargs:
-            self._dropdown_menu.configure(**kwargs.pop("dropdown"))
-
         if "text_color" in kwargs:
             self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             require_redraw = True
@@ -281,7 +283,8 @@ class CTkComboBox(CTkWidget):
             self._command = kwargs.pop("command")
 
         if "justify" in kwargs:
-            self._entry.configure(justify=kwargs.pop("justify"))
+            self._theme_info["justify"] = kwargs.pop("justify")
+            self._entry.configure(justify=self._theme_info["justify"])
 
         if "compound" in kwargs:
             self._theme_info["compound"] = kwargs.pop("compound")
@@ -289,6 +292,10 @@ class CTkComboBox(CTkWidget):
             self._applied_button_width = -1
             require_redraw = True
 
+        if "dropdown" in kwargs:
+            self._dropdown_menu.configure(**kwargs.pop("dropdown"))
+
+        self._entry.configure(**pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
@@ -304,6 +311,8 @@ class CTkComboBox(CTkWidget):
             return self._command
         elif attribute_name in self._theme_info:
             return self._theme_info[attribute_name]
+        elif attribute_name in ValidTkEntryArgs.__annotations__:
+            return self._entry.cget(attribute_name)
         elif attribute_name.startswith("dropdown_"):
             self._dropdown_menu.cget(attribute_name.removeprefix("dropdown_"))
         else:

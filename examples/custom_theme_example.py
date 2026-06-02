@@ -29,7 +29,8 @@ radiobutton_var = customtkinter.IntVar(value=1)
 customtkinter.ThemeManager.add_key("MyButton",
                                    corner_radius=1000,
                                    border_width=7,
-                                   border_color="white")
+                                   border_color="white",
+                                   unknown_argument=42)
 
 button_1 = customtkinter.CTkButton(master=frame, text="Default settings")
 button_1.pack(pady=10, padx=10)
@@ -49,7 +50,7 @@ button_3.pack(pady=10, padx=10)
 # It is equivalent to changing the values inside the JSON files that are provided with the library.
 customtkinter.ThemeManager.update_key("CTkRadioButton",
                                       fg_color="red",
-                                      hover=False,
+                                      compound="right",
                                       text="New Default settings")
 
 radiobutton_1 = customtkinter.CTkRadioButton(master=frame,
@@ -67,7 +68,7 @@ radiobutton_3 = customtkinter.CTkRadioButton(master=frame,
                                              variable=radiobutton_var,
                                              value=3,
                                              fg_color="yellow",
-                                             hover=True,
+                                             compound="bottom",
                                              text="Parameters settings")
 radiobutton_3.pack(pady=10, padx=10)
 

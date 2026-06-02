@@ -9,10 +9,10 @@ from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .image import CTkImage, ImageType
-from .utility import pop_from_dict_by_set
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkLabelArgs(TypedDict, total=False):
+class CTkLabelThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -26,9 +26,20 @@ class CTkLabelArgs(TypedDict, total=False):
     text: str
     font: FontType
     anchor: AnchorType
+    justify: Literal["left", "center", "right"]
     image: ImageType
     compound: Literal["center", "left", "right", "top", "bottom", "none"]
     wraplength: int
+
+#Explanations can be found here: https://tkdocs.com/shipman/label.html
+class ValidTkLabelArgs(TypedDict, total=False):
+    state: Literal["normal", "disabled"]
+    textvariable: tkinter.StringVar | None
+    takefocus: bool
+    underline: int
+
+class CTkLabelArgs(CTkLabelThemedArgs, ValidTkLabelArgs, total=False):
+    pass
 
 
 class CTkLabel(CTkWidget):
@@ -37,18 +48,13 @@ class CTkLabel(CTkWidget):
     For detailed information check out the documentation.
     """
 
-    # attributes that are passed to and managed by the tkinter entry only:
-    _valid_tk_label_attributes: set[str] = {"cursor", "justify", "padx", "pady",
-                                            "textvariable", "state", "takefocus", "underline"}
-
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
                  **kwargs: Unpack[CTkLabelArgs]) -> None:
 
-        label_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_label_attributes)
-
-        self._theme_info: CTkLabelArgs = ThemeManager.get_info("CTkLabel", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkLabelThemedArgs.__annotations__)
+        self._theme_info: CTkLabelThemedArgs = ThemeManager.get_info("CTkLabel", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -87,13 +93,17 @@ class CTkLabel(CTkWidget):
                                     pady=0,
                                     borderwidth=0,
                                     anchor=self._theme_info["anchor"],
+                                    justify=self._theme_info["justify"],
                                     compound=self._theme_info["compound"],
                                     wraplength=self._apply_scaling(self._theme_info["wraplength"]),
                                     text=self._theme_info["text"],
-                                    font=self._apply_font_scaling(self._font))
-        self._label.configure(**label_kwargs)
+                                    font=self._apply_font_scaling(self._font),
+                                    **pop_from_dict_by_iterable(kwargs, ValidTkLabelArgs.__annotations__))
         self._bind_targets.append(self._label)
         self._focus_target = self._label
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._update_image()
         self._draw(force_colors_update=True)
@@ -103,8 +113,8 @@ class CTkLabel(CTkWidget):
 
         self._canvas.configure(width=self._apply_scaling(self._desired_width),
                                height=self._apply_scaling(self._desired_height))
-        self._label.configure(font=self._apply_font_scaling(self._font))
-        self._label.configure(wraplength=self._apply_scaling(self._theme_info["wraplength"]))
+        self._label.configure(font=self._apply_font_scaling(self._font),
+                              wraplength=self._apply_scaling(self._theme_info["wraplength"]))
 
         self._update_image()
         self._draw()
@@ -218,11 +228,15 @@ class CTkLabel(CTkWidget):
             self._label.configure(anchor=self._theme_info["anchor"])
             self._update_geometry()
 
+        if "justify" in kwargs:
+            self._theme_info["justify"] = kwargs.pop("justify")
+            self._label.configure(justify=self._theme_info["justify"])
+
         if "wraplength" in kwargs:
             self._theme_info["wraplength"] = kwargs.pop("wraplength")
             self._label.configure(wraplength=self._apply_scaling(self._theme_info["wraplength"]))
 
-        self._label.configure(**pop_from_dict_by_set(kwargs, self._valid_tk_label_attributes))  # configure tkinter.Label
+        self._label.configure(**pop_from_dict_by_iterable(kwargs, ValidTkLabelArgs.__annotations__))
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
@@ -232,7 +246,7 @@ class CTkLabel(CTkWidget):
             return self._image
         elif attribute_name in self._theme_info:
             return self._theme_info[attribute_name]
-        elif attribute_name in self._valid_tk_label_attributes:
-            return self._label.cget(attribute_name)  # cget of tkinter.Label
+        elif attribute_name in ValidTkLabelArgs.__annotations__:
+            return self._label.cget(attribute_name)
         else:
             return super().cget(attribute_name)

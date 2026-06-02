@@ -8,10 +8,10 @@ from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import get_proper_cursor, get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, get_width_height_from_orientation
 
 
-class CTkSwitchArgs(TypedDict, total=False):
+class CTkSwitchThemedArgs(TypedDict, total=False):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -34,6 +34,14 @@ class CTkSwitchArgs(TypedDict, total=False):
     font: FontType
     compound: Literal["left", "right", "top", "bottom"]
 
+class CTkSwitchArgs(CTkSwitchThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    onvalue: int | float | str | bool
+    offvalue: int | float | str | bool
+    textvariable: tkinter.StringVar | None
+    variable: tkinter.Variable | None
+    command: Callable[[], None] | None
+
 
 class CTkSwitch(CTkWidget):
     """
@@ -44,15 +52,10 @@ class CTkSwitch(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 textvariable: tkinter.StringVar | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 onvalue: int | float | str | bool = 1,
-                 offvalue: int | float | str | bool = 0,
-                 variable: tkinter.Variable | None = None,
-                 command: Callable[[], None] | None = None,
                  **kwargs: Unpack[CTkSwitchArgs]) -> None:
 
-        self._theme_info: CTkSwitchArgs = ThemeManager.get_info("CTkSwitch", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkSwitchThemedArgs.__annotations__)
+        self._theme_info: CTkSwitchThemedArgs = ThemeManager.get_info("CTkSwitch", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -70,14 +73,14 @@ class CTkSwitch(CTkWidget):
         self._font.add_size_configure_callback(self._update_font)
 
         # functionality
-        self._state: Literal["normal", "disabled"] = state
-        self._command: Callable[[], None] | None = command
-        self._textvariable: tkinter.StringVar | None = textvariable
-        self._variable: tkinter.Variable | None = variable
+        self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
+        self._command: Callable[[], None] | None = kwargs.pop("command", None)
+        self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
+        self._variable: tkinter.Variable | None = kwargs.pop("variable", None)
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
-        self._onvalue: int | float | str | bool = onvalue
-        self._offvalue: int | float | str | bool = offvalue
+        self._onvalue: int | float | str | bool = kwargs.pop("onvalue", 1)
+        self._offvalue: int | float | str | bool = kwargs.pop("offvalue", 0)
         self._hover_state: bool = False
         self._check_state: bool = False  # True if switch is activated
 
@@ -112,6 +115,9 @@ class CTkSwitch(CTkWidget):
         if self._variable is not None:
             self._variable_callback_name = self._variable.trace_add("write", self._variable_callback)
             self._check_state = self._variable.get() == self._onvalue
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._create_bindings()
         self._set_cursor()

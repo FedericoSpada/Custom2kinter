@@ -13,12 +13,36 @@ from .widgets.appearance_mode import CTkAppearanceModeBaseClass
 from .widgets.scaling import CTkScalingBaseClass
 from .widgets.core_widget_classes import CTkContainer
 from .widgets.theme import ColorType, ThemeManager
-from .widgets.utility import pop_from_dict_by_set, check_kwargs_empty, parse_geometry_string
+from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty, parse_geometry_string
 
 
-class CTkToplevelArgs(TypedDict, total=False):
+class CTkToplevelThemedArgs(TypedDict, total=False):
     fg_color: ColorType
     title: str
+
+#Explanations can be found here: https://tkdocs.com/shipman/toplevel.html
+class ValidTkToplevelArgs(TypedDict, total=False):
+    bd: float | str
+    borderwidth: float | str
+    class_: str
+    cursor: str
+    height: float | str
+    width: float | str
+    padx: float | int | str
+    pady: float | int | str
+    highlightthickness: float | str
+    highlightbackground: str
+    highlightcolor: str
+    menu: tkinter.Menu
+    relief: Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]
+    takefocus: bool
+    container: bool
+    screen: str
+    use: int | str
+    visual: str | tuple[str, int]
+
+class CTkToplevelArgs(CTkToplevelThemedArgs, ValidTkToplevelArgs, total=False):
+    pass
 
 
 class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContainer):
@@ -27,10 +51,6 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
     For detailed information check out the documentation.
     """
 
-    _valid_tk_toplevel_arguments: set[str] = {"master", "bd", "borderwidth", "class", "container", "cursor", "height",
-                                              "highlightbackground", "highlightthickness", "menu", "relief",
-                                              "screen", "takefocus", "use", "visual", "width"}
-
     _deactivate_macos_window_header_manipulation: bool = False
     _deactivate_windows_window_header_manipulation: bool = False
 
@@ -38,9 +58,8 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
                  master: tkinter.Misc | None = None,
                  **kwargs: Unpack[CTkToplevelArgs]) -> None:
 
-        toplevel_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_toplevel_arguments)
-
-        self._theme_info: CTkToplevelArgs = ThemeManager.get_info("CTkToplevel", None, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkToplevelThemedArgs.__annotations__)
+        self._theme_info: CTkToplevelThemedArgs = ThemeManager.get_info("CTkToplevel", None, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -50,7 +69,7 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
         self._enable_macos_dark_title_bar()
 
         # call init methods of super classes
-        super().__init__(master, **toplevel_kwargs)
+        super().__init__(master, **pop_from_dict_by_iterable(kwargs, ValidTkToplevelArgs.__annotations__))
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="window")
         CTkContainer.__init__(self, fg_color=self._theme_info["fg_color"])
@@ -78,6 +97,9 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
         self._iconify_called_after_windows_set_titlebar_color: bool = False  # indicates if iconify() was called after windows_set_titlebar_color
         self._block_update_dimensions_event: bool = False
         self.focused_widget_before_widthdraw: tkinter.Misc | None = None
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         # Windows only
         if sys.platform.startswith("win"):
@@ -193,8 +215,11 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
 
             self.propagate_fg_color(self.winfo_children())
 
-        super().configure(**pop_from_dict_by_set(kwargs, self._valid_tk_toplevel_arguments))
-        check_kwargs_empty(kwargs)
+        if "title" in kwargs:
+            self.title(kwargs.pop("title"))
+
+        super().configure(**pop_from_dict_by_iterable(kwargs, ValidTkToplevelArgs.__annotations__))
+        check_kwargs_empty(kwargs, raise_error=True)
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "fg_color":

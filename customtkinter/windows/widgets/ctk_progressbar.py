@@ -8,10 +8,10 @@ from typing_extensions import Literal, TypedDict, Unpack
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
 
 
-class CTkProgressBarArgs(TypedDict, total=False):
+class CTkProgressBarThemedArgs(TypedDict, total=False):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -21,6 +21,11 @@ class CTkProgressBarArgs(TypedDict, total=False):
     fg_color: ColorType
     border_color: ColorType
     progress_color: ColorType
+
+class CTkProgressBarArgs(CTkProgressBarThemedArgs, total=False):
+    mode: Literal["determinate", "indeterminate", "single_run"]
+    progress_speed: float # [%/s]
+    variable: tkinter.DoubleVar | tkinter.IntVar | None
 
 
 class CTkProgressBar(CTkWidget):
@@ -35,12 +40,10 @@ class CTkProgressBar(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 mode: Literal["determinate", "indeterminate", "single_run"] = "determinate",
-                 progress_speed: float = 0.5, # [%/s]
-                 variable: tkinter.DoubleVar | tkinter.IntVar | None = None,
                  **kwargs: Unpack[CTkProgressBarArgs]) -> None:
 
-        self._theme_info: CTkProgressBarArgs = ThemeManager.get_info("CTkProgressBar", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkProgressBarThemedArgs.__annotations__)
+        self._theme_info: CTkProgressBarThemedArgs = ThemeManager.get_info("CTkProgressBar", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -59,14 +62,14 @@ class CTkProgressBar(CTkWidget):
                          height=height)
 
         # control variable
-        self._variable: tkinter.DoubleVar | tkinter.IntVar | None = variable
+        self._variable: tkinter.DoubleVar | tkinter.IntVar | None = kwargs.pop("variable", None)
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
         self._is_intvar = isinstance(self._variable, tkinter.IntVar)
 
         # functionality
-        self._mode: Literal["determinate", "indeterminate", "single_run"] = mode
-        self._progress_speed: float = progress_speed # [%/s]
+        self._mode: Literal["determinate", "indeterminate", "single_run"] = kwargs.pop("mode", "determinate")
+        self._progress_speed: float = kwargs.pop("progress_speed", 0.5) # [%/s]
         self._value: float = 0.0 # range 0-1
         self._indeterminate_width: float = 0.4  # range 0-1
         self._loop_running: bool = False
@@ -82,6 +85,9 @@ class CTkProgressBar(CTkWidget):
         self._progress_bar = RoundedRect(self._canvas)
         self._bind_targets.append(self._canvas)
         self._focus_target = self._canvas
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._draw(force_colors_update=True)
 

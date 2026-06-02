@@ -10,10 +10,10 @@ from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .utility import get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkOptionMenuArgs(TypedDict, total=False):
+class CTkOptionMenuThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -30,6 +30,12 @@ class CTkOptionMenuArgs(TypedDict, total=False):
     compound: Literal["left", "right"]
     dropdown: DropdownMenuArgs
 
+class CTkOptionMenuArgs(CTkOptionMenuThemedArgs, total=False):
+    state: Literal["normal", "disabled"]
+    values: list[str] | None
+    variable: tkinter.StringVar | None
+    command: Callable[[str], None] | None
+
 
 class CTkOptionMenu(CTkWidget):
     """
@@ -40,13 +46,10 @@ class CTkOptionMenu(CTkWidget):
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 state: Literal["normal", "disabled"] = "normal",
-                 values: list[str] | None = None,
-                 variable: tkinter.StringVar | None = None,
-                 command: Callable[[str], None] | None = None,
                  **kwargs: Unpack[CTkOptionMenuArgs]) -> None:
 
-        self._theme_info: CTkOptionMenuArgs = ThemeManager.get_info("CTkOptionMenu", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkOptionMenuThemedArgs.__annotations__)
+        self._theme_info: CTkOptionMenuThemedArgs = ThemeManager.get_info("CTkOptionMenu", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -64,13 +67,13 @@ class CTkOptionMenu(CTkWidget):
         self._font.add_size_configure_callback(self._update_font)
 
         # functionality
-        self._state: Literal["normal", "disabled"] = state
-        self._command: Callable[[str], None] | None = command
-        self._variable: tkinter.StringVar | None = variable
+        self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
+        self._command: Callable[[str], None] | None = kwargs.pop("command", None)
+        self._variable: tkinter.StringVar | None = kwargs.pop("variable", None)
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
         self._applied_button_width: int = -1
-        self._values: list[str] = [] if values is None else values
+        self._values: list[str] = kwargs.pop("values", [])
         self._current_value: str = "" if len(self._values) == 0 else self._values[0]
 
         self._dropdown_menu = DropdownMenu(master=self,
@@ -89,7 +92,7 @@ class CTkOptionMenu(CTkWidget):
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.grid(row=0, column=0, sticky="nsew")
         self._rounded_rect = BorderedRoundedRect(self._canvas)
-        self._arrow = Arrow(self._canvas)
+        self._arrow = Arrow(self._canvas, events_transparent=True)
         self._bind_targets.append(self._canvas)
 
         self._text_label = tkinter.Label(master=self,
@@ -101,6 +104,9 @@ class CTkOptionMenu(CTkWidget):
                                          text=self._current_value)
         self._bind_targets.append(self._text_label)
         self._focus_target = self._text_label
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._create_bindings()
         self._set_cursor()
@@ -149,7 +155,7 @@ class CTkOptionMenu(CTkWidget):
         self._canvas.grid(row=0, column=0, sticky="nsew")
 
     def destroy(self) -> None:
-        if self._variable is not None:  # remove old callback
+        if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
 
         self._font.remove_size_configure_callback(self._update_font)
@@ -209,12 +215,14 @@ class CTkOptionMenu(CTkWidget):
         compound = self._theme_info["compound"]
         self._applied_button_width = self._rounded_rect.info.get(f"{compound}_section_width", 0)
 
+        spacing = self._rounded_rect.info.get("inscribed_spacing", 0)
         border_spacing = self._apply_scaling(self._theme_info["border_spacing"])
-        padx=(self._rounded_rect.info.get("inscribed_spacing", 0) + border_spacing,
+        padx=(spacing + border_spacing,
               self._applied_button_width + border_spacing)
 
-        self._text_label.grid(row=0, column=0, sticky="ew",
-                              padx=padx if compound == "right" else padx[::-1])
+        self._text_label.grid(row=0, column=0, sticky="nsew",
+                              padx=padx if compound == "right" else padx[::-1],
+                              pady=spacing)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkOptionMenuArgs]) -> None:
         if "corner_radius" in kwargs:
@@ -245,9 +253,6 @@ class CTkOptionMenu(CTkWidget):
             self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
             require_redraw = True
 
-        if "dropdown" in kwargs:
-            self._dropdown_menu.configure(**kwargs.pop("dropdown"))
-
         if "font" in kwargs:
             self._font.remove_size_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
@@ -259,7 +264,7 @@ class CTkOptionMenu(CTkWidget):
             self._dropdown_menu.configure(values=self._values)
 
         if "variable" in kwargs:
-            if self._variable is not None:  # remove old callback
+            if self._variable is not None:
                 self._variable.trace_remove("write", self._variable_callback_name)
             self._variable = kwargs.pop("variable")
             if self._variable is not None:
@@ -279,12 +284,16 @@ class CTkOptionMenu(CTkWidget):
             self._command = kwargs.pop("command")
 
         if "anchor" in kwargs:
-            self._text_label.configure(anchor=kwargs.pop("anchor"))
+            self._theme_info["anchor"] = kwargs.pop("anchor")
+            self._text_label.configure(anchor=self._theme_info["anchor"])
 
         if "compound" in kwargs:
             self._theme_info["compound"] = kwargs.pop("compound")
             self._applied_button_width = -1
             require_redraw = True
+
+        if "dropdown" in kwargs:
+            self._dropdown_menu.configure(**kwargs.pop("dropdown"))
 
         super().configure(require_redraw=require_redraw, **kwargs)
 

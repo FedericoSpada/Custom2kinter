@@ -3,14 +3,17 @@ from __future__ import annotations
 import tkinter
 import sys
 import re
-from typing import TypeVar
+from typing import Iterable, TypeVar, TYPE_CHECKING
 from typing_extensions import Literal
+
+if TYPE_CHECKING:
+    from ..theme import AnchorType
 
 KT = TypeVar("KT")
 VT = TypeVar("VT")
 
-def pop_from_dict_by_set(dictionary: dict[KT, VT], valid_keys: set[KT]) -> dict[KT, VT]:
-    """ remove and create new dict with key value pairs of dictionary, where key is in valid_keys """
+def pop_from_dict_by_iterable(dictionary: dict[KT, VT], valid_keys: Iterable[KT]) -> dict[KT, VT]:
+    """ removes and creates new dict with key value pairs of dictionary, where key is in valid_keys """
     new_dictionary: dict[KT, VT] = {}
 
     for key in list(dictionary.keys()):
@@ -25,7 +28,9 @@ def check_kwargs_empty(kwargs: dict, raise_error: bool = False) -> bool:
 
     if len(kwargs) > 0:
         if raise_error:
-            raise ValueError(f"{list(kwargs.keys())} are not supported arguments. Look at the documentation for supported arguments.")
+            arguments = "', '".join(kwargs.keys())
+            phrase = "is not a supported argument" if len(kwargs) == 1 else "are not supported arguments"
+            raise ValueError(f"'{arguments}' {phrase}.\nLook at the documentation for supported arguments.")
         else:
             return True
     else:

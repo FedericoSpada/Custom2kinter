@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import tkinter
-from typing import Any
+from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
 from .core_widget_classes import CTkContainer, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_set
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkEntryArgs(TypedDict, total=False):
+class CTkEntryThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -24,6 +24,28 @@ class CTkEntryArgs(TypedDict, total=False):
     placeholder_text_color: ColorType
     placeholder_text: str
     font: FontType
+    justify: Literal["left", "center", "right"]
+    show: str
+
+#Explanations can be found here: https://tkdocs.com/shipman/entry.html
+class ValidTkEntryArgs(TypedDict, total=False):
+    cursor: str
+    insertofftime: int
+    insertontime: int
+    insertborderwidth: float | str
+    insertwidth: float | str
+    selectbackground: str
+    selectforeground: str
+    selectborderwidth: float | str
+    exportselection: bool
+    takefocus: bool
+    validate: Literal["none", "focus", "focusin", "focusout", "key", "all"]
+    validatecommand: str | list[str] | tuple[str, ...]
+    xscrollcommand: str | Callable[[float, float], None]
+
+class CTkEntryArgs(CTkEntryThemedArgs, ValidTkEntryArgs, total=False):
+    state: Literal["normal", "disabled", "readonly"]
+    textvariable: tkinter.StringVar | None
 
 
 class CTkEntry(CTkWidget):
@@ -32,21 +54,13 @@ class CTkEntry(CTkWidget):
     For detailed information check out the documentation.
     """
 
-    # attributes that are passed to and managed by the tkinter entry only:
-    _valid_tk_entry_attributes: set[str] = {"exportselection", "insertborderwidth", "insertofftime",
-                                            "insertontime", "insertwidth", "justify", "selectborderwidth",
-                                            "show", "takefocus", "validate", "validatecommand", "xscrollcommand"}
-
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
-                 textvariable: tkinter.StringVar | None = None,
-                 state: Literal["normal", "disabled", "readonly"] = "normal",
                  **kwargs: Unpack[CTkEntryArgs]) -> None:
 
-        entry_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_entry_attributes)
-
-        self._theme_info: CTkEntryArgs = ThemeManager.get_info("CTkEntry", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkEntryThemedArgs.__annotations__)
+        self._theme_info: CTkEntryThemedArgs = ThemeManager.get_info("CTkEntry", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -64,11 +78,10 @@ class CTkEntry(CTkWidget):
         self.grid_columnconfigure(0, weight=1)
 
         # functionality
-        self._state: Literal["normal", "disabled", "readonly"] = state
-        self._textvariable: tkinter.StringVar | None = textvariable
+        self._state: Literal["normal", "disabled", "readonly"] = kwargs.pop("state", "normal")
+        self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
         self._is_focused: bool = False
         self._placeholder_text_active: bool = False
-        self._pre_placeholder_arguments: dict[str, Any] = {}  # some set arguments of the entry will be changed for placeholder and then set back
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
@@ -86,11 +99,16 @@ class CTkEntry(CTkWidget):
                                     width=1,
                                     highlightthickness=0,
                                     font=self._apply_font_scaling(self._font),
+                                    justify=self._theme_info["justify"],
+                                    show=self._theme_info["show"],
                                     state=self._state,
                                     textvariable=self._textvariable,
-                                    **entry_kwargs)
+                                    **pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
         self._bind_targets.append(self._entry)
         self._focus_target = self._entry
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._activate_placeholder()
         self._create_bindings()
@@ -209,17 +227,20 @@ class CTkEntry(CTkWidget):
             self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
+        if "justify" in kwargs:
+            self._theme_info["justify"] = kwargs.pop("justify")
+            self._entry.configure(justify=self._theme_info["justify"])
+
         if "state" in kwargs:
             self._state = kwargs.pop("state")
             self._entry.configure(state=self._state)
 
         if "show" in kwargs:
-            if self._placeholder_text_active:
-                self._pre_placeholder_arguments["show"] = kwargs.pop("show")  # remember show argument for when placeholder gets deactivated
-            else:
-                self._entry.configure(show=kwargs.pop("show"))
+            self._theme_info["show"] = kwargs.pop("show")
+            if not self._placeholder_text_active:
+                self._entry.configure(show=self._theme_info["show"])
 
-        self._entry.configure(**pop_from_dict_by_set(kwargs, self._valid_tk_entry_attributes))  # configure Tkinter.Entry
+        self._entry.configure(**pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
@@ -231,8 +252,8 @@ class CTkEntry(CTkWidget):
             return self._state
         elif attribute_name in self._theme_info:
             return self._theme_info[attribute_name]
-        elif attribute_name in self._valid_tk_entry_attributes:
-            return self._entry.cget(attribute_name)  # cget of tkinter.Entry
+        elif attribute_name in ValidTkEntryArgs.__annotations__:
+            return self._entry.cget(attribute_name)
         else:
             return super().cget(attribute_name)
 
@@ -240,10 +261,9 @@ class CTkEntry(CTkWidget):
         if self._entry.get() == "" and self._textvariable is None and not self._is_focused:
             self._placeholder_text_active = True
 
-            self._pre_placeholder_arguments = {"show": self._entry.cget("show")}
-            self._entry.config(fg=self._apply_appearance_mode(self._theme_info["placeholder_text_color"]),
-                               disabledforeground=self._apply_appearance_mode(self._theme_info["placeholder_text_color"]),
-                               show="")
+            self._entry.configure(fg=self._apply_appearance_mode(self._theme_info["placeholder_text_color"]),
+                                  disabledforeground=self._apply_appearance_mode(self._theme_info["placeholder_text_color"]),
+                                  show="")
             self._entry.delete(0, tkinter.END)
             self._entry.insert(0, self._theme_info["placeholder_text"])
 
@@ -251,10 +271,10 @@ class CTkEntry(CTkWidget):
         if self._placeholder_text_active:
             self._placeholder_text_active = False
 
-            self._entry.config(fg=self._apply_appearance_mode(self._theme_info["text_color"]),
-                               disabledforeground=self._apply_appearance_mode(self._theme_info["text_color"]))
+            self._entry.configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]),
+                                  disabledforeground=self._apply_appearance_mode(self._theme_info["text_color"]),
+                                  show=self._theme_info["show"])
             self._entry.delete(0, tkinter.END)
-            self._entry.configure(**self._pre_placeholder_arguments)
 
     def _entry_focus_out(self, _: tkinter.Event | None = None) -> None:
         self._is_focused = False

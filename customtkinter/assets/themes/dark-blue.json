@@ -100,6 +100,7 @@
     "text": "CTkLabel",
     "font": {},
     "anchor": "center",
+    "justify": "center",
     "image": {},
     "compound": "center",
     "wraplength": 0
@@ -116,7 +117,9 @@
     "text_color": ["gray14", "gray84"],
     "placeholder_text_color": ["gray52", "gray62"],
     "placeholder_text": "",
-    "font": {}
+    "font": {},
+    "justify": "left",
+    "show": ""
   },
   "CTkTextbox": {
     "width": 200,
@@ -324,8 +327,8 @@
     }
   },
   "CTkImage": {
-    "width": 20,
-    "height": 20,
+    "width": 0,
+    "height": 0,
     "light_image": "",
     "dark_image": ""
   }

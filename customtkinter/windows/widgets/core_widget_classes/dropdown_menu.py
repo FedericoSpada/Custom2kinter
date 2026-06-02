@@ -10,35 +10,37 @@ from ..appearance_mode import CTkAppearanceModeBaseClass
 from ..scaling import CTkScalingBaseClass
 from ..theme import ColorType, ThemeManager
 from ..font import CTkFont, FontType
-from ..utility import pop_from_dict_by_set
+from ..utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class DropdownMenuArgs(TypedDict, total=False):
+class DropdownMenuThemedArgs(TypedDict, total=False):
     fg_color: ColorType
     hover_color: ColorType
     text_color: ColorType
     min_character_width: int
     font: FontType
 
+class ValidTkMenuArgs(TypedDict, total=False):
+    postcommand: str | Callable[[], None]
+    selectcolor: str
+    takefocus: bool
+
+class DropdownMenuArgs(DropdownMenuThemedArgs, ValidTkMenuArgs, total=False):
+    values: list[str] | None
+    command: Callable[[str], None] | None
+
 
 class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
 
-    # attributes that are passed to and managed by the tkinter menu only:
-    _valid_tk_menu_attributes: set[str] = {"background", "bd", "border", "disabledforeground",
-                                           "foreground", "name", "postcommand", "selectcolor",
-                                           "takefocus", "tearoffcommand", "title", "type"}
-
     def __init__(self,
-                 values: list[str] | None = None,
-                 command: Callable[[str], None] | None = None,
+                 master: tkinter.Misc | None = None,
                  **kwargs: Unpack[DropdownMenuArgs]) -> None:
 
-        menu_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_menu_attributes)
-
-        self._theme_info: DropdownMenuArgs = ThemeManager.get_info("DropdownMenu", None, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, DropdownMenuThemedArgs.__annotations__)
+        self._theme_info: DropdownMenuThemedArgs = ThemeManager.get_info("DropdownMenu", None, **theme_args)
 
         # call init methods of super classes
-        tkinter.Menu.__init__(self, **menu_kwargs)
+        tkinter.Menu.__init__(self, master, **pop_from_dict_by_iterable(kwargs, ValidTkMenuArgs.__annotations__))
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="widget")
 
@@ -47,8 +49,11 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
         self._font.add_size_configure_callback(self._update_font)
 
         #functionality
-        self._values: list[str] = [] if values is None else values
-        self._command: Callable[[str], None] | None = command
+        self._values: list[str] = kwargs.pop("values", [])
+        self._command: Callable[[str], None] | None = kwargs.pop("command", None)
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._configure_menu_for_platforms()
         self._add_menu_commands()
@@ -97,20 +102,15 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
                               font=self._apply_font_scaling(self._font))
 
     def _add_menu_commands(self) -> None:
-        """ delete existing menu labels and createe new labels with command according to values list """
+        """ delete existing menu labels and create new labels with command according to values list """
 
         self.delete(0, "end")  # delete all old commands
 
-        if sys.platform.startswith("linux"):
-            for value in self._values:
-                self.add_command(label="  " + value.ljust(self._theme_info["min_character_width"]) + "  ",
-                                 command=lambda v=value: self._button_callback(v),
-                                 compound="left")
-        else:
-            for value in self._values:
-                self.add_command(label=value.ljust(self._theme_info["min_character_width"]),
-                                 command=lambda v=value: self._button_callback(v),
-                                 compound="left")
+        padding = "  " if sys.platform.startswith("linux") else ""
+
+        for value in self._values:
+            self.add_command(label=padding + value.ljust(self._theme_info["min_character_width"]) + padding,
+                             command=lambda v=value: self._button_callback(v))
 
     def _button_callback(self, value: str) -> None:
         if self._command is not None:
@@ -163,7 +163,8 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
             self._values = kwargs.pop("values")
             self._add_menu_commands()
 
-        super().configure(**kwargs)
+        super().configure(**pop_from_dict_by_iterable(kwargs, ValidTkMenuArgs.__annotations__))
+        check_kwargs_empty(kwargs, raise_error=True)
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "font":

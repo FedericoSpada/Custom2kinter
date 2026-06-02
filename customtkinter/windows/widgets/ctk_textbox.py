@@ -10,10 +10,10 @@ from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .ctk_scrollbar import CTkScrollbar, CTkScrollbarArgs
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_set
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkTextboxArgs(TypedDict, total=False):
+class CTkTextboxThemedArgs(TypedDict, total=False):
     width: int
     height: int
     corner_radius: int
@@ -27,6 +27,34 @@ class CTkTextboxArgs(TypedDict, total=False):
     activate_scrollbars: bool
     scrollbar: CTkScrollbarArgs
 
+#Explanations can be found here: https://tkdocs.com/shipman/text.html
+class ValidTkTextArgs(TypedDict, total=False):
+    state: Literal["normal", "disabled"]
+    undo: bool
+    autoseparators: bool
+    maxundo: int
+    wrap: Literal["none", "char", "word"]
+    cursor: str
+    insertofftime: int
+    insertontime: int
+    insertborderwidth: float | str
+    insertwidth: float | str
+    selectbackground: str
+    selectforeground: str
+    selectborderwidth: float | str
+    spacing1: float | str
+    spacing2: float | str
+    spacing3: float | str
+    tabs: float | str | tuple[float | str, ...]
+    exportselection: bool
+    takefocus: bool
+    #--- Configure only ---
+    xscrollcommand: str | Callable[[float, float], None]
+    yscrollcommand: str | Callable[[float, float], None]
+
+class CTkTextboxArgs(CTkTextboxThemedArgs, ValidTkTextArgs, total=False):
+    pass
+
 
 class CTkTextbox(CTkWidget):
     """
@@ -34,29 +62,17 @@ class CTkTextbox(CTkWidget):
     Scrollbars only appear when they are needed. Text is wrapped on line end by default,
     set wrap='none' to disable automatic line wrapping.
     For detailed information check out the documentation.
-
-    Detailed methods and parameters of the underlaying tkinter.Text widget can be found here:
-    https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/text.html
-    (most of them are implemented here too)
     """
 
     _scrollbar_update_time: int = 200  # interval in ms, to check if scrollbars are needed
-
-    # attributes that are passed to and managed by the tkinter textbox only:
-    _valid_tk_text_attributes: set[str] = {"autoseparators", "cursor", "exportselection",
-                                           "insertborderwidth", "insertofftime", "insertontime", "insertwidth",
-                                           "maxundo", "padx", "pady", "selectborderwidth", "spacing1",
-                                           "spacing2", "spacing3", "state", "tabs", "takefocus", "undo", "wrap",
-                                           "xscrollcommand", "yscrollcommand"}
 
     def __init__(self,
                  master: CTkContainer,
                  theme_key: str | None = None,
                  **kwargs: Unpack[CTkTextboxArgs]) -> None:
 
-        textbox_kwargs = pop_from_dict_by_set(kwargs, self._valid_tk_text_attributes)
-
-        self._theme_info: CTkTextboxArgs = ThemeManager.get_info("CTkTextbox", theme_key, **kwargs)
+        theme_args = pop_from_dict_by_iterable(kwargs, CTkTextboxThemedArgs.__annotations__)
+        self._theme_info: CTkTextboxThemedArgs = ThemeManager.get_info("CTkTextbox", theme_key, **theme_args)
 
         #validity checks
         for key in self._theme_info:
@@ -72,6 +88,7 @@ class CTkTextbox(CTkWidget):
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
         self._font.add_size_configure_callback(self._update_font)
+        self._tagged_fonts: dict[str, CTkFont] = {}
 
         self._canvas = CTkCanvas(master=self,
                                  highlightthickness=0,
@@ -82,14 +99,14 @@ class CTkTextbox(CTkWidget):
         self._rounded_rect = BorderedRoundedRect(self._canvas)
 
         self._textbox = tkinter.Text(self,
-                                     fg=self._apply_appearance_mode(self._theme_info["text_color"]),
                                      width=0,
                                      height=0,
-                                     font=self._apply_font_scaling(self._font),
+                                     padx=0,
+                                     pady=0,
                                      highlightthickness=0,
+                                     font=self._apply_font_scaling(self._font),
                                      relief="flat",
-                                     insertbackground=self._apply_appearance_mode(self._theme_info["text_color"]),
-                                     **textbox_kwargs)
+                                     **pop_from_dict_by_iterable(kwargs, ValidTkTextArgs.__annotations__))
         self._bind_targets.append(self._textbox)
         self._focus_target = self._textbox
 
@@ -107,6 +124,9 @@ class CTkTextbox(CTkWidget):
         self._ver_scrollbar = CTkScrollbar(self, command=self._textbox.yview, **scrollbar_kwargs)
 
         self._textbox.configure(xscrollcommand=self._hor_scrollbar.set, yscrollcommand=self._ver_scrollbar.set)
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
         self._loop_after_id: str = self.after(50, self._check_if_scrollbars_needed, True)
         self._draw(force_colors_update=True)
@@ -131,6 +151,8 @@ class CTkTextbox(CTkWidget):
         super()._set_scaling(new_widget_scaling, new_window_scaling)
 
         self._textbox.configure(font=self._apply_font_scaling(self._font))
+        for tag_name, tag_font in self._tagged_fonts.items():
+            self._textbox.tag_configure(tag_name, font=self._apply_font_scaling(tag_font))
         self._canvas.configure(width=self._apply_scaling(self._desired_width),
                                height=self._apply_scaling(self._desired_height))
         self._draw()
@@ -241,21 +263,21 @@ class CTkTextbox(CTkWidget):
             self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
             require_redraw = True
 
-        if "scrollbar" in kwargs:
-            self._theme_info["scrollbar"] = kwargs.pop("scrollbar")
-            self._hor_scrollbar.configure(**self._theme_info["scrollbar"])
-            self._ver_scrollbar.configure(**self._theme_info["scrollbar"])
-
-        if "activate_scrollbars" in kwargs:
-            self._theme_info["activate_scrollbars"] = kwargs.pop("activate_scrollbars")
-
         if "font" in kwargs:
             self._font.remove_size_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
             self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
-        self._textbox.configure(**pop_from_dict_by_set(kwargs, self._valid_tk_text_attributes))
+        if "activate_scrollbars" in kwargs:
+            self._theme_info["activate_scrollbars"] = kwargs.pop("activate_scrollbars")
+
+        if "scrollbar" in kwargs:
+            scrollbar_kwargs = kwargs.pop("scrollbar")
+            self._hor_scrollbar.configure(**scrollbar_kwargs)
+            self._ver_scrollbar.configure(**scrollbar_kwargs)
+
+        self._textbox.configure(**pop_from_dict_by_iterable(kwargs, ValidTkTextArgs.__annotations__))
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
@@ -265,8 +287,8 @@ class CTkTextbox(CTkWidget):
             return self._theme_info[attribute_name]
         elif attribute_name.startswith("scrollbar_"):
             return self._ver_scrollbar.cget(attribute_name.removeprefix("scrollbar_"))
-        elif attribute_name in self._valid_tk_text_attributes:
-            return self._textbox.cget(attribute_name)  # cget of tkinter.Text
+        elif attribute_name in ValidTkTextArgs.__annotations__:
+            return self._textbox.cget(attribute_name)
         else:
             return super().cget(attribute_name)
 
@@ -369,15 +391,17 @@ class CTkTextbox(CTkWidget):
     def tag_cget(self, tagName: str, option: str) -> Any:
         return self._textbox.tag_cget(tagName, option)
 
-    def tag_config(self, tagName: str, **kwargs: Any) -> Any:
-        if "font" in kwargs:
-            raise AttributeError("'font' option forbidden, because would be incompatible with scaling")
-        return self._textbox.tag_config(tagName, **kwargs)
-
-    def tag_configure(self, tagName: str, **kwargs: Any) -> Any:
-        if "font" in kwargs:
-            raise AttributeError("'font' option forbidden, because would be incompatible with scaling")
+    def tag_configure(self, tagName: str, font: FontType | None = None, **kwargs: Any) -> Any:
+        if font is not None:
+            if font:
+                self._tagged_fonts[tagName] = CTkFont.from_parameter(font)
+                kwargs["font"] = self._apply_font_scaling(self._tagged_fonts[tagName])
+            else:
+                self._tagged_fonts.pop(tagName, None)
+                kwargs["font"] = ""
         return self._textbox.tag_configure(tagName, **kwargs)
+
+    tag_config = tag_configure
 
     def tag_delete(self, *tagNames: str) -> None:
         return self._textbox.tag_delete(*tagNames)

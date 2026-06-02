@@ -20,8 +20,8 @@ class App(customtkinter.CTk):
         # ... tuple(<path>, <width>, <height>)
         self.logo_image = (os.path.join(image_path, "CustomTkinter_logo_single.png"), 26, 26)
 
-        # ... CTkImage(light_image=<path>, width=<width>, height=<height>)
-        self.large_test_image = customtkinter.CTkImage(light_image=os.path.join(image_path, "large_test_image.png"), width=500, height=150)
+        # ... CTkImage(light_image=<path>, height=<height>) => width is adjusted to maintain the aspect ratio
+        self.large_test_image = customtkinter.CTkImage(light_image=os.path.join(image_path, "large_test_image.png"), height=150)
 
         # ... CTkImage(light_image=<Image.Image>, width=<width>, height=<height>)
         self.image_icon_image = customtkinter.CTkImage(light_image=Image.open(os.path.join(image_path, "image_icon_light.png")), width=20, height=20)
@@ -29,11 +29,10 @@ class App(customtkinter.CTk):
         # ... tuple(<light_path>, <dark_path>, <width>, <height>)
         self.home_image = (os.path.join(image_path, "home_dark.png"), os.path.join(image_path, "home_light.png"), 20, 20)
 
-        # ... CTkImage(light_image=<light_path>, dark_image=<dark_path>, width=<width>, height=<height>)
+        # ... CTkImage(light_image=<light_path>, dark_image=<dark_path>, width=<width>) => height is adjusted to maintain the aspect ratio
         self.chat_image = customtkinter.CTkImage(light_image=os.path.join(image_path, "chat_dark.png"),
                                                  dark_image=os.path.join(image_path, "chat_light.png"),
-                                                 width=20,
-                                                 height=20)
+                                                 width=20)
 
         # ... CTkImageArgs{"light_image": <light_path>, "dark_image": <dark_path>, "width": <width>, "height": <height>}
         self.add_user_image = {"light_image": os.path.join(image_path, "add_user_dark.png"),
