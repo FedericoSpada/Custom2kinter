@@ -8,11 +8,11 @@ app.geometry("400x780")
 app.title("CustomTkinter simple_example.py")
 
 
-def button_callback():
+def button_callback() -> None:
     print("Button click", combobox_1.get())
 
 
-def slider_callback(value):
+def slider_callback(value) -> None:
     progressbar_1.set(value)
 
 

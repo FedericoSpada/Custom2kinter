@@ -35,8 +35,8 @@ class CTkTabview(CTkWidget, CTkContainer):
     For detailed information check out the documentation.
     """
 
-    _outer_button_overhang: int = 8  # px
-    _extra_button_border: int = 8  # px
+    outer_button_overhang: int = 8  # pixels
+    extra_button_border: int = 8  # pixels
 
     def __init__(self,
                  master: CTkContainer,
@@ -77,7 +77,7 @@ class CTkTabview(CTkWidget, CTkContainer):
                                  bg=self._apply_appearance_mode(self._bg_color),
                                  highlightthickness=0,
                                  width=self._apply_scaling(self._desired_width),
-                                 height=self._apply_scaling(self._desired_height - self._outer_button_overhang))
+                                 height=self._apply_scaling(self._desired_height - self.outer_button_overhang))
         self._rounded_rect = BorderedRoundedRect(self._canvas)
         self._focus_target = self._canvas
 
@@ -117,7 +117,7 @@ class CTkTabview(CTkWidget, CTkContainer):
         super()._set_scaling(new_widget_scaling, new_window_scaling)
 
         self._canvas.configure(width=self._apply_scaling(self._desired_width),
-                               height=self._apply_scaling(self._desired_height - self._outer_button_overhang))
+                               height=self._apply_scaling(self._desired_height - self.outer_button_overhang))
         self._update_geometry()
         self._draw()
 
@@ -125,7 +125,7 @@ class CTkTabview(CTkWidget, CTkContainer):
         super()._set_dimensions(width, height)
 
         self._canvas.configure(width=self._apply_scaling(self._desired_width),
-                               height=self._apply_scaling(self._desired_height - self._outer_button_overhang))
+                               height=self._apply_scaling(self._desired_height - self.outer_button_overhang))
         self._draw()
 
     def _configure_segmented_button_background_corners(self) -> None:
@@ -146,7 +146,7 @@ class CTkTabview(CTkWidget, CTkContainer):
             return
 
         requires_recoloring = self._rounded_rect.update(self._current_width,
-                                                        self._current_height - self._apply_scaling(self._outer_button_overhang),
+                                                        self._current_height - self._apply_scaling(self.outer_button_overhang),
                                                         self._apply_scaling(self._theme_info["corner_radius"]),
                                                         self._apply_scaling(self._theme_info["border_width"]))
 
@@ -169,15 +169,15 @@ class CTkTabview(CTkWidget, CTkContainer):
 
         if self._theme_info["anchor"].lower() in ("center", "w", "nw", "n", "ne", "e"):
             self.grid_rowconfigure(0, weight=0, minsize=0)
-            self.grid_rowconfigure(1, weight=0, minsize=self._apply_scaling(self._outer_button_overhang))
-            self.grid_rowconfigure(2, weight=0, minsize=self._apply_scaling(self._segmented_button.cget("height") - self._outer_button_overhang))
+            self.grid_rowconfigure(1, weight=0, minsize=self._apply_scaling(self.outer_button_overhang))
+            self.grid_rowconfigure(2, weight=0, minsize=self._apply_scaling(self._segmented_button.cget("height") - self.outer_button_overhang))
             self.grid_rowconfigure(3, weight=1)
 
             self._canvas.grid(row=2, rowspan=2, column=0, columnspan=1, sticky="nsew")
         else:
             self.grid_rowconfigure(0, weight=1)
-            self.grid_rowconfigure(1, weight=0, minsize=self._apply_scaling(self._segmented_button.cget("height") - self._outer_button_overhang))
-            self.grid_rowconfigure(2, weight=0, minsize=self._apply_scaling(self._outer_button_overhang))
+            self.grid_rowconfigure(1, weight=0, minsize=self._apply_scaling(self._segmented_button.cget("height") - self.outer_button_overhang))
+            self.grid_rowconfigure(2, weight=0, minsize=self._apply_scaling(self.outer_button_overhang))
             self.grid_rowconfigure(3, weight=0, minsize=0)
 
             self._canvas.grid(row=0, rowspan=2, column=0, columnspan=1, sticky="nsew")
@@ -191,7 +191,7 @@ class CTkTabview(CTkWidget, CTkContainer):
             sticky = "nse"
         else:
             sticky = "ns"
-        spacing = self._rounded_rect.info.get("flat_spacing", 0) + self._apply_scaling(self._extra_button_border)
+        spacing = self._rounded_rect.info.get("flat_spacing", 0) + self._apply_scaling(self.extra_button_border)
         self._segmented_button.grid(row=1, rowspan=2, column=0, columnspan=1,
                                     padx=spacing, sticky=sticky, apply_scaling=False)
 

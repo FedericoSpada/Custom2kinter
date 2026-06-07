@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tkinter
 import tkinter.ttk as ttk
+from abc import ABC, abstractmethod
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
@@ -21,7 +22,7 @@ class CTkWidgetArgs(ValidTkFrameArgs, total=False):
     bg_color: TransparentColorType
 
 
-class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
+class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, ABC):
     """ Base class of every CTk widget, handles the dimensions, bg_color,
         appearance_mode changes, scaling, bg changes of master if master is not a CTk widget """
 
@@ -103,6 +104,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass):
         CTkAppearanceModeBaseClass.destroy(self)
         CTkScalingBaseClass.destroy(self)
 
+    @abstractmethod
     def _draw(self, force_colors_update: bool = False) -> None:
         """ Called when some attributes have changed and the widget has to be redrawn """
 

@@ -7,7 +7,7 @@ customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "gre
 
 
 class App(customtkinter.CTk):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         # configure window
@@ -144,18 +144,18 @@ class App(customtkinter.CTk):
         self.seg_button_1.configure(values=["CTkSegmentedButton", "Value 2", "Value 3"])
         self.seg_button_1.set("Value 2")
 
-    def open_input_dialog_event(self):
+    def open_input_dialog_event(self) -> None:
         dialog = customtkinter.CTkInputDialog(text="Type in a number:", title="CTkInputDialog")
         print("CTkInputDialog:", dialog.get_input())
 
-    def change_appearance_mode_event(self, new_appearance_mode: str):
+    def change_appearance_mode_event(self, new_appearance_mode: str) -> None:
         customtkinter.set_appearance_mode(new_appearance_mode)
 
-    def change_scaling_event(self, new_scaling: str):
+    def change_scaling_event(self, new_scaling: str) -> None:
         new_scaling_float = int(new_scaling.replace("%", "")) / 100
         customtkinter.set_widget_scaling(new_scaling_float)
 
-    def sidebar_button_event(self):
+    def sidebar_button_event(self) -> None:
         print("sidebar_button click")
 
 

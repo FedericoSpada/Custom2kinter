@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import tkinter
-import sys
 from typing import Any, Callable
 from typing_extensions import Literal, Unpack
 
 from .appearance_mode import CTkAppearanceModeBaseClass
 from .scaling import CTkScalingBaseClass
-from .core_widget_classes import CTkContainer
+from .core_widget_classes import CTkContainer, CTkScrollable, CTkWidget
 from .theme import ColorType, ThemeManager
-from .ctk_frame import CTkFrame, CTkFrameThemedArgs
+from .ctk_frame import CTkFrame, CTkFrameThemedArgs, CTkFrameArgs
 from .ctk_scrollbar import CTkScrollbar, CTkScrollbarArgs
-from .ctk_slider import CTkSlider
-from .ctk_textbox import CTkTextbox
 from .ctk_label import CTkLabel, CTkLabelArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
@@ -27,11 +24,13 @@ class CTkScrollableFrameThemedArgs(CTkFrameThemedArgs, total=False):
 class CTkScrollableFrameArgs(CTkScrollableFrameThemedArgs, total=False):
     scrollable_width: int   #required if 'place' geometry manager is used
     scrollable_height: int  #required if 'place' geometry manager is used
+    xscrollincrement: int   #[pixels]
+    yscrollincrement: int   #[pixels]
 
 
-class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContainer):
+class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContainer, CTkScrollable):
 
-    _scrollbar_update_time: int = 200  # interval in ms, to check if scrollbars are needed
+    scrollbar_update_time: int = 200  # interval in [ms], to check if scrollbars are needed
 
     def __init__(self,
                  master: CTkContainer,
@@ -52,8 +51,12 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         self._parent_frame._draw = self._parent_frame_draw
 
         # canvas
-        self._parent_canvas = tkinter.Canvas(master=self._parent_frame, highlightthickness=0, width=0, height=0)
-        self._set_scroll_increments()
+        self._parent_canvas = tkinter.Canvas(master=self._parent_frame,
+                                             highlightthickness=0,
+                                             width=0,
+                                             height=0,
+                                             xscrollincrement=1,
+                                             yscrollincrement=1)
 
         # scrollbars
         scrollbar_kwargs = self._theme_info["scrollbar"]
@@ -72,12 +75,23 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         # label
         self._label = CTkLabel(self._parent_frame, **self._theme_info["label"])
 
-        tkinter.Frame.__init__(self, master=self._parent_canvas, highlightthickness=0,
-                               width=kwargs.pop("scrollable_width", 0),
-                               height=kwargs.pop("scrollable_height", 0))
+        tkinter.Frame.__init__(self, master=self._parent_canvas, highlightthickness=0)
         CTkAppearanceModeBaseClass.__init__(self)
         CTkScalingBaseClass.__init__(self, scaling_type="widget")
         CTkContainer.__init__(self, fg_color="transparent")
+        CTkScrollable.__init__(self, self.winfo_toplevel())
+
+        #functionality
+        self._scrollable_width: int = kwargs.pop("scrollable_width", 0)
+        self._scrollable_height: int = kwargs.pop("scrollable_height", 0)
+        self._xscrollincrement: int = kwargs.pop("xscrollincrement", 25)
+        self._yscrollincrement: int = kwargs.pop("yscrollincrement", 25)
+        self._zoom_scaling: float = 1.0
+
+        super().configure(width=self._apply_scaling(self._scrollable_width),
+                          height=self._apply_scaling(self._scrollable_height))
+        self._hor_scrollbar.configure(scrollincrement=self._apply_scaling(self._xscrollincrement))
+        self._ver_scrollbar.configure(scrollincrement=self._apply_scaling(self._yscrollincrement))
 
         # check for unknown arguments
         check_kwargs_empty(kwargs, raise_error=True)
@@ -89,30 +103,12 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         self._loop_after_id: str = self.after(50, self._check_if_scrollbars_needed, True)
         self._draw(force_colors_update=True)
 
-        self._shift_pressed: bool = False
-
     def _create_bindings(self, sequence: str | None = None) -> None:
         if sequence is None or sequence == "<Configure>":
             #called when a widget is added to the frame
             self.bind("<Configure>", self._set_scrollregion)
             #called when the canvas changes size
             self._parent_canvas.bind("<Configure>", self._fit_frame_dimensions_to_canvas)
-        if sequence is None or sequence == "<KeyPress-Shift_L>":
-            self.bind_all("<KeyPress-Shift_L>", self._keyboard_shift_press_all, add=True)
-        if sequence is None or sequence == "<KeyPress-Shift_R>":
-            self.bind_all("<KeyPress-Shift_R>", self._keyboard_shift_press_all, add=True)
-        if sequence is None or sequence == "<KeyRelease-Shift_L>":
-            self.bind_all("<KeyRelease-Shift_L>", self._keyboard_shift_release_all, add=True)
-        if sequence is None or sequence == "<KeyRelease-Shift_R>":
-            self.bind_all("<KeyRelease-Shift_R>", self._keyboard_shift_release_all, add=True)
-        if "linux" in sys.platform:
-            if sequence is None or sequence == "<Button-4>":
-                self.bind_all("<Button-4>", self._mouse_wheel_all, add=True)
-            if sequence is None or sequence == "<Button-5>":
-                self.bind_all("<Button-5>", self._mouse_wheel_all, add=True)
-        else:
-            if sequence is None or sequence == "<MouseWheel>":
-                self.bind_all("<MouseWheel>", self._mouse_wheel_all, add=True)
 
     def _check_if_scrollbars_needed(self, continue_loop: bool = False) -> None:
         if self._theme_info["activate_scrollbars"]:
@@ -128,7 +124,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             self._update_geometry()
 
         if self._parent_canvas.winfo_exists() and continue_loop:
-            self._loop_after_id = self.after(self._scrollbar_update_time, self._check_if_scrollbars_needed, True)
+            self._loop_after_id = self.after(self.scrollbar_update_time, self._check_if_scrollbars_needed, True)
 
     def destroy(self) -> None:
         self.after_cancel(self._loop_after_id)
@@ -193,6 +189,10 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
 
+        super().configure(width=self._apply_scaling(self._scrollable_width),
+                          height=self._apply_scaling(self._scrollable_height))
+        self._hor_scrollbar.configure(scrollincrement=self._apply_scaling(self._xscrollincrement))
+        self._ver_scrollbar.configure(scrollincrement=self._apply_scaling(self._yscrollincrement))
         self._update_geometry()
 
     def _draw(self, force_colors_update: bool = False) -> None:
@@ -226,6 +226,22 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             self._theme_info["border_spacing"] = kwargs.pop("border_spacing")
             self._update_geometry()
 
+        if "scrollable_width" in kwargs:
+            self._scrollable_width = kwargs.pop("scrollable_width")
+            super().configure(width=self._apply_scaling(self._scrollable_width))
+
+        if "scrollable_height" in kwargs:
+            self._scrollable_height = kwargs.pop("scrollable_height")
+            super().configure(height=self._apply_scaling(self._scrollable_height))
+
+        if "xscrollincrement" in kwargs:
+            self._xscrollincrement = kwargs.pop("xscrollincrement")
+            self._hor_scrollbar.configure(scrollincrement=self._apply_scaling(self._xscrollincrement))
+
+        if "yscrollincrement" in kwargs:
+            self._yscrollincrement = kwargs.pop("yscrollincrement")
+            self._ver_scrollbar.configure(scrollincrement=self._apply_scaling(self._yscrollincrement))
+
         if "activate_scrollbars" in kwargs:
             self._theme_info["activate_scrollbars"] = kwargs.pop("activate_scrollbars")
 
@@ -244,6 +260,14 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             return self._parent_frame.cget(attribute_name)
         elif attribute_name in self._theme_info:
             return self._theme_info[attribute_name]
+        elif attribute_name == "scrollable_width":
+            return self._scrollable_width
+        elif attribute_name == "scrollable_height":
+            return self._scrollable_height
+        elif attribute_name == "xscrollincrement":
+            return self._xscrollincrement
+        elif attribute_name == "yscrollincrement":
+            return self._yscrollincrement
         elif attribute_name.startswith("scrollbar_"):
             return self._ver_scrollbar.cget(attribute_name.removeprefix("scrollbar_"))
         elif attribute_name.startswith("label_"):
@@ -268,58 +292,43 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         elif orientation == "vertical":
             self._parent_canvas.itemconfigure(self._window_id, width=event.width)
 
-    def _set_scroll_increments(self) -> None:
-        if sys.platform.startswith("win"):
-            self._parent_canvas.configure(xscrollincrement=1, yscrollincrement=1)
-        elif sys.platform == "darwin":
-            self._parent_canvas.configure(xscrollincrement=4, yscrollincrement=8)
+    def _on_scroll(self,
+                   event: tkinter.Event,
+                   is_up: bool,
+                   normalized_delta: int,
+                   modifier: Literal["", "shift", "ctrl"]) -> str | None:
+        if modifier == "shift":
+            self._hor_scrollbar.view_scroll(-normalized_delta, "units")
         else:
-            self._parent_canvas.configure(xscrollincrement=30, yscrollincrement=30)
-
-    def _mouse_wheel_all(self, event: tkinter.Event) -> None:
-        if self._check_if_valid_scroll(event.widget):
-            if self._shift_pressed:
-                view_method = self._parent_canvas.xview
-                view_scroll_method = self._parent_canvas.xview_scroll
-            else:
-                view_method = self._parent_canvas.yview
-                view_scroll_method = self._parent_canvas.yview_scroll
-
-            if view_method() != (0.0, 1.0):
-                if sys.platform.startswith("win"):
-                    view_method("scroll", -int(event.delta / 6), "units")
-                elif sys.platform == "darwin":
-                    view_method("scroll", -event.delta, "units")
-                else:
-                    view_scroll_method(-1 if event.num == 4 else 1, "units")
+            self._ver_scrollbar.view_scroll(-normalized_delta, "units")
 
 
-    def _keyboard_shift_press_all(self, _: tkinter.Event) -> None:
-        self._shift_pressed = True
+    def xview(self, *args: Any) -> tuple[float, float] | None:
+        self._hor_scrollbar.view(*args)
 
-    def _keyboard_shift_release_all(self, _: tkinter.Event) -> None:
-        self._shift_pressed = False
+    def xview_moveto(self, fraction: float) -> None:
+        self._hor_scrollbar.view_moveto(fraction)
 
-    def _check_if_valid_scroll(self, widget: tkinter.Misc) -> bool:
-        if widget == self._parent_canvas:
-            return True
-        elif isinstance(widget, (CTkScrollbar, CTkSlider, CTkTextbox)):
-            return False
-        elif isinstance(widget, CTkScrollableFrame):
-            return widget == self
-        elif widget.master is not None:
-            return self._check_if_valid_scroll(widget.master)
-        else:
-            return False
+    def xview_scroll(self, number: int, what: Literal["units", "pages"]) -> None:
+        self._hor_scrollbar.view_moveto(number, what)
 
-    def pack(self, **kwargs: Any) -> None:
-        return self._parent_frame.pack(**kwargs)
+    def yview(self, *args: Any) -> tuple[float, float] | None:
+        self._ver_scrollbar.view(*args)
 
-    def place(self, **kwargs: Any) -> None:
-        return self._parent_frame.place(**kwargs)
+    def yview_moveto(self, fraction: float) -> None:
+        self._ver_scrollbar.view_moveto(fraction)
 
-    def grid(self, **kwargs: Any) -> None:
-        return self._parent_frame.grid(**kwargs)
+    def yview_scroll(self, number: int, what: Literal["units", "pages"]) -> None:
+        self._ver_scrollbar.view_moveto(number, what)
+
+    def pack(self, apply_scaling: bool = True, **kwargs: Unpack[CTkWidget._PackArgs]) -> None:
+        return self._parent_frame.pack(apply_scaling, **kwargs)
+
+    def place(self, apply_scaling: bool = True, **kwargs: Unpack[CTkWidget._PlaceArgs]) -> None:
+        return self._parent_frame.place(apply_scaling, **kwargs)
+
+    def grid(self, apply_scaling: bool = True, **kwargs: Unpack[CTkWidget._GridArgs]) -> None:
+        return self._parent_frame.grid(apply_scaling, **kwargs)
 
     def pack_forget(self) -> None:
         return self._parent_frame.pack_forget()

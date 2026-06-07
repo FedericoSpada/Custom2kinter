@@ -58,8 +58,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
     For detailed information check out the documentation.
     """
 
-    _deactivate_macos_window_header_manipulation: bool = False
-    _deactivate_windows_window_header_manipulation: bool = False
+    deactivate_header_manipulation: bool = False  #applies to Windows only
 
     def __init__(self, **kwargs: Unpack[CTkArgs]) -> None:
 
@@ -300,7 +299,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         https://docs.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
         """
 
-        if sys.platform.startswith("win") and not self._deactivate_windows_window_header_manipulation:
+        if sys.platform.startswith("win") and not self.deactivate_header_manipulation:
 
             if self._window_exists:
                 self._state_before_windows_set_titlebar_color = self.state()

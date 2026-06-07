@@ -5,7 +5,7 @@ import copy
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer, CTkWidget, EntryLike
 from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
@@ -36,11 +36,11 @@ class CTkComboBoxThemedArgs(TypedDict, total=False):
 class CTkComboBoxArgs(CTkComboBoxThemedArgs, ValidTkEntryArgs, total=False):
     state: Literal["normal", "disabled", "readonly"] = "normal"
     values: list[str]
-    variable: tkinter.StringVar
+    variable: tkinter.StringVar | None
     command: Callable[[str], None] | None
 
 
-class CTkComboBox(CTkWidget):
+class CTkComboBox(CTkWidget, EntryLike):
     """
     Combobox with dropdown menu, rounded corners, border, variable support.
     For detailed information check out the documentation.
@@ -60,10 +60,11 @@ class CTkComboBox(CTkWidget):
                 self._theme_info[key] = self._check_color_type(self._theme_info[key],
                                                                transparency=key == "bg_color")
 
-        super().__init__(master=master,
-                         bg_color=self._theme_info["bg_color"],
-                         width=self._theme_info["width"],
-                         height=self._theme_info["height"])
+        CTkWidget.__init__(self,
+                           master=master,
+                           bg_color=self._theme_info["bg_color"],
+                           width=self._theme_info["width"],
+                           height=self._theme_info["height"])
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
@@ -94,14 +95,15 @@ class CTkComboBox(CTkWidget):
                                            command=self._dropdown_callback,
                                            **self._theme_info["dropdown"])
 
-        self._entry = tkinter.Entry(master=self,
-                                    state=self._state,
-                                    width=1,
-                                    bd=0,
-                                    justify=self._theme_info["justify"],
-                                    highlightthickness=0,
-                                    font=self._apply_font_scaling(self._font),
-                                    **pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
+        EntryLike.__init__(self,
+                           master=self,
+                           state=self._state,
+                           width=1,
+                           bd=0,
+                           justify=self._theme_info["justify"],
+                           highlightthickness=0,
+                           font=self._apply_font_scaling(self._font),
+                           **pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
         self._bind_targets.append(self._entry)
         self._focus_target = self._entry
 

@@ -1,6 +1,6 @@
 import customtkinter
-from PIL import Image
 import os
+from PIL import Image
 
 customtkinter.set_appearance_mode("dark")
 
@@ -9,7 +9,7 @@ class App(customtkinter.CTk):
     width = 900
     height = 600
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.title("CustomTkinter example_background_image.py")
@@ -46,13 +46,13 @@ class App(customtkinter.CTk):
         self.back_button = customtkinter.CTkButton(self.main_frame, text="Back", command=self.back_event, width=200)
         self.back_button.grid(row=1, column=0, padx=30, pady=(15, 15))
 
-    def login_event(self):
+    def login_event(self) -> None:
         print("Login pressed - username:", self.username_entry.get(), "password:", self.password_entry.get())
 
         self.login_frame.grid_forget()  # remove login frame
         self.main_frame.grid(row=0, column=0, sticky="nsew", padx=100)  # show main frame
 
-    def back_event(self):
+    def back_event(self) -> None:
         self.main_frame.grid_forget()  # remove main frame
         self.login_frame.grid(row=0, column=0, sticky="ns")  # show login frame
 

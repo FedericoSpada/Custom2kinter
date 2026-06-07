@@ -4,7 +4,7 @@ import tkinter
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer, CTkWidget, EntryLike
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
@@ -48,7 +48,7 @@ class CTkEntryArgs(CTkEntryThemedArgs, ValidTkEntryArgs, total=False):
     textvariable: tkinter.StringVar | None
 
 
-class CTkEntry(CTkWidget):
+class CTkEntry(CTkWidget, EntryLike):
     """
     Entry with rounded corners, border, textvariable support, focus and placeholder.
     For detailed information check out the documentation.
@@ -68,10 +68,11 @@ class CTkEntry(CTkWidget):
                 self._theme_info[key] = self._check_color_type(self._theme_info[key],
                                                                transparency=key in ("fg_color", "bg_color"))
 
-        super().__init__(master=master,
-                         bg_color=self._theme_info["bg_color"],
-                         width=self._theme_info["width"],
-                         height=self._theme_info["height"])
+        CTkWidget.__init__(self,
+                           master=master,
+                           bg_color=self._theme_info["bg_color"],
+                           width=self._theme_info["width"],
+                           height=self._theme_info["height"])
 
         # configure grid system (1x1)
         self.grid_rowconfigure(0, weight=1)
@@ -94,16 +95,17 @@ class CTkEntry(CTkWidget):
         self._canvas.grid(row=0, column=0, sticky="nsew")
         self._rounded_rect = BorderedRoundedRect(self._canvas)
 
-        self._entry = tkinter.Entry(master=self,
-                                    bd=0,
-                                    width=1,
-                                    highlightthickness=0,
-                                    font=self._apply_font_scaling(self._font),
-                                    justify=self._theme_info["justify"],
-                                    show=self._theme_info["show"],
-                                    state=self._state,
-                                    textvariable=self._textvariable,
-                                    **pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
+        EntryLike.__init__(self,
+                           master=self,
+                           bd=0,
+                           width=1,
+                           highlightthickness=0,
+                           font=self._apply_font_scaling(self._font),
+                           justify=self._theme_info["justify"],
+                           show=self._theme_info["show"],
+                           state=self._state,
+                           textvariable=self._textvariable,
+                           **pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
         self._bind_targets.append(self._entry)
         self._focus_target = self._entry
 
@@ -309,54 +311,3 @@ class CTkEntry(CTkWidget):
             return ""
         else:
             return self._entry.get()
-
-    def index(self, index: str | int) -> int:
-        return self._entry.index(index)
-
-    def icursor(self, index: str | int) -> None:
-        return self._entry.icursor(index)
-
-    def select_adjust(self, index: str | int) -> None:
-        return self._entry.select_adjust(index)
-
-    def selection_adjust(self, index: str | int) -> None:
-        return self._entry.selection_adjust(index)
-
-    def select_from(self, index: str | int) -> None:
-        return self._entry.select_from(index)
-
-    def selection_from(self, index: str | int) -> None:
-        return self._entry.selection_from(index)
-
-    def select_clear(self) -> None:
-        return self._entry.select_clear()
-
-    def selection_clear(self) -> None:
-        return self._entry.selection_clear()
-
-    def select_present(self) -> bool:
-        return self._entry.select_present()
-
-    def selection_present(self) -> bool:
-        return self._entry.selection_present()
-
-    def select_range(self, start: str | int, end: str | int) -> None:
-        return self._entry.select_range(start, end)
-
-    def selection_range(self, start: str | int, end: str | int) -> None:
-        return self._entry.selection_range(start, end)
-
-    def select_to(self, index: str | int) -> None:
-        return self._entry.select_to(index)
-
-    def selection_to(self, index: str | int) -> None:
-        return self._entry.selection_to(index)
-
-    def xview(self, index: str | int) -> None:
-        return self._entry.xview(index)
-
-    def xview_moveto(self, fraction: float) -> None:
-        return self._entry.xview_moveto(fraction)
-
-    def xview_scroll(self, number: int | float | str, what: Literal["unit", "pages", "pixels"]) -> None:
-        return self._entry.xview_scroll(number, what)

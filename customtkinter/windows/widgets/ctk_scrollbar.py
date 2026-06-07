@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import tkinter
-import sys
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer, CTkScrollable, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
@@ -26,10 +25,11 @@ class CTkScrollbarThemedArgs(TypedDict, total=False):
     hover: bool
 
 class CTkScrollbarArgs(CTkScrollbarThemedArgs, total=False):
+    scrollincrement: int | float  # unit of measurement depends on the linked widget
     command: Callable[[str, int | float, str], None] | None
 
 
-class CTkScrollbar(CTkWidget):
+class CTkScrollbar(CTkWidget, CTkScrollable):
     """
     Scrollbar with rounded corners, configurable spacing.
     Connect to scrollable widget by passing .set() method and set command attribute.
@@ -55,12 +55,15 @@ class CTkScrollbar(CTkWidget):
                                                           self._theme_info["thickness"],
                                                           self._theme_info["length"])
 
-        super().__init__(master=master,
-                         bg_color=self._theme_info["bg_color"],
-                         width=width,
-                         height=height)
+        CTkWidget.__init__(self,
+                           master=master,
+                           bg_color=self._theme_info["bg_color"],
+                           width=width,
+                           height=height)
+        CTkScrollable.__init__(self, self.winfo_toplevel())
 
         # functionality
+        self._scrollincrement: int | float = kwargs.pop("scrollincrement", 1)
         self._command: Callable[[str, int | float, str], None] | None = kwargs.pop("command", None)
         self._start_value: float = 0.0  # 0 to 1
         self._end_value: float = 1.0  # 0 to 1
@@ -94,14 +97,6 @@ class CTkScrollbar(CTkWidget):
             self._canvas.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<B1-Motion>":
             self._canvas.bind("<B1-Motion>", self._on_motion)
-        if "linux" in sys.platform:
-            if sequence is None or sequence == "<Button-4>":
-                self._canvas.bind("<Button-4>", self._mouse_scroll_event)
-            if sequence is None or sequence == "<Button-5>":
-                self._canvas.bind("<Button-5>", self._mouse_scroll_event)
-        else:
-            if sequence is None or sequence == "<MouseWheel>":
-                self._canvas.bind("<MouseWheel>", self._mouse_scroll_event)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -218,13 +213,18 @@ class CTkScrollbar(CTkWidget):
         if "hover" in kwargs:
             self._theme_info["hover"] = kwargs.pop("hover")
 
+        if "scrollincrement" in kwargs:
+            self._scrollincrement = kwargs.pop("scrollincrement")
+
         if "command" in kwargs:
             self._command = kwargs.pop("command")
 
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name == "command":
+        if attribute_name == "scrollincrement":
+            return self._scrollincrement
+        elif attribute_name == "command":
             return self._command
         elif attribute_name in self._theme_info:
             return self._theme_info[attribute_name]
@@ -260,28 +260,51 @@ class CTkScrollbar(CTkWidget):
     def _on_motion(self, event: tkinter.Event) -> None:
         half_length = (self._end_value - self._start_value) / 2
         new_center = self._get_value_from_event(event) + self._motion_center_offset
-        new_center = max(half_length, min(1 - half_length, new_center))
-        self._start_value = new_center - half_length
-        self._end_value = new_center + half_length
+        self.view_moveto(new_center - half_length)
+
+    def _on_scroll(self,
+                   event: tkinter.Event,
+                   is_up: bool,
+                   normalized_delta: int,
+                   modifier: Literal["", "shift", "ctrl"]) -> str | None:
+        self.view_scroll(-normalized_delta, "units")
+
+    def set(self, start_value: float, end_value: float) -> None:
+        self._start_value = float(start_value)
+        self._end_value = float(end_value)
         self._draw()
 
-        if self._command is not None:
-            self._command("moveto", self._start_value)
+    def get(self) -> tuple[float, float]:
+        return self._start_value, self._end_value
 
-    def _mouse_scroll_event(self, event: tkinter.Event) -> None:
+    def view(self, *args: Any) -> tuple[float, float] | None:
         if self._command is not None:
-            if sys.platform.startswith("win"):
-                delta = -int(event.delta/40)
-            elif sys.platform == "darwin":
-                delta = -event.delta
-            else:
-                delta = -1 if event.num == 4 else 1
-            self._command("scroll", delta, "units")
+            return self._command(*args)
+        elif len(args) == 0:
+            return self.get()
+        elif args[0] == "moveto":
+            return self.view_moveto(args[1])
+        else:
+            return self.view_scroll(args[1], args[2])
+
+    def view_moveto(self, fraction: float) -> None:
+        if self._command is not None:
+            self._command("moveto", fraction)
+        else:
+            #length is preserved
+            length = self._end_value - self._start_value
+            fraction = max(0, min(fraction, 1.0 - length))
+            self.set(fraction, fraction + length)
+
+    def view_scroll(self, number: int, what: Literal["units", "pages"]) -> None:
+        number *= self._scrollincrement
+
+        if self._command is not None:
+            self._command("scroll", number, what)
         else:
             #empty space is divided in 20 steps
-            delta = (1 - self._end_value + self._start_value) / 20
-            #condition for both Linux and others OS
-            if event.delta > 0 or event.num == 4:
+            delta = (1 - self._end_value + self._start_value) * abs(number) / 20
+            if number < 0:
                 delta = -delta
 
             if self._start_value + delta < 0.0:
@@ -294,11 +317,3 @@ class CTkScrollbar(CTkWidget):
                 self._start_value += delta
                 self._end_value += delta
             self._draw()
-
-    def set(self, start_value: float, end_value: float) -> None:
-        self._start_value = float(start_value)
-        self._end_value = float(end_value)
-        self._draw()
-
-    def get(self) -> tuple[float, float]:
-        return self._start_value, self._end_value

@@ -4,7 +4,7 @@ from PIL import Image
 
 
 class App(customtkinter.CTk):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.title("image_example.py")
@@ -93,7 +93,7 @@ class App(customtkinter.CTk):
         # select default frame
         self.select_frame_by_name("home")
 
-    def select_frame_by_name(self, name):
+    def select_frame_by_name(self, name) -> None:
         # set button color for selected button
         self.home_button.configure(fg_color=("gray75", "gray25") if name == "home" else "transparent")
         self.frame_2_button.configure(fg_color=("gray75", "gray25") if name == "frame_2" else "transparent")
@@ -113,16 +113,16 @@ class App(customtkinter.CTk):
         else:
             self.third_frame.grid_forget()
 
-    def home_button_event(self):
+    def home_button_event(self) -> None:
         self.select_frame_by_name("home")
 
-    def frame_2_button_event(self):
+    def frame_2_button_event(self) -> None:
         self.select_frame_by_name("frame_2")
 
-    def frame_3_button_event(self):
+    def frame_3_button_event(self) -> None:
         self.select_frame_by_name("frame_3")
 
-    def change_appearance_mode_event(self, new_appearance_mode):
+    def change_appearance_mode_event(self, new_appearance_mode) -> None:
         customtkinter.set_appearance_mode(new_appearance_mode)
 
 

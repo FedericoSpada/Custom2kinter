@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing_extensions import Literal
 
 from .appearance_mode_tracker import AppearanceModeTracker
 from ..theme import ColorType, TransparentColorType
 
 
-class CTkAppearanceModeBaseClass:
+class CTkAppearanceModeBaseClass(ABC):
     """
     Super-class that manages the appearance mode. Methods:
 
@@ -21,6 +22,7 @@ class CTkAppearanceModeBaseClass:
     def destroy(self) -> None:
         AppearanceModeTracker.remove(self._set_appearance_mode)
 
+    @abstractmethod
     def _set_appearance_mode(self) -> None:
         """ Called when appearance mode changes """
 
@@ -38,7 +40,7 @@ class CTkAppearanceModeBaseClass:
         'color' and 'if_transparent' can be either a single hex color string or a color name or they can be a
         tuple color with (light_color, dark_color).
         If the 'if_transparent' parameter is provided, 'color' is replaced with it if 'transparent'.
-        The functions returns always a single color string based on the active appearance mode.
+        The function returns always a single color string based on the active appearance mode.
         """
 
         if color == "transparent" and if_transparent is not None:

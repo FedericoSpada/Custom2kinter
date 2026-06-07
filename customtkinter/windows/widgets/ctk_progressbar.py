@@ -35,7 +35,7 @@ class CTkProgressBar(CTkWidget):
     For detailed information check out the documentation.
     """
 
-    _update_time: int = 40  # interval in ms, to update progress value
+    update_time: int = 40  # interval in [ms], to update progress value
 
     def __init__(self,
                  master: CTkContainer,
@@ -275,7 +275,7 @@ class CTkProgressBar(CTkWidget):
 
     def _internal_loop(self) -> None:
         if self._loop_running:
-            new_value = self._value + self._progress_speed * self._update_time / 1000.0
+            new_value = self._value + self._progress_speed * self.update_time / 1000.0
             if new_value > 1.0 and self._mode != "single_run":
                 new_value -= 1.0
 
@@ -285,4 +285,4 @@ class CTkProgressBar(CTkWidget):
                 self._loop_after_id = None
                 self._loop_running = False
             else:
-                self._loop_after_id = self.after(self._update_time, self._internal_loop)
+                self._loop_after_id = self.after(self.update_time, self._internal_loop)

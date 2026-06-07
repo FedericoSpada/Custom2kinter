@@ -27,7 +27,7 @@ class CTkCanvas(tkinter.Canvas):
     can be a problem when using only a single circle character.
     """
 
-    radius_to_char_fine: dict[int, str] = {}  # dict to map radius to font circle character
+    _radius_to_char_fine: dict[int, str] = {}  # dict to map radius to font circle character
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -50,16 +50,16 @@ class CTkCanvas(tkinter.Canvas):
 
         if sys.platform.startswith("win"):
             if sys.getwindowsversion().build > 20000:  # Windows 11
-                cls.radius_to_char_fine = radius_to_char_fine_windows_11
+                cls._radius_to_char_fine = radius_to_char_fine_windows_11
             else:  # < Windows 11
-                cls.radius_to_char_fine = radius_to_char_fine_windows_10
+                cls._radius_to_char_fine = radius_to_char_fine_windows_10
         elif sys.platform.startswith("linux"):  # Optimized on Kali Linux
-            cls.radius_to_char_fine = radius_to_char_fine_linux
+            cls._radius_to_char_fine = radius_to_char_fine_linux
         else:
-            cls.radius_to_char_fine = radius_to_char_fine_windows_10
+            cls._radius_to_char_fine = radius_to_char_fine_windows_10
 
     def _get_char_from_radius(self, radius: int) -> str:
-        return self.radius_to_char_fine.get(radius, "A")
+        return self._radius_to_char_fine.get(radius, "A")
 
     def create_aa_circle(self, x_pos: int, y_pos: int, radius: int, angle: int = 0, fill: str = "white",
                          tags: str | tuple[str, ...] = "", anchor: str = tkinter.CENTER) -> int:

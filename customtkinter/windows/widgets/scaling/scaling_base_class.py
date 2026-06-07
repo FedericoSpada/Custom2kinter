@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from abc import ABC, abstractmethod
 from typing import Any
 from typing_extensions import Literal
 
@@ -9,7 +10,7 @@ from ..font import CTkFont
 from ..utility import parse_geometry_string
 
 
-class CTkScalingBaseClass:
+class CTkScalingBaseClass(ABC):
     """
     Super-class that manages the scaling values and callbacks.
     Works for widgets and windows, type must be set in init method with
@@ -46,6 +47,7 @@ class CTkScalingBaseClass:
     def get_scaling(self) -> float:
         return self.__scaling
 
+    @abstractmethod
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         """ Called when scaling factor changes.
         It can be overridden, but super method must be called at the beginning """

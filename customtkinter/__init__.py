@@ -23,6 +23,7 @@ from .windows.widgets.core_rendering import RoundedRect
 # import base widgets
 from .windows.widgets.core_rendering import CTkCanvas
 from .windows.widgets.core_widget_classes import CTkContainer
+from .windows.widgets.core_widget_classes import CTkScrollable
 from .windows.widgets.core_widget_classes import CTkWidget
 
 # import widgets
@@ -73,9 +74,9 @@ def set_appearance_mode(mode: Literal["light", "dark", "system"]) -> None:
 
 def get_appearance_mode() -> Literal["light", "dark"]:
     """ get current state of the appearance mode (light or dark) """
-    if AppearanceModeTracker.appearance_mode == 0:
+    if AppearanceModeTracker.get_mode() == 0:
         return "light"
-    elif AppearanceModeTracker.appearance_mode == 1:
+    elif AppearanceModeTracker.get_mode() == 1:
         return "dark"
     raise RuntimeError("Something went very wrong")
 
@@ -145,7 +146,7 @@ class _Showroom(CTk):
         self.scaling_label = CTkLabel(self.sidebar_frame, text="UI Scaling:", anchor="w")
         self.scaling_optionmenu = CTkOptionMenu(self.sidebar_frame, values=["80%", "90%", "100%", "110%", "120%"],
                                                 command=self._change_scaling)
-        widget_scaling = round(ScalingTracker.widget_scaling*100)
+        widget_scaling = round(ScalingTracker._widget_scaling*100)
         self.scaling_optionmenu.set(f"{widget_scaling}%")
         self.drawing_label = CTkLabel(self.sidebar_frame, text="Drawing method:", anchor="w")
         self.drawing_optionmenu = CTkOptionMenu(self.sidebar_frame, values=DRAWING_METHODS,

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import tkinter
-import sys
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer, CTkScrollable, CTkWidget
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, get_width_height_from_orientation
@@ -31,12 +30,12 @@ class CTkSliderArgs(CTkSliderThemedArgs, total=False):
     from_: int | float
     to: int | float
     number_of_steps: int | None
-    scroll_step: float | None
+    scrollincrement: float | None
     variable: tkinter.IntVar | tkinter.DoubleVar | None
     command: Callable[[float], None] | None
 
 
-class CTkSlider(CTkWidget):
+class CTkSlider(CTkWidget, CTkScrollable):
     """
     Slider with rounded corners, border, number of steps, variable support, vertical orientation.
     For detailed information check out the documentation.
@@ -61,22 +60,24 @@ class CTkSlider(CTkWidget):
                                                           self._theme_info["thickness"],
                                                           self._theme_info["length"])
 
-        super().__init__(master=master,
-                         bg_color=self._theme_info["bg_color"],
-                         width=width,
-                         height=height)
+        CTkWidget.__init__(self,
+                           master=master,
+                           bg_color=self._theme_info["bg_color"],
+                           width=width,
+                           height=height)
+        CTkScrollable.__init__(self, self.winfo_toplevel())
 
         #functionality
         self._state: Literal["normal", "disabled"] = kwargs.pop("state", "normal")
         self._command: Callable[[float], None] | None = kwargs.pop("command", None)
-        self._variable: tkinter.IntVar | tkinter.DoubleVar = kwargs.pop("variable", None)
+        self._variable: tkinter.IntVar | tkinter.DoubleVar | None = kwargs.pop("variable", None)
         self._variable_callback_blocked: bool = False
         self._variable_callback_name: str | None = None
         self._value: float = 0.5  # initial value of slider in percent
         self._from: int | float = kwargs.pop("from_", 0.0)
         self._to: int | float = kwargs.pop("to", 1.0)
         self._number_of_steps: int | None = kwargs.pop("number_of_steps", None)
-        self._scroll_step: float = kwargs.pop("scroll_step", (1 / (20 if self._number_of_steps is None else self._number_of_steps)))
+        self._scrollincrement: float = kwargs.pop("scrollincrement", (1 / (20 if self._number_of_steps is None else self._number_of_steps)))
         self._output_value: float = self._from + (self._value * (self._to - self._from))
         self._hover_state: bool = False
         self._motion_center_offset: float = 0.0
@@ -116,14 +117,6 @@ class CTkSlider(CTkWidget):
             self._slider.bind("<Button-1>", self._clicked_slider)
         if sequence is None or sequence == "<B1-Motion>":
             self._canvas.bind("<B1-Motion>", self._on_motion)
-        if "linux" in sys.platform:
-            if sequence is None or sequence == "<Button-4>":
-                self._canvas.bind("<Button-4>", self._mouse_scroll_event)
-            if sequence is None or sequence == "<Button-5>":
-                self._canvas.bind("<Button-5>", self._mouse_scroll_event)
-        else:
-            if sequence is None or sequence == "<MouseWheel>":
-                self._canvas.bind("<MouseWheel>", self._mouse_scroll_event)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -264,8 +257,8 @@ class CTkSlider(CTkWidget):
         if "number_of_steps" in kwargs:
             self._number_of_steps = kwargs.pop("number_of_steps")
 
-        if "scroll_step" in kwargs:
-            self._scroll_step = kwargs.pop("scroll_step")
+        if "scrollincrement" in kwargs:
+            self._scrollincrement = kwargs.pop("scrollincrement")
 
         if "hover" in kwargs:
             self._theme_info["hover"] = kwargs.pop("hover")
@@ -296,8 +289,8 @@ class CTkSlider(CTkWidget):
             return self._to
         elif attribute_name == "number_of_steps":
             return self._number_of_steps
-        elif attribute_name == "scroll_step":
-            return self._scroll_step
+        elif attribute_name == "scrollincrement":
+            return self._scrollincrement
         elif attribute_name == "variable":
             return self._variable
         elif attribute_name == "command":
@@ -346,12 +339,14 @@ class CTkSlider(CTkWidget):
             new_center = self._get_value_from_event(event) + self._motion_center_offset
             self._update_value(new_center)
 
-    def _mouse_scroll_event(self, event: tkinter.Event) -> None:
-        delta = self._scroll_step
-        #condition for both Linux and others OS
-        if event.delta < 0 or event.num == 5:
+    def _on_scroll(self,
+                   event: tkinter.Event,
+                   is_up: bool,
+                   normalized_delta: int,
+                   modifier: Literal["", "shift", "ctrl"]) -> str | None:
+        delta = self._scrollincrement * abs(normalized_delta)
+        if not is_up:
             delta = -delta
-
         self._update_value(self._value + delta)
 
     def _on_enter(self, _: tkinter.Event | None = None) -> None:
