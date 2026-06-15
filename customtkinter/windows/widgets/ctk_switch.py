@@ -12,7 +12,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, get_width_height_from_orientation
 
 
-class CTkSwitchThemedArgs(TypedDict, total=False):
+class CTkSwitchThemedArgs(TypedDict, total=False, closed=True):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -35,7 +35,7 @@ class CTkSwitchThemedArgs(TypedDict, total=False):
     font: FontType
     compound: Literal["left", "right", "top", "bottom"]
 
-class CTkSwitchArgs(CTkSwitchThemedArgs, total=False):
+class CTkSwitchArgs(CTkSwitchThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     onvalue: int | float | str | bool
     offvalue: int | float | str | bool

@@ -11,7 +11,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkEntryThemedArgs(TypedDict, total=False):
+class CTkEntryThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -28,7 +28,7 @@ class CTkEntryThemedArgs(TypedDict, total=False):
     show: str
 
 #Explanations can be found here: https://tkdocs.com/shipman/entry.html
-class ValidTkEntryArgs(TypedDict, total=False):
+class ValidTkEntryArgs(TypedDict, total=False, closed=True):
     cursor: str
     insertofftime: int
     insertontime: int
@@ -43,7 +43,7 @@ class ValidTkEntryArgs(TypedDict, total=False):
     validatecommand: str | list[str] | tuple[str, ...]
     xscrollcommand: str | Callable[[float, float], None]
 
-class CTkEntryArgs(CTkEntryThemedArgs, ValidTkEntryArgs, total=False):
+class CTkEntryArgs(CTkEntryThemedArgs, ValidTkEntryArgs, total=False, closed=True):
     state: Literal["normal", "disabled", "readonly"]
     textvariable: tkinter.StringVar | None
 

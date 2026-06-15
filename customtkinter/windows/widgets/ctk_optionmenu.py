@@ -14,7 +14,7 @@ from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkOptionMenuThemedArgs(TypedDict, total=False):
+class CTkOptionMenuThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -31,7 +31,7 @@ class CTkOptionMenuThemedArgs(TypedDict, total=False):
     compound: Literal["left", "right"]
     dropdown: DropdownMenuArgs
 
-class CTkOptionMenuArgs(CTkOptionMenuThemedArgs, total=False):
+class CTkOptionMenuArgs(CTkOptionMenuThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     values: list[str] | None
     variable: tkinter.StringVar | None

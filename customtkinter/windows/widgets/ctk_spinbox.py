@@ -14,7 +14,7 @@ from .ctk_entry import ValidTkEntryArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkSpinBoxThemedArgs(TypedDict, total=False):
+class CTkSpinBoxThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -32,7 +32,7 @@ class CTkSpinBoxThemedArgs(TypedDict, total=False):
     justify: Literal["left", "center", "right"]
     compound: Literal["left", "right"]
 
-class CTkSpinBoxArgs(CTkSpinBoxThemedArgs, ValidTkEntryArgs, total=False):
+class CTkSpinBoxArgs(CTkSpinBoxThemedArgs, ValidTkEntryArgs, total=False, closed=True):
     state: Literal["normal", "disabled", "readonly"]
     from_: int | float | None  #used as limit for the index if values is provided
     to: int | float | None     #used as limit for the index if values is provided

@@ -10,7 +10,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
 
 
-class CTkScrollbarThemedArgs(TypedDict, total=False):
+class CTkScrollbarThemedArgs(TypedDict, total=False, closed=True):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -24,7 +24,7 @@ class CTkScrollbarThemedArgs(TypedDict, total=False):
     border_color: TransparentColorType
     hover: bool
 
-class CTkScrollbarArgs(CTkScrollbarThemedArgs, total=False):
+class CTkScrollbarArgs(CTkScrollbarThemedArgs, total=False, closed=True):
     scrollincrement: int | float  # unit of measurement depends on the linked widget
     command: Callable[[str, int | float, str], None] | None
 

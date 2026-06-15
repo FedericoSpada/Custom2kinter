@@ -16,7 +16,7 @@ TransparentColorType: TypeAlias = Union[Literal["transparent"], ColorType]
 AnchorType : TypeAlias = Literal["center", "n", "ne", "e", "se", "s", "sw", "w", "nw"]
 
 
-class ThemeInfo(TypedDict, total=False):
+class ThemeInfo(TypedDict, total=False, extra_items=Any):
     orientation: Literal["horizontal", "vertical", "both"]
     thickness: int
     length: int

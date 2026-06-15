@@ -2,7 +2,7 @@ __version__ = "5.3.0"
 
 import os
 import sys
-from tkinter import Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event
+from tkinter import Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, TclVersion
 from tkinter.constants import *
 import tkinter.filedialog as filedialog
 from typing_extensions import Literal
@@ -163,7 +163,7 @@ class _Showroom(CTk):
 
         py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
         self.versions_label = CTkLabel(self.sidebar_frame,
-                                       text=f"Library v{__version__}\nPython v{py_version}",
+                                       text=f"Library v{__version__}\nPython v{py_version}\nTcl/Tk v{TclVersion}",
                                        text_color=("gray66", "gray37"),
                                        anchor="w",
                                        justify="left")

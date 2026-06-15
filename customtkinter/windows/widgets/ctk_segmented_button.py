@@ -14,7 +14,7 @@ from .ctk_button import CTkButton
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkSegmentedButtonThemedArgs(TypedDict, total=False):
+class CTkSegmentedButtonThemedArgs(TypedDict, total=False, closed=True):
     orientation: Literal["horizontal", "vertical"]
     width: int
     height: int
@@ -30,7 +30,7 @@ class CTkSegmentedButtonThemedArgs(TypedDict, total=False):
     text_color_disabled: ColorType
     font: FontType
 
-class CTkSegmentedButtonArgs(CTkSegmentedButtonThemedArgs, total=False):
+class CTkSegmentedButtonArgs(CTkSegmentedButtonThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     values: list[str] | None
     variable: tkinter.StringVar | None

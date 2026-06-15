@@ -12,7 +12,7 @@ from .image import CTkImage, ImageType
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkLabelThemedArgs(TypedDict, total=False):
+class CTkLabelThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -32,13 +32,13 @@ class CTkLabelThemedArgs(TypedDict, total=False):
     wraplength: int
 
 #Explanations can be found here: https://tkdocs.com/shipman/label.html
-class ValidTkLabelArgs(TypedDict, total=False):
+class ValidTkLabelArgs(TypedDict, total=False, closed=True):
     state: Literal["normal", "disabled"]
     textvariable: tkinter.StringVar | None
     takefocus: bool
     underline: int
 
-class CTkLabelArgs(CTkLabelThemedArgs, ValidTkLabelArgs, total=False):
+class CTkLabelArgs(CTkLabelThemedArgs, ValidTkLabelArgs, total=False, closed=True):
     pass
 
 

@@ -13,7 +13,7 @@ from .widgets.theme import ColorType, ThemeManager
 from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkInputDialogThemedArgs(TypedDict, total=False):
+class CTkInputDialogThemedArgs(TypedDict, total=False, closed=True):
     fg_color: ColorType
     text_color: ColorType
     title: str
@@ -23,7 +23,7 @@ class CTkInputDialogThemedArgs(TypedDict, total=False):
     entry: CTkEntryArgs
     combobox: CTkComboBoxArgs
 
-class CTkInputDialogArgs(TypedDict, total=False):
+class CTkInputDialogArgs(TypedDict, total=False, closed=True):
     default_value: str
     values: list[str] | None
 

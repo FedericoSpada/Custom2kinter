@@ -12,7 +12,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkRadioButtonThemedArgs(TypedDict, total=False):
+class CTkRadioButtonThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     radiobutton_width: int
@@ -32,7 +32,7 @@ class CTkRadioButtonThemedArgs(TypedDict, total=False):
     font: FontType
     compound: Literal["left", "right", "top", "bottom"]
 
-class CTkRadioButtonArgs(CTkRadioButtonThemedArgs, total=False):
+class CTkRadioButtonArgs(CTkRadioButtonThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     value: int | float | str | bool
     textvariable: tkinter.StringVar | None

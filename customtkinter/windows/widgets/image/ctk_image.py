@@ -9,7 +9,7 @@ from ..theme import ThemeManager
 from ..utility import check_kwargs_empty
 
 
-class CTkImageArgs(TypedDict, total=False):
+class CTkImageArgs(TypedDict, total=False, closed=True):
     width: int   #'0' means original dimension or proper value to preserve aspect ratio
     height: int  #'0' means original dimension or proper value to preserve aspect ratio
     light_image: Image.Image | Path | str | None

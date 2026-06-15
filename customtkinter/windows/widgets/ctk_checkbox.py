@@ -12,7 +12,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkCheckBoxThemedArgs(TypedDict, total=False):
+class CTkCheckBoxThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     checkbox_width: int
@@ -32,7 +32,7 @@ class CTkCheckBoxThemedArgs(TypedDict, total=False):
     font: FontType
     compound: Literal["left", "right", "top", "bottom"]
 
-class CTkCheckBoxArgs(CTkCheckBoxThemedArgs, total=False):
+class CTkCheckBoxArgs(CTkCheckBoxThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     onvalue: int | float | str | bool
     offvalue: int | float | str | bool

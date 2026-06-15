@@ -16,7 +16,7 @@ DRAWING_METHODS: list[str] = ["polygons", "font", "circles"]
 DrawingMethodType: TypeAlias = Literal["polygons", "font", "circles"]
 SectionType: TypeAlias = Literal["top", "bottom", "left", "right", "top_left", "top_right", "bottom_right", "bottom_left"]
 
-class RoundedRectInfo(TypedDict, total=False):
+class RoundedRectInfo(TypedDict, total=False, closed=True):
     x_start: int
     y_start: int
     x_end: int
@@ -29,7 +29,7 @@ class RoundedRectInfo(TypedDict, total=False):
     top_section_height: int
     bottom_section_height: int
 
-class BorderedRoundedRectInfo(RoundedRectInfo, total=False):
+class BorderedRoundedRectInfo(RoundedRectInfo, total=False, closed=True):
     inner_width: int
     inner_height: int
     inner_corner_radius: int
@@ -469,7 +469,7 @@ class BorderedRoundedRect(BaseShape):
         # |@@@@@@    |                   |@@@@@@@@@|
         # |@@@@@@    |                   |@@@@@@@@@|
         spacing = max(
-            self.info.get("corner_radius", 0) - self.info["inner_corner_radius"] * 0.7071, #cos(45°)
+            self.info.get("corner_radius", 0) - self.info["inner_corner_radius"] * 0.7071, #cos(45 degrees)
             border_width
         )
         if abs(spacing - self.info.get("inscribed_spacing", -1000)) > self.spacings_tolerance:

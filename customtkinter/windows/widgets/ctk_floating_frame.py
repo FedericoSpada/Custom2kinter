@@ -11,7 +11,7 @@ from ..ctk_toplevel import CTkToplevel
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkFloatingFrameThemedArgs(TypedDict, total=False):
+class CTkFloatingFrameThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int  #not used on Linux
@@ -20,7 +20,7 @@ class CTkFloatingFrameThemedArgs(TypedDict, total=False):
     border_color: ColorType
     transparency: float
 
-class CTkFloatingFrameArgs(CTkFloatingFrameThemedArgs, total=False):
+class CTkFloatingFrameArgs(CTkFloatingFrameThemedArgs, total=False, closed=True):
     pass
 
 
@@ -51,7 +51,7 @@ class CTkFloatingFrame(CTkFrame):
         self._toplevel = CTkToplevel(master)
         self._toplevel.withdraw()
         self._toplevel.attributes("-topmost", True)
-        self._toplevel.attributes('-alpha', 1.0 - self._theme_ff_info["transparency"])
+        self._toplevel.attributes("-alpha", 1.0 - self._theme_ff_info["transparency"])
         self._toplevel.resizable(width=True, height=True)
         self._toplevel.overrideredirect(True)
 
@@ -59,7 +59,7 @@ class CTkFloatingFrame(CTkFrame):
             self._toplevel.attributes("-transparentcolor", self._apply_appearance_mode(self.transparent_color))
             self._toplevel.attributes("-toolwindow", True) # removes icon from taskbar
         elif sys.platform.startswith("darwin"):
-            self.transparent_color = 'systemTransparent'
+            self.transparent_color = "systemTransparent"
             self._toplevel.attributes("-transparent", True)
         else:
             #Linux doesn't support transparency, so we force the frame to cover all available space
@@ -90,7 +90,7 @@ class CTkFloatingFrame(CTkFrame):
 
         if "transparency" in kwargs:
             self._theme_ff_info["transparency"] = kwargs.pop("transparency")
-            self._toplevel.attributes('-alpha', 1.0 - self._theme_ff_info["transparency"])
+            self._toplevel.attributes("-alpha", 1.0 - self._theme_ff_info["transparency"])
 
         super().configure(require_redraw=require_redraw, **kwargs)
 

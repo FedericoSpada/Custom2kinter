@@ -8,7 +8,7 @@ from typing_extensions import Literal, TypeAlias, TypedDict, Unpack
 from ..theme import ThemeManager
 
 
-class CTkFontArgs(TypedDict, total=False):
+class CTkFontArgs(TypedDict, total=False, closed=True):
     family: str
     size: int
     weight: Literal["normal", "bold"]

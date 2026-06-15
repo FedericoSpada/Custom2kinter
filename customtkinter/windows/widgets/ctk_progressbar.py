@@ -13,7 +13,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
 
 
-class CTkProgressBarThemedArgs(TypedDict, total=False):
+class CTkProgressBarThemedArgs(TypedDict, total=False, closed=True):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -27,7 +27,7 @@ class CTkProgressBarThemedArgs(TypedDict, total=False):
     font: FontType
     show_value: bool
 
-class CTkProgressBarArgs(CTkProgressBarThemedArgs, total=False):
+class CTkProgressBarArgs(CTkProgressBarThemedArgs, total=False, closed=True):
     mode: Literal["determinate", "indeterminate", "single_run"]
     progress_speed: float # [%/s]
     variable: tkinter.DoubleVar | tkinter.IntVar | None

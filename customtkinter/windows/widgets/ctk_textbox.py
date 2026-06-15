@@ -13,7 +13,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkTextboxThemedArgs(TypedDict, total=False):
+class CTkTextboxThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -28,7 +28,7 @@ class CTkTextboxThemedArgs(TypedDict, total=False):
     scrollbar: CTkScrollbarArgs
 
 #Explanations can be found here: https://tkdocs.com/shipman/text.html
-class ValidTkTextArgs(TypedDict, total=False):
+class ValidTkTextArgs(TypedDict, total=False, closed=True):
     state: Literal["normal", "disabled"]
     undo: bool
     autoseparators: bool
@@ -52,7 +52,7 @@ class ValidTkTextArgs(TypedDict, total=False):
     xscrollcommand: str | Callable[[float, float], None]
     yscrollcommand: str | Callable[[float, float], None]
 
-class CTkTextboxArgs(CTkTextboxThemedArgs, ValidTkTextArgs, total=False):
+class CTkTextboxArgs(CTkTextboxThemedArgs, ValidTkTextArgs, total=False, closed=True):
     xscrollincrement: int  # [characters]
     yscrollincrement: int  # [lines]
 

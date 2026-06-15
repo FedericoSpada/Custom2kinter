@@ -12,7 +12,7 @@ from .ctk_label import CTkLabel, CTkLabelArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkToolTipThemedArgs(CTkFloatingFrameThemedArgs, total=False):
+class CTkToolTipThemedArgs(CTkFloatingFrameThemedArgs, total=False, closed=True):
     border_spacing: int
     internal_spacing: int
     x_offset: int
@@ -21,7 +21,7 @@ class CTkToolTipThemedArgs(CTkFloatingFrameThemedArgs, total=False):
     delay: int  #[ms], if negative, the widget is shown only when show() is called
     label: CTkLabelArgs
 
-class CTkToolTipArgs(CTkToolTipThemedArgs, total=False):
+class CTkToolTipArgs(CTkToolTipThemedArgs, total=False, closed=True):
     mode: Literal["master", "mouse", "live_mouse"]
     state: Literal["normal", "disabled"]
     close_on_interaction: bool
@@ -40,7 +40,7 @@ class CTkToolTip(CTkFloatingFrame):
     The position of this widget depends on the mode:
     - "master": it is relative to the position of the linked widget (the corner can be changed with 'anchor');
     - "mouse": it is placed where the mouse is at the moment of opening;
-    - "mouse": it follows the mouse position while it is moving over the linked widget.
+    - "live_mouse": it follows the mouse position while it is moving over the linked widget.
     For detailed information check out the documentation.
     """
 

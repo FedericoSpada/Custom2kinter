@@ -10,7 +10,7 @@ from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkFrameThemedArgs(TypedDict, total=False):
+class CTkFrameThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -20,7 +20,7 @@ class CTkFrameThemedArgs(TypedDict, total=False):
     top_fg_color: ColorType
     border_color: ColorType
 
-class CTkFrameArgs(CTkFrameThemedArgs, total=False):
+class CTkFrameArgs(CTkFrameThemedArgs, total=False, closed=True):
     background_corner_colors: tuple[ColorType, ...] | None
 
 

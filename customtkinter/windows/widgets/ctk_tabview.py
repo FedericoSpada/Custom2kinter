@@ -12,7 +12,7 @@ from .ctk_segmented_button import CTkSegmentedButton, CTkSegmentedButtonArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkTabviewThemedArgs(TypedDict, total=False):
+class CTkTabviewThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -24,7 +24,7 @@ class CTkTabviewThemedArgs(TypedDict, total=False):
     anchor: AnchorType
     segmented_button: CTkSegmentedButtonArgs
 
-class CTkTabviewArgs(CTkTabviewThemedArgs, total=False):
+class CTkTabviewArgs(CTkTabviewThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     command: Callable[[str], None] | None
 

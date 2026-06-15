@@ -16,11 +16,11 @@ from .widgets.theme import ColorType, ThemeManager
 from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty, parse_geometry_string
 
 
-class CTkThemedArgs(TypedDict, total=False):
+class CTkThemedArgs(TypedDict, total=False, closed=True):
     fg_color: ColorType
     title: str
 
-class ValidTkArgs(TypedDict, total=False):
+class ValidTkArgs(TypedDict, total=False, closed=True):
     use: int | str | None
     #--- Constructor only ---
     baseName: str | None
@@ -48,7 +48,7 @@ class ValidTkArgs(TypedDict, total=False):
     screen: str
     visual: str | tuple[str, int]
 
-class CTkArgs(CTkThemedArgs, ValidTkArgs, total=False):
+class CTkArgs(CTkThemedArgs, ValidTkArgs, total=False, closed=True):
     pass
 
 

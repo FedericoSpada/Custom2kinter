@@ -13,7 +13,7 @@ from .ctk_tooltip import CTkToolTip, CTkToolTipThemedArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, get_width_height_from_orientation
 
 
-class CTkSliderThemedArgs(TypedDict, total=False):
+class CTkSliderThemedArgs(TypedDict, total=False, closed=True):
     orientation: Literal["horizontal", "vertical"]
     thickness: int
     length: int
@@ -30,7 +30,7 @@ class CTkSliderThemedArgs(TypedDict, total=False):
     show_value: bool
     tooltip: CTkToolTipThemedArgs
 
-class CTkSliderArgs(CTkSliderThemedArgs, total=False):
+class CTkSliderArgs(CTkSliderThemedArgs, total=False, closed=True):
     mode: Literal["single", "in_range", "out_range", "any_range"]
     state: Literal["normal", "disabled"]
     from_: int | float

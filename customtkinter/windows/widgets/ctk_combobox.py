@@ -14,7 +14,7 @@ from .ctk_entry import ValidTkEntryArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkComboBoxThemedArgs(TypedDict, total=False):
+class CTkComboBoxThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -35,7 +35,7 @@ class CTkComboBoxThemedArgs(TypedDict, total=False):
     compound: Literal["left", "right"]
     dropdown: DropdownMenuArgs
 
-class CTkComboBoxArgs(CTkComboBoxThemedArgs, ValidTkEntryArgs, total=False):
+class CTkComboBoxArgs(CTkComboBoxThemedArgs, ValidTkEntryArgs, total=False, closed=True):
     mode: Literal["replace", "toggle", "type", "command"]
     state: Literal["normal", "disabled", "readonly"]
     values: list[str]

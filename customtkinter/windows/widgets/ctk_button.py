@@ -12,7 +12,7 @@ from .image import CTkImage, ImageType
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
-class CTkButtonThemedArgs(TypedDict, total=False):
+class CTkButtonThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
     corner_radius: int
@@ -32,7 +32,7 @@ class CTkButtonThemedArgs(TypedDict, total=False):
     image: ImageType
     compound: Literal["left", "right", "top", "bottom"]
 
-class CTkButtonArgs(CTkButtonThemedArgs, total=False):
+class CTkButtonArgs(CTkButtonThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     textvariable: tkinter.Variable | None
     command: Callable[[], None] | None

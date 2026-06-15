@@ -16,12 +16,12 @@ from .widgets.theme import ColorType, ThemeManager
 from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty, parse_geometry_string
 
 
-class CTkToplevelThemedArgs(TypedDict, total=False):
+class CTkToplevelThemedArgs(TypedDict, total=False, closed=True):
     fg_color: ColorType
     title: str
 
 #Explanations can be found here: https://tkdocs.com/shipman/toplevel.html
-class ValidTkToplevelArgs(TypedDict, total=False):
+class ValidTkToplevelArgs(TypedDict, total=False, closed=True):
     bd: float | str
     borderwidth: float | str
     class_: str
@@ -41,7 +41,7 @@ class ValidTkToplevelArgs(TypedDict, total=False):
     use: int | str
     visual: str | tuple[str, int]
 
-class CTkToplevelArgs(CTkToplevelThemedArgs, ValidTkToplevelArgs, total=False):
+class CTkToplevelArgs(CTkToplevelThemedArgs, ValidTkToplevelArgs, total=False, closed=True):
     pass
 
 
@@ -254,7 +254,7 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
 
     @classmethod
     def _disable_macos_dark_title_bar(cls) -> None:
-        if sys.platform == "darwin" and not cls.deactivate_window_header_manipulation:  # macOS
+        if sys.platform == "darwin" and not cls.deactivate_macos_header_manipulation:  # macOS
             if version.parse(platform.python_version()) < version.parse("3.10"):
                 if version.parse(tkinter.Tcl().call("info", "patchlevel")) >= version.parse("8.6.9"):  # Tcl/Tk >= 8.6.9
                     os.system("defaults delete -g NSRequiresAquaSystemAppearance")

@@ -13,10 +13,10 @@ from ..theme import AnchorType, ColorType, TransparentColorType
 from ..utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class ValidTkFrameArgs(TypedDict, total=False):
+class ValidTkFrameArgs(TypedDict, total=False, closed=True):
     cursor: str
 
-class CTkWidgetArgs(ValidTkFrameArgs, total=False):
+class CTkWidgetArgs(ValidTkFrameArgs, total=False, closed=True):
     width: int
     height: int
     bg_color: TransparentColorType

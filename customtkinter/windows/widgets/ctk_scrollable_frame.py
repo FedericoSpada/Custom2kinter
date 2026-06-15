@@ -14,14 +14,14 @@ from .ctk_label import CTkLabel, CTkLabelArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class CTkScrollableFrameThemedArgs(CTkFrameThemedArgs, total=False):
+class CTkScrollableFrameThemedArgs(CTkFrameThemedArgs, total=False, closed=True):
     border_spacing: int
     orientation: Literal["horizontal", "vertical", "both"]
     activate_scrollbars: bool
     scrollbar: CTkScrollbarArgs
     label: CTkLabelArgs
 
-class CTkScrollableFrameArgs(CTkScrollableFrameThemedArgs, total=False):
+class CTkScrollableFrameArgs(CTkScrollableFrameThemedArgs, total=False, closed=True):
     scrollable_width: int   #required if 'place' geometry manager is used
     scrollable_height: int  #required if 'place' geometry manager is used
     xscrollincrement: int   #[pixels]

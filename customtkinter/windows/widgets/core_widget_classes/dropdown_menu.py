@@ -13,19 +13,19 @@ from ..font import CTkFont, FontType
 from ..utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
-class DropdownMenuThemedArgs(TypedDict, total=False):
+class DropdownMenuThemedArgs(TypedDict, total=False, closed=True):
     fg_color: ColorType
     hover_color: ColorType
     text_color: ColorType
     min_character_width: int
     font: FontType
 
-class ValidTkMenuArgs(TypedDict, total=False):
+class ValidTkMenuArgs(TypedDict, total=False, closed=True):
     postcommand: str | Callable[[], None]
     selectcolor: str
     takefocus: bool
 
-class DropdownMenuArgs(DropdownMenuThemedArgs, ValidTkMenuArgs, total=False):
+class DropdownMenuArgs(DropdownMenuThemedArgs, ValidTkMenuArgs, total=False, closed=True):
     values: list[str] | None
     command: Callable[[str], None] | None
 
