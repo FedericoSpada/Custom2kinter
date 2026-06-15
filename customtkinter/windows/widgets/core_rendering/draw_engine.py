@@ -469,7 +469,7 @@ class BorderedRoundedRect(BaseShape):
         # |@@@@@@    |                   |@@@@@@@@@|
         # |@@@@@@    |                   |@@@@@@@@@|
         spacing = max(
-            self.info.get("corner_radius", 0) - self.info["inner_corner_radius"] * 0.7071, #cos(45°)
+            self.info.get("corner_radius", 0) - self.info["inner_corner_radius"] * 0.7071, #cos(45 degrees)
             border_width
         )
         if abs(spacing - self.info.get("inscribed_spacing", -1000)) > self.spacings_tolerance:
