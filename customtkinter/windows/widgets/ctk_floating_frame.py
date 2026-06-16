@@ -61,6 +61,7 @@ class CTkFloatingFrame(CTkFrame):
         elif sys.platform.startswith("darwin"):
             self.transparent_color = "systemTransparent"
             self._toplevel.attributes("-transparent", True)
+            self._toplevel.wm_attributes(stylemask=("fullsizecontent", "titled"))
         else:
             #Linux doesn't support transparency, so we force the frame to cover all available space
             self._theme_ff_info["corner_radius"] = 0
