@@ -60,7 +60,7 @@ class CTkFloatingFrame(CTkFrame):
             self._toplevel.attributes("-toolwindow", True) # removes icon from taskbar
         elif sys.platform.startswith("darwin"):
             if tkinter.TkVersion >= 9.0: #necessary to achieve transparent edges due to changes in Tk 9.x on MacOS
-                self._toplevel.wm_attributes(stylemask=('fullsizecontent'))
+                self._toplevel.wm_attributes(stylemask=('fullsizecontent','titled'))
                 self._toplevel.title("")
                 self._theme_ff_info["corner_radius"] = 0
             else:
