@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
+import sys
 import tkinter
 from typing import Any, Callable, Iterable
 from typing_extensions import Literal, Unpack
@@ -269,37 +272,81 @@ class CTkToolTip(CTkFloatingFrame):
                             f"callable returning them, not {type(target)}.")
         return string
 
+    def _get_monitor_rect(self, x: int, y: int) -> tuple[int, int, int, int]:
+        """Return (left, top, right, bottom) of the physical monitor containing (x, y)."""
+        try:
+            if sys.platform.startswith("win"):
+                from ctypes import windll, wintypes, Structure, byref
+
+                class _RECT(Structure):
+                    _fields_ = [("left", wintypes.LONG), ("top", wintypes.LONG),
+                                ("right", wintypes.LONG), ("bottom", wintypes.LONG)]
+
+                class _MONITORINFO(Structure):
+                    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", _RECT),
+                                ("rcWork", _RECT), ("dwFlags", wintypes.DWORD)]
+
+                pt = wintypes.POINT()
+                pt.x, pt.y = x, y
+                monitor = windll.user32.MonitorFromPoint(pt, 2)  # MONITOR_DEFAULTTONEAREST
+                info = _MONITORINFO()
+                info.cbSize = ctypes.sizeof(_MONITORINFO)
+                windll.user32.GetMonitorInfoW(monitor, byref(info))
+                r = info.rcMonitor
+                return r.left, r.top, r.right, r.bottom
+
+            elif sys.platform == "darwin":
+                CG = ctypes.cdll.LoadLibrary(
+                    ctypes.util.find_library("CoreGraphics")
+                    or "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
+                )
+                CGPoint = ctypes.c_double * 2
+                point = CGPoint(float(x), float(y))
+                display_ids = (ctypes.c_uint32 * 8)()
+                count = ctypes.c_uint32(0)
+                CG.CGGetDisplaysWithPoint.restype = ctypes.c_int
+                CG.CGGetDisplaysWithPoint(point, 8, display_ids, ctypes.byref(count))
+                display = display_ids[0] if count.value > 0 else CG.CGMainDisplayID()
+                CG.CGDisplayBounds.restype = ctypes.c_double * 4
+                bounds = CG.CGDisplayBounds(display)
+                lft, top, w, h = float(bounds[0]), float(bounds[1]), float(bounds[2]), float(bounds[3])
+                return int(lft), int(top), int(lft + w), int(top + h)
+
+        except Exception:
+            pass
+
+        return 0, 0, self.winfo_vrootwidth(), self.winfo_vrootheight()
+
     def _master_mode(self) -> tuple[int, int, AnchorType]:
         self._toplevel.update_idletasks()
         x_widget = self._widget.winfo_rootx()
         y_widget = self._widget.winfo_rooty()
-        x_negative = x_widget < 0 and self._widget.winfo_pointerx() < 0
-        y_negative = y_widget < 0 and self._widget.winfo_pointery() < 0
         w_widget = self._widget.winfo_width()
         h_widget = self._widget.winfo_height()
         w_frame = self.winfo_reqwidth()
         h_frame = self.winfo_reqheight()
-        w_display = self.winfo_vrootwidth()
-        h_display = self.winfo_vrootheight()
+        mon_left, mon_top, mon_right, mon_bottom = self._get_monitor_rect(
+            x_widget + w_widget // 2, y_widget + h_widget // 2
+        )
         x_offset = self._apply_scaling(self._theme_tt_info["x_offset"])
         y_offset = self._apply_scaling(self._theme_tt_info["y_offset"])
         anchor = self._theme_tt_info["anchor"]
 
         #check if the frame is outside the display horizontally
         if "w" in anchor:
-            if x_widget + x_offset + w_frame + x_offset <= (0 if x_negative else w_display):
+            if x_widget + x_offset + w_frame + x_offset <= mon_right:
                 h_anchor = "w"
             else:
                 h_anchor = "e"
         elif "e" in anchor:
-            if x_widget - x_offset - w_frame - x_offset >= 0 or x_negative:
+            if x_widget - x_offset - w_frame - x_offset >= mon_left:
                 h_anchor = "e"
             else:
                 h_anchor = "w"
         else:
-            if x_widget + round(w_widget / 2) + x_offset + round(w_frame / 2) + x_offset > (0 if x_negative else w_display):
+            if x_widget + round(w_widget / 2) + x_offset + round(w_frame / 2) + x_offset > mon_right:
                 h_anchor = "e"
-            elif x_widget + round(w_widget / 2) - round(w_frame / 2) < 0 and not x_negative:
+            elif x_widget + round(w_widget / 2) - round(w_frame / 2) < mon_left:
                 h_anchor = "w"
             else:
                 h_anchor = ""
@@ -309,22 +356,20 @@ class CTkToolTip(CTkFloatingFrame):
         else:
             x_root = (x_widget + w_widget - x_offset) if h_anchor == "e" else (x_widget + x_offset)
 
-        #if starting position is still outside the display, place it on the edge
-        if x_root > w_display:
-            x_root = w_display - x_offset
-        elif x_root < 0 and not x_negative:
-            x_root = x_offset
-        elif x_root > 0 and x_negative:
-            x_root = -x_offset
+        #if starting position is still outside the display, clamp to monitor edge
+        if x_root > mon_right:
+            x_root = mon_right - x_offset
+        elif x_root < mon_left:
+            x_root = mon_left + x_offset
 
         #check if the frame is outside the display vertically
         if "n" in anchor:
-            if y_widget - y_offset - h_frame - y_offset >= 0 or y_negative:
+            if y_widget - y_offset - h_frame - y_offset >= mon_top:
                 v_anchor = "s"
             else:
                 v_anchor = "n"
         else:
-            if y_widget + h_widget + y_offset + h_frame + y_offset <= (0 if y_negative else h_display):
+            if y_widget + h_widget + y_offset + h_frame + y_offset <= mon_bottom:
                 v_anchor = "n"
             else:
                 v_anchor = "s"
