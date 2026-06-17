@@ -133,7 +133,7 @@ class CTkFloatingFrame(CTkFrame):
         self._toplevel.geometry(f"{width}x{height}+{x_root - x_delta}+{y_root - y_delta}",
                                 apply_scaling=False)
         self._toplevel.deiconify()
-        if tkinter.TkVersion >= 9.0: #necessary to achieve transparent edges due to changes in Tk 9.x on MacOS
+        if tkinter.TkVersion >= 9.0 and sys.platform.startswith("darwin"): #necessary to achieve transparent edges due to changes in Tk 9.x on MacOS
             self._toplevel.wm_attributes(stylemask=('fullsizecontent','titled'))
 
     def close(self) -> None:
