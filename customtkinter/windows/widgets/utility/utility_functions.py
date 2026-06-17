@@ -124,17 +124,32 @@ def get_monitor_info(x: int, y: int) -> tuple[int, int, int, int]:
             ctypes.util.find_library("CoreGraphics")
             or "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
         )
-        CGPoint = ctypes.c_double * 2
-        point = CGPoint(float(x), float(y))
+
+        class _CGPoint(ctypes.Structure):
+            _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+
+        class _CGSize(ctypes.Structure):
+            _fields_ = [("width", ctypes.c_double), ("height", ctypes.c_double)]
+
+        class _CGRect(ctypes.Structure):
+            _fields_ = [("origin", _CGPoint), ("size", _CGSize)]
+
         display_ids = (ctypes.c_uint32 * 8)()
         count = ctypes.c_uint32(0)
         CG.CGGetDisplaysWithPoint.restype = ctypes.c_int
-        CG.CGGetDisplaysWithPoint(point, 8, display_ids, ctypes.byref(count))
+        CG.CGGetDisplaysWithPoint.argtypes = [
+            _CGPoint, ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_uint32),
+        ]
+        CG.CGGetDisplaysWithPoint(
+            _CGPoint(float(x), float(y)), 8, display_ids, ctypes.byref(count)
+        )
         display = display_ids[0] if count.value > 0 else CG.CGMainDisplayID()
-        CG.CGDisplayBounds.restype = ctypes.c_double * 4
-        bounds = CG.CGDisplayBounds(display)
-        lft, top, w, h = float(bounds[0]), float(bounds[1]), float(bounds[2]), float(bounds[3])
-        return int(lft), int(top), int(lft + w), int(top + h)
+        CG.CGDisplayBounds.restype = _CGRect
+        CG.CGDisplayBounds.argtypes = [ctypes.c_uint32]
+        rect = CG.CGDisplayBounds(display)
+        lft, top = rect.origin.x, rect.origin.y
+        return int(lft), int(top), int(lft + rect.size.width), int(top + rect.size.height)
 
     else:
         raise NotImplementedError(f"get_monitor_info is not supported on {sys.platform}")
