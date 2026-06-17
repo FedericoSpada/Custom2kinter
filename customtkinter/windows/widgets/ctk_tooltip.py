@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import ctypes
-import ctypes.util
-import sys
 import tkinter
 from typing import Any, Callable, Iterable
 from typing_extensions import Literal, Unpack
@@ -12,7 +9,7 @@ from .theme import AnchorType, ThemeManager
 from .font import CTkFont
 from .ctk_floating_frame import CTkFloatingFrame, CTkFloatingFrameArgs, CTkFloatingFrameThemedArgs
 from .ctk_label import CTkLabel, CTkLabelArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_monitor_info
 
 
 class CTkToolTipThemedArgs(CTkFloatingFrameThemedArgs, total=False, closed=True):
@@ -272,51 +269,6 @@ class CTkToolTip(CTkFloatingFrame):
                             f"callable returning them, not {type(target)}.")
         return string
 
-    def _get_monitor_rect(self, x: int, y: int) -> tuple[int, int, int, int]:
-        """Return (left, top, right, bottom) of the physical monitor containing (x, y)."""
-        try:
-            if sys.platform.startswith("win"):
-                from ctypes import windll, wintypes, Structure, byref
-
-                class _RECT(Structure):
-                    _fields_ = [("left", wintypes.LONG), ("top", wintypes.LONG),
-                                ("right", wintypes.LONG), ("bottom", wintypes.LONG)]
-
-                class _MONITORINFO(Structure):
-                    _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", _RECT),
-                                ("rcWork", _RECT), ("dwFlags", wintypes.DWORD)]
-
-                pt = wintypes.POINT()
-                pt.x, pt.y = x, y
-                monitor = windll.user32.MonitorFromPoint(pt, 2)  # MONITOR_DEFAULTTONEAREST
-                info = _MONITORINFO()
-                info.cbSize = ctypes.sizeof(_MONITORINFO)
-                windll.user32.GetMonitorInfoW(monitor, byref(info))
-                r = info.rcMonitor
-                return r.left, r.top, r.right, r.bottom
-
-            elif sys.platform == "darwin":
-                CG = ctypes.cdll.LoadLibrary(
-                    ctypes.util.find_library("CoreGraphics")
-                    or "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
-                )
-                CGPoint = ctypes.c_double * 2
-                point = CGPoint(float(x), float(y))
-                display_ids = (ctypes.c_uint32 * 8)()
-                count = ctypes.c_uint32(0)
-                CG.CGGetDisplaysWithPoint.restype = ctypes.c_int
-                CG.CGGetDisplaysWithPoint(point, 8, display_ids, ctypes.byref(count))
-                display = display_ids[0] if count.value > 0 else CG.CGMainDisplayID()
-                CG.CGDisplayBounds.restype = ctypes.c_double * 4
-                bounds = CG.CGDisplayBounds(display)
-                lft, top, w, h = float(bounds[0]), float(bounds[1]), float(bounds[2]), float(bounds[3])
-                return int(lft), int(top), int(lft + w), int(top + h)
-
-        except Exception:
-            pass
-
-        return 0, 0, self.winfo_vrootwidth(), self.winfo_vrootheight()
-
     def _master_mode(self) -> tuple[int, int, AnchorType]:
         self._toplevel.update_idletasks()
         x_widget = self._widget.winfo_rootx()
@@ -325,9 +277,15 @@ class CTkToolTip(CTkFloatingFrame):
         h_widget = self._widget.winfo_height()
         w_frame = self.winfo_reqwidth()
         h_frame = self.winfo_reqheight()
-        mon_left, mon_top, mon_right, mon_bottom = self._get_monitor_rect(
-            x_widget + w_widget // 2, y_widget + h_widget // 2
-        )
+        try:
+            mon_left, mon_top, mon_right, mon_bottom = get_monitor_info(
+                self._widget.winfo_pointerx(), self._widget.winfo_pointery()
+            )
+        except Exception:
+            mon_left = 0
+            mon_top = 0
+            mon_right = self.winfo_vrootwidth()
+            mon_bottom = self.winfo_vrootheight()
         x_offset = self._apply_scaling(self._theme_tt_info["x_offset"])
         y_offset = self._apply_scaling(self._theme_tt_info["y_offset"])
         anchor = self._theme_tt_info["anchor"]

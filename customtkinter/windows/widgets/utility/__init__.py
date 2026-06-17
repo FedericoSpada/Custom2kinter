@@ -5,3 +5,4 @@ from .utility_functions import parse_geometry_string
 from .utility_functions import get_window_root_of_widget
 from .utility_functions import get_proper_cursor
 from .utility_functions import get_width_height_from_orientation
+from .utility_functions import get_monitor_info

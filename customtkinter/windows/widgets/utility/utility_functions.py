@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import tkinter
 import sys
 import re
@@ -90,3 +92,49 @@ def get_width_height_from_orientation(orientation: Literal["horizontal", "vertic
         width = length
         height = thickness
     return width, height
+
+
+def get_monitor_info(x: int, y: int) -> tuple[int, int, int, int]:
+    """Return (left, top, right, bottom) of the physical monitor containing (x, y).
+
+    Raises NotImplementedError on Linux.
+    """
+    if sys.platform.startswith("win"):
+        from ctypes import windll, wintypes, Structure, byref
+
+        class _RECT(Structure):
+            _fields_ = [("left", wintypes.LONG), ("top", wintypes.LONG),
+                        ("right", wintypes.LONG), ("bottom", wintypes.LONG)]
+
+        class _MONITORINFO(Structure):
+            _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", _RECT),
+                        ("rcWork", _RECT), ("dwFlags", wintypes.DWORD)]
+
+        pt = wintypes.POINT()
+        pt.x, pt.y = x, y
+        monitor = windll.user32.MonitorFromPoint(pt, 2)  # MONITOR_DEFAULTTONEAREST
+        info = _MONITORINFO()
+        info.cbSize = ctypes.sizeof(_MONITORINFO)
+        windll.user32.GetMonitorInfoW(monitor, byref(info))
+        r = info.rcMonitor
+        return r.left, r.top, r.right, r.bottom
+
+    elif sys.platform == "darwin":
+        CG = ctypes.cdll.LoadLibrary(
+            ctypes.util.find_library("CoreGraphics")
+            or "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
+        )
+        CGPoint = ctypes.c_double * 2
+        point = CGPoint(float(x), float(y))
+        display_ids = (ctypes.c_uint32 * 8)()
+        count = ctypes.c_uint32(0)
+        CG.CGGetDisplaysWithPoint.restype = ctypes.c_int
+        CG.CGGetDisplaysWithPoint(point, 8, display_ids, ctypes.byref(count))
+        display = display_ids[0] if count.value > 0 else CG.CGMainDisplayID()
+        CG.CGDisplayBounds.restype = ctypes.c_double * 4
+        bounds = CG.CGDisplayBounds(display)
+        lft, top, w, h = float(bounds[0]), float(bounds[1]), float(bounds[2]), float(bounds[3])
+        return int(lft), int(top), int(lft + w), int(top + h)
+
+    else:
+        raise NotImplementedError(f"get_monitor_info is not supported on {sys.platform}")
