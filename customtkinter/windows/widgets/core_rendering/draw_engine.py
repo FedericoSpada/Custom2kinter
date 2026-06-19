@@ -56,7 +56,7 @@ def rototraslation(points: tuple[tuple[float | int, float | int], ...],
 class BaseShape:
     """ Provides common attributes and methods to all Shapes. """
 
-    preferred_drawing_method: ClassVar[DrawingMethodType] = "font"
+    preferred_drawing_method: ClassVar[DrawingMethodType] = "circles"
 
     canvas: CTkCanvas
     drawing_method: DrawingMethodType = None
