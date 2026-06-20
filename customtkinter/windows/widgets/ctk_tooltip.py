@@ -269,6 +269,18 @@ class CTkToolTip(CTkFloatingFrame):
                             f"callable returning them, not {type(target)}.")
         return string
 
+    def _get_monitor_info(self) -> tuple[int, int, int, int]:
+        try:
+            return get_monitor_info(self._widget.winfo_pointerx(), self._widget.winfo_pointery())
+        except Exception:
+            x_negative = self._widget.winfo_pointerx() < 0
+            y_negative = self._widget.winfo_pointery() < 0
+            mon_left = -1e12 if x_negative else 0
+            mon_top = -1e12 if y_negative else 0
+            mon_right = 0 if x_negative else self.winfo_vrootwidth()
+            mon_bottom = 0 if y_negative else self.winfo_vrootheight()
+            return mon_left, mon_top, mon_right, mon_bottom
+
     def _master_mode(self) -> tuple[int, int, AnchorType]:
         self._toplevel.update_idletasks()
         x_widget = self._widget.winfo_rootx()
@@ -277,17 +289,9 @@ class CTkToolTip(CTkFloatingFrame):
         h_widget = self._widget.winfo_height()
         w_frame = self.winfo_reqwidth()
         h_frame = self.winfo_reqheight()
-        try:
-            mon_left, mon_top, mon_right, mon_bottom = get_monitor_info(
-                self._widget.winfo_pointerx(), self._widget.winfo_pointery()
-            )
-        except Exception:
-            mon_left = 0
-            mon_top = 0
-            mon_right = self.winfo_vrootwidth()
-            mon_bottom = self.winfo_vrootheight()
         x_offset = self._apply_scaling(self._theme_tt_info["x_offset"])
         y_offset = self._apply_scaling(self._theme_tt_info["y_offset"])
+        mon_left, mon_top, mon_right, mon_bottom = self._get_monitor_info()
         anchor = self._theme_tt_info["anchor"]
 
         #check if the frame is outside the display horizontally
@@ -339,10 +343,62 @@ class CTkToolTip(CTkFloatingFrame):
     def _mouse_mode(self) -> tuple[int, int, AnchorType]:
         x_mouse = self._widget.winfo_pointerx()
         y_mouse = self._widget.winfo_pointery()
+        w_frame = self.winfo_reqwidth()
+        h_frame = self.winfo_reqheight()
         x_offset = self._apply_scaling(self._theme_tt_info["x_offset"])
         y_offset = self._apply_scaling(self._theme_tt_info["y_offset"])
-
+        mon_left, mon_top, mon_right, mon_bottom = self._get_monitor_info()
         anchor = self._theme_tt_info["anchor"]
+        screen_edge = False
+
+        if "w" in anchor:
+            if x_mouse + x_offset + w_frame > mon_right:
+                anchor = anchor.replace("w", "e")
+                if "n" in anchor or "s" in anchor:
+                    x_mouse = mon_right
+                    x_offset = 0
+                    screen_edge = True
+
+        elif "e" in anchor:
+            if x_mouse - x_offset - w_frame < mon_left:
+                anchor = anchor.replace("e", "w")
+                if "n" in anchor or "s" in anchor:
+                    x_mouse = mon_left
+                    x_offset = 0
+                    screen_edge = True
+        else:
+            if x_mouse + x_offset + w_frame / 2 > mon_right:
+                anchor = anchor + "e"
+                x_mouse = mon_right
+                x_offset = 0
+            elif x_mouse + x_offset - w_frame / 2 < mon_left:
+                anchor = anchor + "w"
+                x_mouse = mon_left
+                x_offset = 0
+
+        if "n" in anchor:
+            if y_mouse + y_offset + h_frame > mon_bottom:
+                anchor = anchor.replace("n", "s")
+                if ("w" in anchor or "e" in anchor) and not screen_edge:
+                    y_mouse = mon_bottom
+                    y_offset = 0
+
+        elif "s" in anchor:
+            if y_mouse - y_offset - h_frame < mon_top:
+                anchor = anchor.replace("s", "n")
+                if ("w" in anchor or "e" in anchor) and not screen_edge:
+                    y_mouse = mon_top
+                    y_offset = 0
+        else:
+            if y_mouse + y_offset + h_frame / 2 > mon_bottom:
+                anchor = "s" + anchor
+                y_mouse = mon_bottom
+                y_offset = 0
+            elif y_mouse - y_offset - h_frame / 2 < mon_top:
+                anchor = "n" + anchor
+                y_mouse = mon_top
+                y_offset = 0
+
         if "e" in anchor:
             x_offset *= -1
         if "s" in anchor:
