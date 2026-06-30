@@ -254,6 +254,11 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
             return geometry_string
 
     def configure(self, **kwargs: Unpack[CTkArgs]) -> None:
+        if "bg" in kwargs:
+            kwargs["fg_color"] = kwargs.pop("bg")
+        if "background" in kwargs:
+            kwargs["fg_color"] = kwargs.pop("background")
+
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
             self._theme_info["fg_color"] = self._fg_color
