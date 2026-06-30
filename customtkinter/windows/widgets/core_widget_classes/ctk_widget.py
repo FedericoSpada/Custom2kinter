@@ -196,8 +196,12 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         """ Called when desired dimensions change """
         if width is not None:
             self._desired_width = width
+            if "width" in getattr(self, "_theme_info", {}):
+                self._theme_info["width"] = width
         if height is not None:
             self._desired_height = height
+            if "height" in getattr(self, "_theme_info", {}):
+                self._theme_info["height"] = height
 
         super().configure(width=self._apply_scaling(self._desired_width),
                           height=self._apply_scaling(self._desired_height))
