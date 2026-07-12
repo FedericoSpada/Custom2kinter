@@ -6,7 +6,8 @@ from threading import Lock
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkScrollable, CTkWidget
+from .core_widget_classes import CTkContainer, CTkScrollable
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .ctk_tooltip import CTkToolTip, CTkToolTipThemedArgs
@@ -380,7 +381,7 @@ class CTkSlider(CTkWidget, CTkScrollable):
             return self._variables[1]
         elif attribute_name == "command":
             return self._command
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         elif attribute_name.startswith("tooltip_"):
             return self._tooltip.cget(attribute_name.removeprefix("tooltip_"))

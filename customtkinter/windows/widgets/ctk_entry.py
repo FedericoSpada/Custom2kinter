@@ -4,7 +4,8 @@ import tkinter
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget, EntryLike
+from .core_widget_classes import CTkContainer, EntryLike
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
@@ -145,7 +146,7 @@ class CTkEntry(CTkWidget, EntryLike):
         # Workaround to force grid to be resized when text changes size.
         # Otherwise grid will lag and only resizes if other mouse action occurs.
         self._canvas.grid_forget()
-        self._canvas.grid(column=0, row=0, sticky="nswe")
+        self._canvas.grid(column=0, row=0, sticky="nsew")
 
     def destroy(self) -> None:
         self._font.remove_size_configure_callback(self._update_font)
@@ -249,7 +250,7 @@ class CTkEntry(CTkWidget, EntryLike):
             return self._textvariable
         elif attribute_name == "state":
             return self._state
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         elif attribute_name in ValidTkEntryArgs.__annotations__:
             return self._entry.cget(attribute_name)
@@ -270,7 +271,7 @@ class CTkEntry(CTkWidget, EntryLike):
 
             text_color = self._apply_appearance_mode(self._theme_info["text_color"])
             self._entry.configure(fg=text_color, disabledforeground=text_color, show=self._theme_info["show"])
-            self._entry.delete(0, tkinter.END)
+            self._entry.delete(0, "end")
 
     def _on_focus_in(self, _: tkinter.Event | None = None) -> None:
         if self._state == tkinter.NORMAL:

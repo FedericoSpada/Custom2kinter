@@ -6,7 +6,7 @@ from typing import Any
 from typing_extensions import TypedDict, Unpack
 
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .ctk_frame import CTkFrame, CTkFrameThemedArgs
+from .ctk_frame import CTkFrame, CTkFrameThemedArgs, CTkFrameArgs
 from ..ctk_toplevel import CTkToplevel
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
@@ -68,7 +68,7 @@ class CTkFloatingFrame(CTkFrame):
         # frame
         frame_kwargs = {key: value for key, value in self._theme_ff_info.items() if key in CTkFrameThemedArgs.__annotations__}
         super().__init__(master=self._toplevel, bg_color=self.transparent_color, **frame_kwargs)
-        self.pack(fill=tkinter.BOTH, expand=True)
+        self.pack(fill="both", expand=True)
 
         # functionality
         self._open_kwargs: dict[str, Any] = {}
@@ -95,8 +95,8 @@ class CTkFloatingFrame(CTkFrame):
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name == "transparency":
-            return self._theme_ff_info["transparency"]
+        if attribute_name in self._theme_ff_info and attribute_name not in CTkFrameArgs.__annotations__:
+            return self._theme_ff_info[attribute_name]
         else:
             return super().cget(attribute_name)
 

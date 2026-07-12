@@ -98,7 +98,7 @@ class CTkInputDialog(CTkToplevel):
 
         self._input.set(self._default_value)
         if self._values is None:
-            self._input.select_range(0, tkinter.END)
+            self._input.select_range(0, "end")
 
         button_kwargs = self._theme_id_info["button"]
         button_kwargs["font"] = self._font

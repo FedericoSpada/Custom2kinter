@@ -4,7 +4,8 @@ import tkinter
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .font import CTkFont, FontType
@@ -382,7 +383,7 @@ class CTkButton(CTkWidget):
             return self._command
         elif attribute_name == "background_corner_colors":
             return self._background_corner_colors
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)

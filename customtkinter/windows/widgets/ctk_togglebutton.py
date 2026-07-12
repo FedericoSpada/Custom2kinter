@@ -7,14 +7,17 @@ from typing_extensions import Literal, Unpack
 from .core_widget_classes import CTkContainer, CTkToggleable
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .image import CTkImage, ImageType
-from .ctk_button import CTkButton, CTkButtonThemedArgs
+from .ctk_button import CTkButton, CTkButtonThemedArgs, CTkButtonArgs
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
 class CTkToggleButtonThemedArgs(CTkButtonThemedArgs, total=False, closed=True):
-    #replace 'fg_color' if at least one variant is not "trasparent"
+    #replace 'fg_color' if at least one variant is not "transparent"
     fg_color_checked: TransparentColorType
     fg_color_unchecked: TransparentColorType
+    #replace 'hover_color' if both variants are not "transparent"
+    hover_color_checked: TransparentColorType
+    hover_color_unchecked: TransparentColorType
     #replace 'text' if at least one variant is provided
     text_checked: str
     text_unchecked: str
@@ -54,6 +57,8 @@ class CTkToggleButton(CTkButton, CTkToggleable):
                                                                   transparency=key in ("fg_color",
                                                                                        "fg_color_checked",
                                                                                        "fg_color_unchecked",
+                                                                                       "hover_color_checked",
+                                                                                       "hover_color_unchecked",
                                                                                        "bg_color"))
 
         # images
@@ -61,20 +66,19 @@ class CTkToggleButton(CTkButton, CTkToggleable):
         self._image_unchecked: CTkImage = CTkImage.from_parameter(self._theme_tb_info["image_unchecked"])
 
         # button
+        CTkToggleable.__init__(self)
         button_kwargs = {key: self._theme_tb_info[key] for key in CTkButtonThemedArgs.__annotations__}
         CTkButton.__init__(self,
                            master=master,
                            state=kwargs.pop("state", tkinter.NORMAL),
+                           command=kwargs.pop("command", None),
                            textvariable=kwargs.pop("textvariable", None),
                            background_corner_colors=kwargs.pop("background_corner_colors", None),
                            **button_kwargs)
-        CTkToggleable.__init__(self)
         self.animation_duration = 0
 
         # functionality
-        self._state = kwargs.pop("state", tkinter.NORMAL)
         self._pre_command = kwargs.pop("pre_command", None)
-        self._command = kwargs.pop("command", None)
         if "onvalue" in kwargs:
             self._onvalue = kwargs.pop("onvalue")
         if "offvalue" in kwargs:
@@ -98,6 +102,9 @@ class CTkToggleButton(CTkButton, CTkToggleable):
 
         if info["fg_color_checked"] != "transparent" or info["fg_color_unchecked"] != "transparent":
             kwargs["fg_color"] = info["fg_color_checked" if self._check_state else "fg_color_unchecked"]
+
+        if info["hover_color_checked"] != "transparent" and info["hover_color_unchecked"] != "transparent":
+            kwargs["hover_color"] = info["hover_color_checked" if self._check_state else "hover_color_unchecked"]
 
         if info["text_checked"] or info["text_unchecked"]:
             kwargs["text"] = info["text_checked" if self._check_state else "text_unchecked"]
@@ -123,12 +130,20 @@ class CTkToggleButton(CTkButton, CTkToggleable):
             self._theme_tb_info["fg_color_unchecked"] = self._check_color_type(kwargs.pop("fg_color_unchecked"), transparency=True)
             require_condargs = True
 
+        if "hover_color_checked" in kwargs:
+            self._theme_tb_info["hover_color_checked"] = self._check_color_type(kwargs.pop("hover_color_checked"), transparency=True)
+            require_condargs = True
+
+        if "hover_color_unchecked" in kwargs:
+            self._theme_tb_info["hover_color_unchecked"] = self._check_color_type(kwargs.pop("hover_color_unchecked"), transparency=True)
+            require_condargs = True
+
         if "text_checked" in kwargs:
-            self._theme_tb_info["text_checked"] = self._check_color_type(kwargs.pop("text_checked"), transparency=True)
+            self._theme_tb_info["text_checked"] = kwargs.pop("text_checked")
             require_condargs = True
 
         if "text_unchecked" in kwargs:
-            self._theme_tb_info["text_unchecked"] = self._check_color_type(kwargs.pop("text_unchecked"), transparency=True)
+            self._theme_tb_info["text_unchecked"] = kwargs.pop("text_unchecked")
             require_condargs = True
 
         if "image_checked" in kwargs:
@@ -165,9 +180,7 @@ class CTkToggleButton(CTkButton, CTkToggleable):
         super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name in ("fg_color_checked", "fg_color_unchecked", "text_checked", "text_unchecked"):
-            return self._theme_tb_info[attribute_name]
-        elif attribute_name == "image_checked":
+        if attribute_name == "image_checked":
             return self._image_checked
         elif attribute_name == "image_unchecked":
             return self._image_unchecked
@@ -181,6 +194,8 @@ class CTkToggleButton(CTkButton, CTkToggleable):
             return self._pre_command
         elif attribute_name == "command":
             return self._command
+        elif attribute_name in self._theme_tb_info and attribute_name not in CTkButtonArgs.__annotations__:
+            return self._theme_tb_info[attribute_name]
         else:
             return super().cget(attribute_name)
 

@@ -4,7 +4,8 @@ import tkinter
 from typing import Any
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
@@ -244,7 +245,7 @@ class CTkLabel(CTkWidget):
             return self._font
         elif attribute_name == "image":
             return self._image
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         elif attribute_name in ValidTkLabelArgs.__annotations__:
             return self._label.cget(attribute_name)

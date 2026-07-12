@@ -121,8 +121,7 @@ class CTkToolTip(CTkFloatingFrame):
         try:
             self._widget.unbind("<Enter>")
             self._widget.unbind("<Leave>")
-            self._widget.unbind("<ButtonPress>")
-            self._widget.unbind("<Destroy>")
+            self._widget.unbind("<Button>")
             if self._mode == "live_mouse":
                 self._widget.unbind("<Motion>")
         except tkinter.TclError:
@@ -210,7 +209,7 @@ class CTkToolTip(CTkFloatingFrame):
             return self._text
         elif attribute_name in CTkFloatingFrameArgs.__annotations__:
             return super().cget(attribute_name)
-        elif attribute_name in self._theme_tt_info:
+        elif attribute_name in self._theme_tt_info and attribute_name not in CTkFloatingFrameArgs.__annotations__:
             return self._theme_tt_info[attribute_name]
         elif attribute_name.startswith("label_"):
             return self._text_label.cget(attribute_name.removeprefix("label_"))

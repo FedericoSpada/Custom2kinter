@@ -6,7 +6,8 @@ from threading import Lock
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkScrollable, CTkWidget, EntryLike
+from .core_widget_classes import CTkContainer, CTkScrollable, EntryLike
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
@@ -389,7 +390,7 @@ class CTkSpinBox(CTkWidget, CTkScrollable, EntryLike):
             return self._pre_command
         elif attribute_name == "command":
             return self._command
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         elif attribute_name in ValidTkEntryArgs.__annotations__:
             return self._entry.cget(attribute_name)

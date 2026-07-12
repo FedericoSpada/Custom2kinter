@@ -6,7 +6,8 @@ from threading import Lock
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
@@ -33,7 +34,7 @@ class CTkOptionMenuThemedArgs(TypedDict, total=False, closed=True):
 
 class CTkOptionMenuArgs(CTkOptionMenuThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
-    values: list[str] | None
+    values: list[str]
     variable: tkinter.StringVar | None
     pre_command: Callable[[str], Literal["break"] | None] | None
     command: Callable[[str], None] | None
@@ -315,7 +316,7 @@ class CTkOptionMenu(CTkWidget):
             return self._pre_command
         elif attribute_name == "command":
             return self._command
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         elif attribute_name.startswith("dropdown_"):
             return self._dropdown_menu.cget(attribute_name.removeprefix("dropdown_"))
@@ -366,7 +367,7 @@ class CTkOptionMenu(CTkWidget):
 
     def index(self, value: str | None = None) -> int:
         """ Returns index of selected value, raises ValueError if the value is missing.\n
-        If the parameter is provided, returns the associated index or raises ValueError if no value is found. """
+        If the parameter is provided, returns the associated index or raises ValueError if the value is not found. """
         if value is None:
             value = self._current_value
         return self._values.index(value)

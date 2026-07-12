@@ -4,7 +4,8 @@ import tkinter
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .ctk_frame import CTkFrame
@@ -32,7 +33,8 @@ class CTkTabviewArgs(CTkTabviewThemedArgs, total=False, closed=True):
 
 class CTkTabview(CTkWidget, CTkContainer):
     """
-    Tabview...
+    A collection of frames that can be displayed one at a time by the user by selecting
+    the desired one thanks to a CTkSegmentedButton placed on the border.
     For detailed information check out the documentation.
     """
 
@@ -63,7 +65,7 @@ class CTkTabview(CTkWidget, CTkContainer):
 
         # update fg_color: use "top" version if not forced and parent frame has the same fg_color
         # (if _fg_color is "transparent" we don't change it)
-        if (("fg_color" not in kwargs or "top_fg_color" in kwargs) and
+        if (("fg_color" not in theme_args or "top_fg_color" in theme_args) and
             isinstance(self.master, CTkContainer) and
             self.master.get_fg_color() == self._fg_color):
             self._fg_color = self._theme_info["top_fg_color"]
@@ -71,9 +73,9 @@ class CTkTabview(CTkWidget, CTkContainer):
         #functionality
         self._pre_command: Callable[[str], Literal["break"] | None] | None = kwargs.pop("pre_command", None)
         self._command: Callable[[str], None] | None = kwargs.pop("command", None)
-        self._tab_dict: dict[str, CTkFrame] = {}
-        self._name_list: list[str] = []  # list of unique tab names in order of tabs
-        self._current_name: str = ""
+        self._tab_frames: dict[str, CTkFrame] = {}
+        self._tabs: list[str] = []  # list of unique tab names in order of appearance
+        self._visible_tab: str = ""
 
         self._canvas = CTkCanvas(master=self,
                                  bg=self._apply_appearance_mode(self._bg_color),
@@ -85,41 +87,16 @@ class CTkTabview(CTkWidget, CTkContainer):
 
         self._segmented_button = CTkSegmentedButton(self,
                                                     values=[],
-                                                    command=self._segmented_button_callback,
+                                                    pre_command=self.invoke,
                                                     state=kwargs.pop("state", tkinter.NORMAL),
                                                     **self._theme_info["segmented_button"])
 
         # check for unknown arguments
         check_kwargs_empty(kwargs, raise_error=True)
 
-        self._configure_segmented_button_background_corners()
+        self._configure_segmented_button_corners()
         self._update_geometry()
         self._draw(force_colors_update=True)
-
-    def _segmented_button_callback(self, selected_name: str) -> str:
-        retval = "" if self._pre_command is None else self._pre_command(selected_name)
-
-        #if _pre_command() returns exactly "break", operation is stopped
-        if retval != "break":
-            self.set(selected_name)
-
-            if self._command is not None:
-                self._command(selected_name)
-        return retval
-
-    def winfo_children(self) -> list[tkinter.Widget]:
-        """
-        winfo_children of CTkTabview without canvas and segmented button widgets,
-        because it's not a child but part of the CTkTabview itself
-        """
-
-        child_widgets = super().winfo_children()
-        try:
-            child_widgets.remove(self._canvas)
-            child_widgets.remove(self._segmented_button)
-            return child_widgets
-        except ValueError:
-            return child_widgets
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -136,7 +113,7 @@ class CTkTabview(CTkWidget, CTkContainer):
                                height=self._apply_scaling(self._desired_height - self.outer_button_overhang))
         self._draw()
 
-    def _configure_segmented_button_background_corners(self) -> None:
+    def _configure_segmented_button_corners(self) -> None:
         """ needs to be called for changes in fg_color, bg_color """
 
         if self._fg_color == "transparent":
@@ -159,8 +136,8 @@ class CTkTabview(CTkWidget, CTkContainer):
                                                         self._apply_scaling(self._theme_info["border_width"]))
 
         if self._rounded_rect.info["spacings_changed"]:
-            self._update_geometry_segmented_button()
-            self._update_geometry_current_tab()
+            self._update_segmented_button_geometry()
+            self._update_tab_geometry()
 
         if force_colors_update or requires_recoloring:
             bg_color = self._apply_appearance_mode(self._bg_color)
@@ -171,7 +148,7 @@ class CTkTabview(CTkWidget, CTkContainer):
             self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
 
     def _update_geometry(self) -> None:
-        """ create 3 x 4 grid system """
+        """ create 4 x 1 grid system """
 
         self.grid_columnconfigure(0, weight=1)
 
@@ -190,7 +167,7 @@ class CTkTabview(CTkWidget, CTkContainer):
 
             self._canvas.grid(row=0, rowspan=2, column=0, columnspan=1, sticky="nsew")
 
-    def _update_geometry_segmented_button(self) -> None:
+    def _update_segmented_button_geometry(self) -> None:
         """ needs to be called for changes in corner_radius, anchor """
         anchor = self._theme_info["anchor"].lower()
         if anchor in ("nw", "w", "sw"):
@@ -203,12 +180,30 @@ class CTkTabview(CTkWidget, CTkContainer):
         self._segmented_button.grid(row=1, rowspan=2, column=0, columnspan=1,
                                     padx=spacing, sticky=sticky, apply_scaling=False)
 
-    def _update_geometry_current_tab(self) -> None:
+    def _update_tab_geometry(self) -> None:
         """ needs to be called for changes in corner_radius, border_width """
-        if self._current_name:
+        if self._visible_tab:
             row = 3 if self._theme_info["anchor"].lower() in ("center", "w", "nw", "n", "ne", "e") else 0
             pad = self._reverse_scaling(self._rounded_rect.info.get("inscribed_spacing", 0))
-            self._tab_dict[self._current_name].grid(row=row, column=0, sticky="nsew", padx=pad, pady=pad)
+            self._tab_frames[self._visible_tab].grid(row=row, column=0, sticky="nsew", padx=pad, pady=pad)
+
+    def winfo_children(self) -> list[tkinter.Widget]:
+        """ winfo_children of CTkTabview without canvas and segmented button widgets,
+        because they are not a children but part of the CTkTabview itself """
+
+        child_widgets = super().winfo_children()
+        try:
+            child_widgets.remove(self._canvas)
+            child_widgets.remove(self._segmented_button)
+        except ValueError:
+            pass
+        return child_widgets
+
+    def get_fg_color(self) -> ColorType:
+        if self._fg_color == "transparent":
+            return self._bg_color
+        else:
+            return self._fg_color
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkTabviewArgs]) -> None:
         require_propagate = False
@@ -254,7 +249,7 @@ class CTkTabview(CTkWidget, CTkContainer):
         super().configure(require_redraw=require_redraw, **kwargs)
         if require_propagate:
             self.propagate_fg_color(self.winfo_children())
-            self._configure_segmented_button_background_corners()
+            self._configure_segmented_button_corners()
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "state":
@@ -263,67 +258,57 @@ class CTkTabview(CTkWidget, CTkContainer):
             return self._pre_command
         elif attribute_name == "command":
             return self._command
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         elif attribute_name.startswith("segmented_button_"):
             return self._segmented_button.cget(attribute_name.removeprefix("segmented_button_"))
         else:
             return super().cget(attribute_name)
 
-    def get_fg_color(self) -> ColorType:
-        if self._fg_color == "transparent":
-            return self._bg_color
-        else:
-            return self._fg_color
-
     def tab(self, name: str) -> CTkFrame:
         """ Returns reference to the tab with given name. """
-
-        if name in self._tab_dict:
-            return self._tab_dict[name]
+        if name in self._tab_frames:
+            return self._tab_frames[name]
         else:
             raise ValueError(f"CTkTabview has no tab named '{name}'")
 
     def insert(self, index: int, name: str) -> CTkFrame:
         """ Creates new tab with given name at position index. """
-        if name in self._tab_dict:
+        if name in self._tab_frames:
             raise ValueError(f"CTkTabview already has tab named '{name}'")
 
-        self._name_list.append(name)
-        self._tab_dict[name] = CTkFrame(self,
-                                        height=0,
-                                        width=0,
-                                        border_width=0,
-                                        corner_radius=0,
-                                        fg_color="transparent",
-                                        bg_color="transparent")
+        self._tabs.append(name)
+        self._tab_frames[name] = CTkFrame(self,
+                                          height=0,
+                                          width=0,
+                                          border_width=0,
+                                          corner_radius=0,
+                                          fg_color="transparent")
         self._segmented_button.insert(index, name)
 
         # if created tab is the first one, activate it and set grid for segmented button
-        if len(self._tab_dict) == 1:
-            self._current_name = name
-            self._segmented_button.set(self._current_name)
-            self._update_geometry_segmented_button()
-            self._update_geometry_current_tab()
+        if len(self._tab_frames) == 1:
+            self._update_segmented_button_geometry()
+            self.set(name)
 
-        return self._tab_dict[name]
+        return self._tab_frames[name]
 
     def add(self, name: str) -> CTkFrame:
         """ Appends new tab with given name. """
-        return self.insert(len(self._tab_dict), name)
+        return self.insert(len(self._tab_frames), name)
 
     def move(self, new_index: int, name: str) -> None:
-        if not 0 <= new_index < len(self._name_list):
-            raise ValueError(f"CTkTabview new_index {new_index} not in range of name list with len {len(self._name_list)}")
-        if name not in self._tab_dict:
-            raise ValueError(f"CTkTabview has no name '{name}'")
+        if not 0 <= new_index < len(self._tabs):
+            raise ValueError(f"CTkTabview new_index {new_index} not in range of name list with len {len(self._tabs)}")
+        if name not in self._tab_frames:
+            raise ValueError(f"CTkTabview has no tab named '{name}'")
 
         self._segmented_button.move(new_index, name)
 
     def rename(self, old_name: str, new_name: str) -> None:
-        if old_name not in self._name_list:
+        if old_name not in self._tab_frames:
             raise ValueError(f"CTkTabview has no tab named '{old_name}'")
-        if new_name in self._name_list:
+        if new_name in self._tabs:
             raise ValueError(f"CTkTabview new_name '{new_name}' already exists")
 
         # segmented button
@@ -331,60 +316,72 @@ class CTkTabview(CTkWidget, CTkContainer):
         self._segmented_button.delete(old_name)
         self._segmented_button.insert(old_index, new_name)
 
-        # name list
-        self._name_list[self._name_list.index(old_name)] = new_name
-
-        # tab dictionary
-        self._tab_dict[new_name] = self._tab_dict.pop(old_name)
-
-        # update current_name so we don't loose the connection to the frame
-        if self._current_name == old_name:
-            self._current_name = new_name
+        # internal data
+        self._tabs[self._tabs.index(old_name)] = new_name
+        self._tab_frames[new_name] = self._tab_frames.pop(old_name)
+        if self._visible_tab == old_name:
+            self._visible_tab = new_name
 
     def delete(self, name: str) -> None:
         """ Deletes tab by name. """
-        if name not in self._tab_dict:
+        if name not in self._tab_frames:
             raise ValueError(f"CTkTabview has no tab named '{name}'")
 
-        self._name_list.remove(name)
-        self._tab_dict[name].destroy()
-        self._tab_dict.pop(name)
+        self._tabs.remove(name)
+        self._tab_frames.pop(name).destroy()
         self._segmented_button.delete(name)
 
         # set current_name to '' and remove segmented button if no tab is left
-        if len(self._name_list) == 0:
-            self._current_name = ""
+        if len(self._tabs) == 0:
+            self._visible_tab = ""
             self._segmented_button.grid_forget()
         else:
             # if current_name is deleted tab, select first tab at position 0
-            if self._current_name == name:
-                self.set(self._name_list[0])
+            if self._visible_tab == name:
+                self.set(self._tabs[0])
+
+    def invoke(self, name: str) -> str:
+        """ Activates the tab by name. \n
+        Can be called to simulate the user who clicks on a specific button. """
+        retval = "" if self._pre_command is None else self._pre_command(name)
+
+        #if _pre_command() returns exactly "break", operation is stopped
+        if retval != "break":
+            self.set(name)
+
+            if self._command is not None:
+                self._command(name)
+
+        #segmented_button's state is changed directly using set(), so we block the normal change
+        return "break"
 
     def set(self, name: str) -> None:
-        """ Selects tab by name. """
-        if name not in self._tab_dict:
+        """ Activates the tab by name (doesn't invoke the callbacks as done by 'invoke'),
+        regardless of the widget's state and admissible values. """
+        if name not in self._tab_frames:
             raise ValueError(f"CTkTabview has no tab named '{name}'")
 
-        self._tab_dict[self._current_name].grid_forget()
-        self._current_name = name
-        self._update_geometry_current_tab()
+        if self._visible_tab in self._tab_frames:
+            self._tab_frames[self._visible_tab].grid_forget()
+        self._visible_tab = name
+        self._update_tab_geometry()
         self._segmented_button.set(name)
 
     def get(self, index: int | None = None) -> str:
         """ Returns name of selected tab, returns empty string if no tab selected.\n
         If an index is provided, returns the tab name in that position. """
         if index is None:
-            return self._current_name
+            return self._visible_tab
         else:
-            return self._name_list[index]
+            return self._tabs[index]
 
     def index(self, name: str | None = None) -> int:
-        """ Returns index of selected tab, raises ValueError if the tab is missing
-        if the parameter is provided, returns the associated index or raises ValueError if no tab is found """
+        """ Returns index of selected tab, raises ValueError if the tab is missing.\n
+        If the parameter is provided, returns the associated index or raises ValueError if the tab is not found. """
         if name is None:
-            name = self._current_name
-        return self._name_list.index(name)
+            name = self._visible_tab
+        return self._tabs.index(name)
 
     def len(self) -> int:
         """ Returns the number of defined tabs. """
-        return len(self._name_list)
+        return len(self._tabs)

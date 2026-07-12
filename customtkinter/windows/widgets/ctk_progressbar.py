@@ -6,7 +6,8 @@ from threading import Lock
 from typing import Any
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
@@ -255,7 +256,7 @@ class CTkProgressBar(CTkWidget):
             return self._progress_speed
         elif attribute_name == "variable":
             return self._variable
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)

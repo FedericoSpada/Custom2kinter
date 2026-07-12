@@ -3,6 +3,7 @@ from __future__ import annotations
 import tkinter
 import sys
 import copy
+from functools import partial
 from typing import Any, Callable
 from typing_extensions import TypedDict, Unpack
 
@@ -26,7 +27,7 @@ class ValidTkMenuArgs(TypedDict, total=False, closed=True):
     takefocus: bool
 
 class DropdownMenuArgs(DropdownMenuThemedArgs, ValidTkMenuArgs, total=False, closed=True):
-    values: list[str] | None
+    values: list[str]
     command: Callable[[str], None] | None
 
 
@@ -110,7 +111,7 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
 
         for value in self._values:
             self.add_command(label=padding + value.ljust(self._theme_info["min_character_width"]) + padding,
-                             command=lambda v=value: self._button_callback(v))
+                             command=partial(self._button_callback, value))
 
     def _button_callback(self, value: str) -> None:
         if self._command is not None:

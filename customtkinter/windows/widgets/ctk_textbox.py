@@ -5,7 +5,8 @@ from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
 
-from .core_widget_classes import CTkContainer, CTkScrollable, CTkWidget, TextLike
+from .core_widget_classes import CTkContainer, CTkScrollable, TextLike
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .ctk_scrollbar import CTkScrollbar, CTkScrollbarArgs
@@ -323,12 +324,12 @@ class CTkTextbox(CTkWidget, CTkScrollable, TextLike):
             return self._hor_scrollbar.cget("scrollincrement")
         elif attribute_name == "yscrollincrement":
             return self._ver_scrollbar.cget("scrollincrement")
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
-        elif attribute_name.startswith("scrollbar_"):
-            return self._ver_scrollbar.cget(attribute_name.removeprefix("scrollbar_"))
         elif attribute_name in ValidTkTextArgs.__annotations__:
             return self._text.cget(attribute_name)
+        elif attribute_name.startswith("scrollbar_"):
+            return self._ver_scrollbar.cget(attribute_name.removeprefix("scrollbar_"))
         else:
             return super().cget(attribute_name)
 

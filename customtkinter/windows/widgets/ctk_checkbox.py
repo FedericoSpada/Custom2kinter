@@ -4,10 +4,11 @@ import tkinter
 from typing import Any, Callable
 from typing_extensions import Literal, TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkToggleable, CTkWidget, CanvasWithLabel
+from .core_widget_classes import CTkContainer, CTkToggleable, CanvasWithLabel
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import BorderedRoundedRect, Checkmark
 from .font import CTkFont, FontType
-from .theme import ColorType, TransparentColorType, ThemeManager
+from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
@@ -29,6 +30,8 @@ class CTkCheckBoxThemedArgs(TypedDict, total=False, closed=True):
     hover: bool
     text: str
     font: FontType
+    anchor: AnchorType
+    justify: Literal["left", "center", "right"]
     compound: Literal["left", "right", "top", "bottom"]
 
 class CTkCheckBoxArgs(CTkCheckBoxThemedArgs, total=False, closed=True):
@@ -87,6 +90,7 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
                                  height=self._apply_scaling(self._desired_height),
                                  canvas_width=self._apply_scaling(self._theme_info["box_width"]),
                                  canvas_height=self._apply_scaling(self._theme_info["box_height"]))
+        self._bind_targets.append(self._bg_canvas)
 
         self._rounded_rect = BorderedRoundedRect(self._canvas)
         self._checkmark = Checkmark(self._canvas, events_transparent=True)
@@ -94,6 +98,8 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
 
         self._text_label.configure(text=self._theme_info["text"],
                                    font=self._apply_font_scaling(self._font),
+                                   anchor=self._theme_info["anchor"],
+                                   justify=self._theme_info["justify"],
                                    textvariable=self._textvariable)
         self._bind_targets.append(self._text_label)
         self._focus_target = self._text_label
@@ -158,7 +164,7 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
                                                         self._apply_scaling(self._theme_info["border_width"]))
 
         if self._check_state:
-            if (self._checkmark.update(width / 2, height / 2, height * 0.6) or force_colors_update):
+            if self._checkmark.update(width / 2, height / 2, height * 0.6) or force_colors_update:
                 self._checkmark.set_color(self._apply_appearance_mode(self._theme_info["symbol_color"]))
         else:
             self._checkmark.delete()
@@ -280,6 +286,14 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
             self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
+        if "anchor" in kwargs:
+            self._theme_info["anchor"] = kwargs.pop("anchor")
+            self._text_label.configure(anchor=self._theme_info["anchor"])
+
+        if "justify" in kwargs:
+            self._theme_info["justify"] = kwargs.pop("justify")
+            self._text_label.configure(justify=self._theme_info["justify"])
+
         if "compound" in kwargs:
             self._theme_info["compound"] = kwargs.pop("compound")
             require_geometry = True
@@ -339,7 +353,7 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
             return self._pre_command
         elif attribute_name == "command":
             return self._command
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)

@@ -4,7 +4,8 @@ import tkinter
 from typing import Any
 from typing_extensions import TypedDict, Unpack
 
-from .core_widget_classes import CTkContainer, CTkWidget
+from .core_widget_classes import CTkContainer
+from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .utility import pop_from_dict_by_iterable, check_kwargs_empty
@@ -56,7 +57,7 @@ class CTkFrame(CTkWidget, CTkContainer):
 
         # update fg_color: use "top" version if not forced and parent frame has the same fg_color
         # (if _fg_color is "transparent" we don't change it)
-        if (("fg_color" not in kwargs or "top_fg_color" in kwargs) and
+        if (("fg_color" not in theme_args or "top_fg_color" in theme_args) and
             isinstance(self.master, CTkContainer) and
             self.master.get_fg_color() == self._fg_color):
             self._fg_color = self._theme_info["top_fg_color"]
@@ -79,16 +80,14 @@ class CTkFrame(CTkWidget, CTkContainer):
         self._draw(force_colors_update=True)
 
     def winfo_children(self) -> list[tkinter.Widget]:
-        """
-        winfo_children of CTkFrame without self.canvas widget,
-        because it's not a child but part of the CTkFrame itself
-        """
+        """ winfo_children of CTkFrame without self.canvas widget,
+        because it's not a child but part of the CTkFrame itself """
         child_widgets = super().winfo_children()
         try:
             child_widgets.remove(self._canvas)
-            return child_widgets
         except ValueError:
-            return child_widgets
+            pass
+        return child_widgets
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -147,6 +146,7 @@ class CTkFrame(CTkWidget, CTkContainer):
 
         if "fg_color" in kwargs:
             self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._theme_info["fg_color"] = self._fg_color
             require_redraw = True
             require_propagate = True
 
@@ -165,12 +165,12 @@ class CTkFrame(CTkWidget, CTkContainer):
 
         super().configure(require_redraw=require_redraw, **kwargs)
         if require_propagate:
-            self.propagate_fg_color(self.winfo_children())
+            self.propagate_fg_color(super().winfo_children())
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "background_corner_colors":
             return self._background_corner_colors
-        elif attribute_name in self._theme_info:
+        elif attribute_name in self._theme_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_info[attribute_name]
         else:
             return super().cget(attribute_name)

@@ -48,6 +48,10 @@ def deep_update(base: dict[KT, VT], new: dict[KT, VT]) -> None:
         else:
             base[key] = value
 
+def first_value(dictionary: dict[KT, VT]) -> VT:
+    """ returns the first value contained in the provided dict """
+    return next(iter(dictionary.values()))
+
 
 def parse_geometry_string(geometry_string: str) -> tuple[int | None, ...]:
     #                 index:   1                   2           3          4             5       6
@@ -69,16 +73,22 @@ def get_window_root_of_widget(widget: tkinter.Misc) -> tkinter.Tk | tkinter.Topl
     return current_widget
 
 
-def get_proper_cursor(mode: Literal["normal", "clickable"]) -> str | None:
+def get_proper_cursor(mode: Literal["normal", "clickable", "move_hor", "move_ver", "move_any"]) -> str | None:
     retval = None
     if mode == "normal":
         if sys.platform == "darwin" or sys.platform.startswith("win"):
-            retval="arrow"
+            retval = "arrow"
     elif mode == "clickable":
         if sys.platform == "darwin":
-            retval="pointinghand"
+            retval = "pointinghand"
         elif sys.platform.startswith("win"):
-            retval="hand2"
+            retval = "hand2"
+    elif mode == "move_hor":
+        retval = "sb_h_double_arrow"
+    elif mode == "move_ver":
+        retval = "sb_v_double_arrow"
+    elif mode == "move_any":
+        retval = "fleur"
     return retval
 
 

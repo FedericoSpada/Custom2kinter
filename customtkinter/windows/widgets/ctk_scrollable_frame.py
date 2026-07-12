@@ -6,7 +6,8 @@ from typing_extensions import Literal, Unpack
 
 from .appearance_mode import CTkAppearanceModeBaseClass
 from .scaling import CTkScalingBaseClass
-from .core_widget_classes import CTkContainer, CTkScrollable, CTkWidget
+from .core_widget_classes import CTkContainer, CTkScrollable
+from .core_widget_classes.ctk_widget import CTkWidget
 from .theme import ColorType, ThemeManager
 from .ctk_frame import CTkFrame, CTkFrameThemedArgs, CTkFrameArgs
 from .ctk_scrollbar import CTkScrollbar, CTkScrollbarArgs
@@ -256,11 +257,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         self._parent_frame.configure(**kwargs)
 
     def cget(self, attribute_name: str) -> Any:
-        if attribute_name in CTkFrameThemedArgs.__annotations__:
-            return self._parent_frame.cget(attribute_name)
-        elif attribute_name in self._theme_info:
-            return self._theme_info[attribute_name]
-        elif attribute_name == "scrollable_width":
+        if attribute_name == "scrollable_width":
             return self._scrollable_width
         elif attribute_name == "scrollable_height":
             return self._scrollable_height
@@ -268,6 +265,8 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             return self._xscrollincrement
         elif attribute_name == "yscrollincrement":
             return self._yscrollincrement
+        elif attribute_name in self._theme_info and attribute_name not in CTkFrameArgs.__annotations__:
+            return self._theme_info[attribute_name]
         elif attribute_name.startswith("scrollbar_"):
             return self._ver_scrollbar.cget(attribute_name.removeprefix("scrollbar_"))
         elif attribute_name.startswith("label_"):
@@ -297,7 +296,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
                    is_up: bool,
                    normalized_delta: int,
                    modifier: Literal["", "shift", "ctrl"]) -> str | None:
-        if modifier == "shift":
+        if modifier == "shift" or self._theme_info["orientation"] == "horizontal":
             self._hor_scrollbar.view_scroll(-normalized_delta, "units")
         else:
             self._ver_scrollbar.view_scroll(-normalized_delta, "units")

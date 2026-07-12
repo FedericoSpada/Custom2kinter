@@ -18,7 +18,7 @@ class EntryLike(ABC):
         if state != tkinter.NORMAL:
             self._entry.configure(state=tkinter.NORMAL)
 
-        self._entry.delete(0, tkinter.END)
+        self._entry.delete(0, "end")
         self._entry.insert(0, text)
 
         if state != tkinter.NORMAL:
@@ -277,8 +277,6 @@ class CanvasWithLabel(ABC):
                     self.grid_columnconfigure(2, weight=1 if compound == "left" else 0)
                     self.grid_rowconfigure(0, weight=1)
                     self.grid_rowconfigure((1, 2), weight=0, minsize=0)
-
-                self._text_label.configure(justify=compound)
             else:
                 if isinstance(self, tkinter.Frame):
                     self.grid_rowconfigure(0, weight=0 if compound == "top" else 1)
@@ -287,19 +285,17 @@ class CanvasWithLabel(ABC):
                     self.grid_columnconfigure(0, weight=1)
                     self.grid_columnconfigure((1, 2), weight=0, minsize=0)
 
-                self._text_label.configure(justify=tkinter.CENTER)
-
             if compound == "left":
                 self._canvas.grid(row=0, column=0, sticky="e")
-                self._text_label.grid(row=0, column=2, sticky="w")
+                self._text_label.grid(row=0, column=2, sticky="ew")
             elif compound == "right":
-                self._text_label.grid(row=0, column=0, sticky="e")
+                self._text_label.grid(row=0, column=0, sticky="ew")
                 self._canvas.grid(row=0, column=2, sticky="w")
             elif compound == "top":
                 self._canvas.grid(row=0, column=0, sticky="s")
-                self._text_label.grid(row=2, column=0, sticky="n")
+                self._text_label.grid(row=2, column=0, sticky="ns")
             else:
-                self._text_label.grid(row=0, column=0, sticky="s")
+                self._text_label.grid(row=0, column=0, sticky="ns")
                 self._canvas.grid(row=2, column=0, sticky="n")
 
     def _set_cursor(self, mode: Literal["normal", "clickable"]) -> None:

@@ -95,8 +95,8 @@ you can find further information on the appearance mode, scaling, themes and all
 ## More Examples and Showcase
 You can run the following code to show a simple App that displays all available widgets:
 ```python
-import customtkinter as ctk
-ctk.run_showroom()
+from customtkinter.showroom import run_showroom
+run_showroom()
 ```
 
 ### Appearance mode change and scaling change

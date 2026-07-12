@@ -33,6 +33,7 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     internal_spacing: int
     bg_color: TransparentColorType
     fg_color: TransparentColorType
+    fg_color_header: TransparentColorType
     fg_color_checked: ColorType
     fg_color_unchecked: ColorType
     top_fg_color: ColorType
@@ -46,6 +47,8 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     selected_hover_color: ColorType
     unselected_hover_color: ColorType
     hover_color: ColorType
+    hover_color_checked: TransparentColorType
+    hover_color_unchecked: TransparentColorType
     text_color: ColorType
     text_color_disabled: ColorType
     placeholder_text_color: ColorType
@@ -70,6 +73,8 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     image_unchecked: Any
     light_image: Any
     dark_image: Any
+    open_symbol: str
+    close_symbol: str
     anchor: AnchorType
     justify: Literal["left", "center", "right"]
     compound: Literal["center", "left", "right", "top", "bottom", "none"]
@@ -77,6 +82,8 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     delay: int
     minimum_pixel_length: int
     min_character_width: int
+    columns: int
+    rows: int
     x_offset: int
     y_offset: int
     button: dict
@@ -86,6 +93,8 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     label: dict
     scrollbar: dict
     segmented_button: dict
+    symbol: dict
+    togglebutton: dict
     tooltip: dict
 
 

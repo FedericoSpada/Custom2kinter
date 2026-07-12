@@ -14,7 +14,7 @@ from ..utility import pop_from_dict_by_iterable, check_kwargs_empty
 
 
 class ValidTkFrameArgs(TypedDict, total=False, closed=True):
-    cursor: str
+    cursor: str  #possible values are reported here: https://tkdocs.com/shipman/cursors.html
 
 class CTkWidgetArgs(ValidTkFrameArgs, total=False, closed=True):
     width: int
@@ -114,7 +114,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
     def config(self, *args: Any, **kwargs: Any) -> None:
         raise AttributeError("'config' is not implemented for CTk widgets. For consistency, always use 'configure' instead.")
 
-    def configure(self, require_redraw: bool = False, **kwargs: Any) -> None:
+    def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkWidgetArgs]) -> None:
         if "width" in kwargs or "height" in kwargs:
             self._set_dimensions(width=kwargs.pop("width", None),
                                  height=kwargs.pop("height", None))
