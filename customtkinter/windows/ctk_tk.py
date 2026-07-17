@@ -105,8 +105,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         self._window_exists: bool = False  # indicates if the window is already shown through update() or mainloop() after init
         self._withdraw_called_before_window_exists: bool = False  # indicates if withdraw() was called before window is first shown through update() or mainloop()
         self._iconify_called_before_window_exists: bool = False  # indicates if iconify() was called before window is first shown through update() or mainloop()
-        self._block_update_dimensions_event: bool = False
-        self.focused_widget_before_widthdraw: tkinter.Misc | None = None
+        self.focused_widget_before_withdraw: tkinter.Misc | None = None
 
         # check for unknown arguments
         check_kwargs_empty(kwargs, raise_error=True)
@@ -138,15 +137,15 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
                 self.after_cancel(after_id)
 
     def _focus_in_event(self, _: tkinter.Event) -> None:
-        # sometimes window looses jumps back on macOS if window is selected from Mission Control, so has to be lifted again
+        #sometimes the window jumps back on macOS if window is selected from Mission Control,
+        # so has to be lifted again
         if sys.platform == "darwin":
             self.lift()
 
     def _update_dimensions_event(self, _: tkinter.Event) -> None:
-        if not self._block_update_dimensions_event:
-            # detect current window size
-            self._desired_width = self._reverse_scaling(super().winfo_width())
-            self._desired_height = self._reverse_scaling(super().winfo_height())
+        # detect current window size
+        self._desired_width = self._reverse_scaling(super().winfo_width())
+        self._desired_height = self._reverse_scaling(super().winfo_height())
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -159,12 +158,6 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
 
         # set new scaled min and max with delay (delay prevents weird bug where window dimensions snap to unscaled dimensions when mouse releases window)
         self.after(1000, self._set_scaled_min_max)  # Why 1000ms delay? Experience! (Everything tested on Windows 11)
-
-    def block_update_dimensions_event(self) -> None:
-        self._block_update_dimensions_event = False
-
-    def unblock_update_dimensions_event(self) -> None:
-        self._block_update_dimensions_event = False
 
     def _set_scaled_min_max(self) -> None:
         super().minsize(self._apply_scaling(self._min_width), self._apply_scaling(self._min_height))
@@ -221,7 +214,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
             self._desired_width = max(self._desired_width, width)
         if height is not None:
             self._min_height = height
-            self._desired_height = max(self._desired_width, height)
+            self._desired_height = max(self._desired_height, height)
         super().minsize(self._apply_scaling(self._min_width), self._apply_scaling(self._min_height))
 
     def maxsize(self, width: int | None = None, height: int | None = None) -> None:
@@ -230,7 +223,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
             self._desired_width = min(self._desired_width, width)
         if height is not None:
             self._max_height = height
-            self._desired_height = min(self._desired_width, height)
+            self._desired_height = min(self._desired_height, height)
         super().maxsize(self._apply_scaling(self._max_width), self._apply_scaling(self._max_height))
 
     def geometry(self, geometry_string: str | None = None, apply_scaling: bool = True) -> str | None:
@@ -332,12 +325,10 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
 
             if self._window_exists:
                 self._state_before_windows_set_titlebar_color = self.state()
-
-                if self._state_before_windows_set_titlebar_color != "iconic" or self._state_before_windows_set_titlebar_color != "withdrawn":
-                    self.focused_widget_before_widthdraw = self.focus_get()
-                    super().withdraw()  # hide window so that it can be redrawn after the titlebar change so that the color change is visible
+                self.focused_widget_before_withdraw = self.focus_get()
+                super().withdraw()  # hide window so that it can be redrawn after the titlebar change so that the color change is visible
             else:
-                self.focused_widget_before_widthdraw = self.focus_get()
+                self.focused_widget_before_withdraw = self.focus_get()
                 super().withdraw()
                 super().update()
 
@@ -376,9 +367,9 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
                 else:
                     self.state(self._state_before_windows_set_titlebar_color)  # other states
 
-            if self.focused_widget_before_widthdraw is not None:
-                self.after(10, self.focused_widget_before_widthdraw.focus)
-                self.focused_widget_before_widthdraw = None
+            if self.focused_widget_before_withdraw is not None:
+                self.after(10, self.focused_widget_before_withdraw.focus)
+                self.focused_widget_before_withdraw = None
 
     def _set_appearance_mode(self) -> None:
         if sys.platform.startswith("win"):

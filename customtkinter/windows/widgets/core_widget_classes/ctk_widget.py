@@ -148,7 +148,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
             raise ValueError(f"'{attribute_name}' is not a supported argument.\nLook at the documentation for supported arguments.")
 
     def _update_dimensions_event(self, event: tkinter.Event) -> None:
-        """ Called when the window has been reshaped, and so contained widgets changed dimensions """
+        """ Called when the window has been resized, and so contained widgets changed dimensions """
         # only redraw if dimensions changed (for performance)
         if self._current_width != event.width or self._current_height != event.height:
             self._current_width = event.width
@@ -208,33 +208,28 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
     def bind(self,
              sequence: str | None = None,
              func: Callable[[tkinter.Event], None] | None = None,
-             add: str | bool = True) -> None:
+             add: str | bool = True) -> str | tuple[str, ...]:
         #"sequence" semantics is reported here: https://tkdocs.com/shipman/event-sequences.html
-        if not self._bind_targets:
-            raise NotImplementedError
         if not (add == "+" or add is True):
             raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
-        for obj in self._bind_targets:
-            obj.bind(sequence, func, add=True)
 
-    def unbind(self, sequence: str, funcid: None = None) -> None:
-        if not self._bind_targets:
-            raise NotImplementedError
-        if funcid is not None:
-            raise ValueError("'funcid' argument can only be None, because there is a bug in" +
-                             " tkinter and its not clear whether the internal callbacks will be unbinded or not")
-        for obj in self._bind_targets:
-            obj.unbind(sequence, None)
-        self._create_bindings(sequence=sequence)  # restore internal callbacks for sequence
+        frame_events = ("Configure", "Map", "Unmap", "Expose", "Visibility",
+                        "Destroy", "Enter", "Leave", "FocusIn", "FocusOut")
+        if any(event_type in sequence for event_type in frame_events):
+            return super().bind(sequence, func, add=True)
+        else:
+            if not self._bind_targets:
+                raise NotImplementedError
+            return tuple(obj.bind(sequence, func, add=True) for obj in self._bind_targets)
 
-    def bind_all(self,
-                 sequence: str | None = None,
-                 func: Callable[[tkinter.Event], None] | None = None,
-                 add: str | bool = True) -> None:
-        raise AttributeError("'bind_all' is not allowed, could result in undefined behavior")
-
-    def unbind_all(self, sequence: str) -> None:
-        raise AttributeError("'unbind_all' is not allowed, because it would delete necessary internal callbacks for all widgets")
+    def unbind(self, sequence: str, funcid: str | tuple[str, ...] | None = None) -> None:
+        if funcid is None or isinstance(funcid, str):
+            super().unbind(sequence, funcid)
+            if funcid is None:
+                self._create_bindings(sequence=sequence)  # restore internal callbacks for sequence
+        else:
+            for obj, fid in zip(self._bind_targets, funcid):
+                obj.unbind(sequence, fid)
 
     def focus(self) -> None:
         if self._focus_target is None:

@@ -56,7 +56,7 @@ class CTkImage:
             return CTkImage(**parameter)
 
         elif isinstance(parameter, tuple) and 3 <= len(parameter) <= 4:
-            if isinstance(parameter[1], float | int):
+            if isinstance(parameter[1], (float, int)):
                 parameter = (None,) + parameter
             return CTkImage(light_image=parameter[0],
                             dark_image=parameter[1],
@@ -162,12 +162,14 @@ class CTkImage:
             if isinstance(image, Path):
                 image = str(image.resolve())
             if image not in self._images:
-                self._images[image] = Image.open(image)
+                #since Image.open is lazy, we access the file immediately by creating a copy
+                # so that the file can be freed
+                self._images[image] = Image.open(image).copy()
             return self._images[image]
 
         else:
             raise ValueError(f"Can't convert type {type(image)} to Image.Image.\n" +
-                             "Please provide a str representing a path o directly an Image.Image object.")
+                             "Please provide a str representing a path or an Image.Image object directly.")
 
 
 #old syntax for retrocompatibility reasons

@@ -9,7 +9,7 @@ from ..utility import get_window_root_of_widget
 
 class AppearanceModeTracker:
 
-    update_loop_interval: int = 100  # [ms]
+    update_loop_interval: int = 500  # [ms]
 
     _callback_list: list[Callable[[Literal["light", "dark"]], None]] = []
     _app_list: list[tkinter.Tk | tkinter.Toplevel] = []

@@ -53,7 +53,7 @@ class CTkListBox(CTkScrollableFrame):
         self._command: Callable[[str], None] | None = kwargs.pop("command", None)
         self._min_selected: int = kwargs.pop("min_selected", 0)
         self._max_selected: int = kwargs.pop("max_selected", 1)
-        self._deselect_oldest: int = kwargs.pop("deselect_oldest", self._max_selected == 1)
+        self._deselect_oldest: bool = kwargs.pop("deselect_oldest", self._max_selected == 1)
         self._values: list[str] = kwargs.pop("values", [])
         self._selected_values: list[str] = self._values[:self._min_selected]
         self._buttons: dict[str, CTkToggleButton] = {}

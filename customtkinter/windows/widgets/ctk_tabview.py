@@ -74,12 +74,10 @@ class CTkTabview(CTkWidget, CTkContainer):
         self._pre_command: Callable[[str], Literal["break"] | None] | None = kwargs.pop("pre_command", None)
         self._command: Callable[[str], None] | None = kwargs.pop("command", None)
         self._tab_frames: dict[str, CTkFrame] = {}
-        self._tabs: list[str] = []  # list of unique tab names in order of appearance
         self._visible_tab: str = ""
 
         self._canvas = CTkCanvas(master=self,
                                  bg=self._apply_appearance_mode(self._bg_color),
-                                 highlightthickness=0,
                                  width=self._apply_scaling(self._desired_width),
                                  height=self._apply_scaling(self._desired_height - self.outer_button_overhang))
         self._rounded_rect = BorderedRoundedRect(self._canvas)
@@ -277,7 +275,6 @@ class CTkTabview(CTkWidget, CTkContainer):
         if name in self._tab_frames:
             raise ValueError(f"CTkTabview already has tab named '{name}'")
 
-        self._tabs.append(name)
         self._tab_frames[name] = CTkFrame(self,
                                           height=0,
                                           width=0,
@@ -298,8 +295,8 @@ class CTkTabview(CTkWidget, CTkContainer):
         return self.insert(len(self._tab_frames), name)
 
     def move(self, new_index: int, name: str) -> None:
-        if not 0 <= new_index < len(self._tabs):
-            raise ValueError(f"CTkTabview new_index {new_index} not in range of name list with len {len(self._tabs)}")
+        if not 0 <= new_index < self.len():
+            raise ValueError(f"CTkTabview new_index {new_index} not in range of name list with len {self.len()}")
         if name not in self._tab_frames:
             raise ValueError(f"CTkTabview has no tab named '{name}'")
 
@@ -308,7 +305,7 @@ class CTkTabview(CTkWidget, CTkContainer):
     def rename(self, old_name: str, new_name: str) -> None:
         if old_name not in self._tab_frames:
             raise ValueError(f"CTkTabview has no tab named '{old_name}'")
-        if new_name in self._tabs:
+        if new_name in self._tab_frames:
             raise ValueError(f"CTkTabview new_name '{new_name}' already exists")
 
         # segmented button
@@ -317,7 +314,6 @@ class CTkTabview(CTkWidget, CTkContainer):
         self._segmented_button.insert(old_index, new_name)
 
         # internal data
-        self._tabs[self._tabs.index(old_name)] = new_name
         self._tab_frames[new_name] = self._tab_frames.pop(old_name)
         if self._visible_tab == old_name:
             self._visible_tab = new_name
@@ -327,18 +323,17 @@ class CTkTabview(CTkWidget, CTkContainer):
         if name not in self._tab_frames:
             raise ValueError(f"CTkTabview has no tab named '{name}'")
 
-        self._tabs.remove(name)
         self._tab_frames.pop(name).destroy()
         self._segmented_button.delete(name)
 
         # set current_name to '' and remove segmented button if no tab is left
-        if len(self._tabs) == 0:
+        if self.len() == 0:
             self._visible_tab = ""
             self._segmented_button.grid_forget()
         else:
             # if current_name is deleted tab, select first tab at position 0
             if self._visible_tab == name:
-                self.set(self._tabs[0])
+                self.set(self._segmented_button.get(index=0))
 
     def invoke(self, name: str) -> str:
         """ Activates the tab by name. \n
@@ -373,15 +368,15 @@ class CTkTabview(CTkWidget, CTkContainer):
         if index is None:
             return self._visible_tab
         else:
-            return self._tabs[index]
+            return self._segmented_button.get(index)
 
     def index(self, name: str | None = None) -> int:
         """ Returns index of selected tab, raises ValueError if the tab is missing.\n
         If the parameter is provided, returns the associated index or raises ValueError if the tab is not found. """
         if name is None:
             name = self._visible_tab
-        return self._tabs.index(name)
+        return self._segmented_button.index(name)
 
     def len(self) -> int:
         """ Returns the number of defined tabs. """
-        return len(self._tabs)
+        return self._segmented_button.len()

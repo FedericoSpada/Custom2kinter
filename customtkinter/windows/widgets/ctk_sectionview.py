@@ -317,10 +317,10 @@ class CTkSectionView(CTkFrame):
         self._section_frames[name] = section
 
         #assign callbacks
-        for widget in (header, symbol):
-            widget.bind("<Enter>", partial(self._on_enter, name))
-            widget.bind("<Leave>", partial(self._on_leave, name))
-            widget.bind("<Button-1>", partial(self.invoke, name))
+        header.bind("<Enter>", partial(self._on_enter, name))
+        header.bind("<Leave>", partial(self._on_leave, name))
+        header.bind("<Button-1>", partial(self.invoke, name))
+        symbol.bind("<Button-1>", partial(self.invoke, name))
 
         if index is not None:
             self.show(name, index)
@@ -333,6 +333,7 @@ class CTkSectionView(CTkFrame):
     def delete(self, name: str) -> None:
         """ Deletes section by name. """
         self.hide(name)
+        self._symbols.pop(name).destroy()
         self._header_frames.pop(name).destroy()
         self._section_frames.pop(name).destroy()
 

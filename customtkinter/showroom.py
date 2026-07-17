@@ -583,7 +583,7 @@ class _CTkProgressBarsFrame(CTkFrame):
         self.progressbar_2 = CTkProgressBar(self.left_frame, mode="indeterminate", progress_speed=0.25)
         self.label_3 = CTkLabel(self.left_frame, text="single_run mode", height=1)
         self.progressbar_3 = CTkProgressBar(self.left_frame, mode="single_run", show_value=True, thickness=20)
-        self.progressbar_4 = CTkProgressBar(self.outer_frame, orientation="vertical", variable=self.var, corner_radius=3, thickness=40, show_value=True)
+        self.progressbar_4 = CTkProgressBar(self.outer_frame, orientation="vertical", variable=self.var, corner_radius=3, border_width=3, thickness=45, show_value=True)
 
         self.progressbar_1.start()
         self.progressbar_2.start()
@@ -707,15 +707,15 @@ class _CTkTabviewsFrame(CTkFrame):
         tab1 = self.tabview_1.add("CTkTabview")
         tab2 = self.tabview_1.add("Tab 2")
         tab3 = self.tabview_1.add("Tab 3")
-        CTkButton(tab1, text="Widget on 1st Tab").pack(pady = 5)
-        CTkCheckBox(tab2, text="Widget on 2nd Tab").pack(pady = 5)
-        CTkSwitch(tab3, text="Widget on 3rd Tab").pack(pady = 5)
+        CTkButton(tab1, text="Widget on 1st Tab").pack(pady=5)
+        CTkCheckBox(tab2, text="Widget on 2nd Tab").pack(pady=5)
+        CTkSwitch(tab3, text="Widget on 3rd Tab").pack(pady=5)
 
         self.tabview_2 = CTkTabview(self, anchor="sw", corner_radius=30, border_width=3, width=400, height=100, state="disabled")
         tab1 = self.tabview_2.add("anchor sw")
         tab2 = self.tabview_2.add("disabled")
         tab3 = self.tabview_2.add("with border")
-        CTkButton(tab1, text="Widget on 1st Tab").pack(pady = 5)
+        CTkButton(tab1, text="Widget on 1st Tab").pack(pady=5)
 
         self.tabview_1.pack(pady=5)
         self.tabview_2.pack(pady=5)
@@ -737,7 +737,7 @@ class _CTkGridViewsFrame(CTkFrame):
         for n, positions in enumerate(self.positions):
             frame = self.gridview.insert(f"Frame {n}", *positions)
             next_n = (n + 1) % len(self.positions)
-            CTkLabel(frame, text=f"Frame {n + 1}", height=0).pack(pady = (5, 0))
+            CTkLabel(frame, text=f"Frame {n + 1}", height=0).pack(pady=(5, 0))
             CTkButton(frame, text="Hide next", command=partial(self._hide_frame, next_n)).pack(padx=5, pady=2)
             CTkButton(frame, text="Show next", command=partial(self._show_frame, next_n)).pack(padx=5, pady=(0, 5))
 
@@ -758,9 +758,9 @@ class _CTkSectionViewsFrame(CTkFrame):
         sec1 = self.sectionview_1.add("CTkSectionView")
         sec2 = self.sectionview_1.add("Section 2")
         sec3 = self.sectionview_1.add("Section 3")
-        CTkButton(sec1, text="Widget in 1st Section").pack(padx = 5, pady = 5)
-        CTkCheckBox(sec2, text="Widget in 2nd Section").pack(padx = 5, pady = 5)
-        CTkSwitch(sec3, text="Widget in 3rd Section").pack(padx = 5, pady = 5)
+        CTkButton(sec1, text="Widget in 1st Section").pack(padx=5, pady=5)
+        CTkCheckBox(sec2, text="Widget in 2nd Section").pack(padx=5, pady=5)
+        CTkSwitch(sec3, text="Widget in 3rd Section").pack(padx=5, pady=5)
 
         self.sectionview_2 = CTkSectionView(self,
                                             open_symbol=">",
@@ -772,9 +772,9 @@ class _CTkSectionViewsFrame(CTkFrame):
         sec1 = self.sectionview_2.add("Different style")
         sec2 = self.sectionview_2.add("No limit to open sections")
         sec3 = self.sectionview_2.add("Section 3")
-        CTkButton(sec1, text="Widget in 1st Section").pack(padx = 5, pady = 5)
-        CTkCheckBox(sec2, text="Widget in 2nd Section").pack(padx = 5, pady = 5)
-        CTkSwitch(sec3, text="Widget in 3rd Section").pack(padx = 5, pady = 5)
+        CTkButton(sec1, text="Widget in 1st Section").pack(padx=5, pady=5)
+        CTkCheckBox(sec2, text="Widget in 2nd Section").pack(padx=5, pady=5)
+        CTkSwitch(sec3, text="Widget in 3rd Section").pack(padx=5, pady=5)
 
         self.sectionview_1.pack(pady=5)
         self.sectionview_2.pack(pady=5)

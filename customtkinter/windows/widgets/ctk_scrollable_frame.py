@@ -301,7 +301,6 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         else:
             self._ver_scrollbar.view_scroll(-normalized_delta, "units")
 
-
     def xview(self, *args: Any) -> tuple[float, float] | None:
         self._hor_scrollbar.view(*args)
 
@@ -309,7 +308,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         self._hor_scrollbar.view_moveto(fraction)
 
     def xview_scroll(self, number: int, what: Literal["units", "pages"]) -> None:
-        self._hor_scrollbar.view_moveto(number, what)
+        self._hor_scrollbar.view_scroll(number, what)
 
     def yview(self, *args: Any) -> tuple[float, float] | None:
         self._ver_scrollbar.view(*args)
@@ -318,7 +317,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         self._ver_scrollbar.view_moveto(fraction)
 
     def yview_scroll(self, number: int, what: Literal["units", "pages"]) -> None:
-        self._ver_scrollbar.view_moveto(number, what)
+        self._ver_scrollbar.view_scroll(number, what)
 
     def pack(self, apply_scaling: bool = True, **kwargs: Unpack[CTkWidget._PackArgs]) -> None:
         return self._parent_frame.pack(apply_scaling, **kwargs)

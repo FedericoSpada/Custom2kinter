@@ -65,7 +65,6 @@ class CTkFrame(CTkWidget, CTkContainer):
         self._background_corner_colors: tuple[ColorType, ...] | None = kwargs.pop("background_corner_colors", None)
 
         self._canvas = CTkCanvas(master=self,
-                                 highlightthickness=0,
                                  width=self._apply_scaling(self._desired_width),
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.place(x=0, y=0, relwidth=1, relheight=1)

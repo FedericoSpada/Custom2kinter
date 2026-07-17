@@ -123,14 +123,11 @@ class CTkSwitch(CTkWidget, CTkToggleable, CanvasWithLabel):
     def _create_bindings(self, sequence: str | None = None) -> None:
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None or sequence == "<Enter>":
-            self._canvas.bind("<Enter>", self._on_enter)
-            self._text_label.bind("<Enter>", self._on_enter)
+            self.bind("<Enter>", self._on_enter)
         if sequence is None or sequence == "<Leave>":
-            self._canvas.bind("<Leave>", self._on_leave)
-            self._text_label.bind("<Leave>", self._on_leave)
+            self.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<Button-1>":
-            self._canvas.bind("<Button-1>", self.invoke)
-            self._text_label.bind("<Button-1>", self.invoke)
+            self.bind("<Button-1>", self.invoke)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)

@@ -146,17 +146,13 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
     def _create_bindings(self, sequence: str | None = None) -> None:
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None or sequence == "<Enter>":
-            self._canvas.bind("<Enter>", self._on_enter)
-            self._text_label.bind("<Enter>", self._on_enter)
+            self.bind("<Enter>", self._on_enter)
         if sequence is None or sequence == "<Leave>":
-            self._canvas.bind("<Leave>", self._on_leave)
-            self._text_label.bind("<Leave>", self._on_leave)
+            self.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<ButtonRelease-1>":
-            self._canvas.bind("<ButtonRelease-1>", lambda _: self._on_release("top"))
-            self._text_label.bind("<ButtonRelease-1>", lambda _: self._on_release("top"))
+            self.bind("<ButtonRelease-1>", lambda _: self._on_release("top"))
         if sequence is None or sequence == "<ButtonRelease-3>":
-            self._canvas.bind("<ButtonRelease-3>", lambda _: self._on_release("bottom"))
-            self._text_label.bind("<ButtonRelease-3>", lambda _: self._on_release("bottom"))
+            self.bind("<ButtonRelease-3>", lambda _: self._on_release("bottom"))
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)

@@ -107,7 +107,6 @@ class CTkSlider(CTkWidget, CTkScrollable):
         self._block_value_propagation: Lock = Lock()
 
         self._canvas = CTkCanvas(master=self,
-                                 highlightthickness=0,
                                  width=self._apply_scaling(self._desired_width),
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.place(x=0, y=0, relwidth=1, relheight=1)
@@ -138,20 +137,20 @@ class CTkSlider(CTkWidget, CTkScrollable):
     def _create_bindings(self, sequence: str | None = None) -> None:
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None or sequence == "<Enter>":
-            self._canvas.bind("<Enter>", self._on_enter)
+            self.bind("<Enter>", self._on_enter)
         if sequence is None or sequence == "<Leave>":
-            self._canvas.bind("<Leave>", self._on_leave)
+            self.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<Button-1>":
             self._rounded_rect.bind("<Button-1>", self._clicked)
             for slider in self._sliders:
                 slider.bind("<Button-1>", self._clicked_slider)
         if sequence is None or sequence == "<ButtonRelease-1>":
-            self._canvas.bind("<ButtonRelease-1>", self._on_release)
+            self.bind("<ButtonRelease-1>", self._on_release)
         if sequence is None or sequence == "<B1-Motion>":
-            self._canvas.bind("<B1-Motion>", self._on_motion)
+            self.bind("<B1-Motion>", self._on_motion)
         if self._mode != "single":
             if sequence is None or sequence == "<Motion>":
-                self._canvas.bind("<Motion>", self._on_enter)
+                self.bind("<Motion>", self._on_enter)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -568,7 +567,10 @@ class CTkSlider(CTkWidget, CTkScrollable):
             if value is not None:
                 value = max(low, min(value, high))
                 self._output_values[n] = self._round_to_step_size(value)
-                self._values[n] = (self._output_values[n] - self._from) / (self._to - self._from)
+                if self._from == self._to:
+                    self._values[n] = 0.0
+                else:
+                    self._values[n] = (self._output_values[n] - self._from) / (self._to - self._from)
 
         self._draw()
 

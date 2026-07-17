@@ -90,7 +90,6 @@ class CTkEntry(CTkWidget, EntryLike):
         self._font.add_size_configure_callback(self._update_font)
 
         self._canvas = CTkCanvas(master=self,
-                                 highlightthickness=0,
                                  width=self._apply_scaling(self._desired_width),
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.grid(row=0, column=0, sticky="nsew")

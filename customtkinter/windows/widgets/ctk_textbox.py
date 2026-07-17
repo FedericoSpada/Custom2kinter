@@ -95,7 +95,6 @@ class CTkTextbox(CTkWidget, CTkScrollable, TextLike):
         self._tagged_fonts: dict[str, CTkFont] = {}
 
         self._canvas = CTkCanvas(master=self,
-                                 highlightthickness=0,
                                  width=self._apply_scaling(self._desired_width),
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.grid(row=0, column=0, rowspan=2, columnspan=2, sticky="nsew")

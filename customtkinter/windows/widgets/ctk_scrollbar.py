@@ -72,7 +72,6 @@ class CTkScrollbar(CTkWidget, CTkScrollable):
         self._hover_state: bool = False
 
         self._canvas = CTkCanvas(master=self,
-                                 highlightthickness=0,
                                  width=self._apply_scaling(self._desired_width),
                                  height=self._apply_scaling(self._desired_height))
         self._canvas.place(x=0, y=0, relwidth=1, relheight=1)
@@ -91,13 +90,13 @@ class CTkScrollbar(CTkWidget, CTkScrollable):
         """ set necessary bindings for functionality of widget, will overwrite other bindings """
         if sequence is None:
             self._rounded_rect.bind("<Button-1>", self._clicked)
-            self._slider.bind("<Button-1>", self._clicked_scrollbar)
+            self._slider.bind("<Button-1>", self._clicked_slider)
         if sequence is None or sequence == "<Enter>":
-            self._canvas.bind("<Enter>", self._on_enter)
+            self.bind("<Enter>", self._on_enter)
         if sequence is None or sequence == "<Leave>":
-            self._canvas.bind("<Leave>", self._on_leave)
+            self.bind("<Leave>", self._on_leave)
         if sequence is None or sequence == "<B1-Motion>":
-            self._canvas.bind("<B1-Motion>", self._on_motion)
+            self.bind("<B1-Motion>", self._on_motion)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
@@ -253,7 +252,7 @@ class CTkScrollbar(CTkWidget, CTkScrollable):
             value = (event.x - spacing) / (self._current_width - 2 * spacing)
         return value
 
-    def _clicked_scrollbar(self, event: tkinter.Event) -> None:
+    def _clicked_slider(self, event: tkinter.Event) -> None:
         clicked_value = self._get_value_from_event(event)
         current_center = (self._start_value + self._end_value) / 2
         self._motion_center_offset = current_center - clicked_value

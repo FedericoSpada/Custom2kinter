@@ -39,10 +39,10 @@ class BorderedRoundedRectInfo(RoundedRectInfo, total=False, closed=True):
     spacings_changed: bool
 
 
-def rototraslation(points: tuple[tuple[float | int, float | int], ...],
-                   angle: float | int = 0,
-                   x_pos: float | int = 0,
-                   y_pos: float | int = 0) -> tuple[tuple[float | int, float | int], ...]:
+def rototranslation(points: tuple[tuple[float | int, float | int], ...],
+                    angle: float | int = 0,
+                    x_pos: float | int = 0,
+                    y_pos: float | int = 0) -> tuple[tuple[float | int, float | int], ...]:
     """ Performs a Rotation+Translation of all provided points.\n
     The Rotation is performed always around the origin (0, 0) using an angles expressed in 360 degrees.\n
     Provided coordinates are then added to perform the Translation. """
@@ -63,7 +63,7 @@ class BaseShape:
     preferred_drawing_method: ClassVar[DrawingMethodType] = "circles"
 
     canvas: CTkCanvas
-    drawing_method: DrawingMethodType = None
+    drawing_method: DrawingMethodType | None = None
     events_transparent: bool = False  # mouse events are transferred to the shape below
 
     _name: str = field(default="", init=False)
@@ -95,7 +95,7 @@ class BaseShape:
         # even if part of it is empty
         return self.canvas.tag_bind(self._name, sequence, func, add)
 
-    def unbind(self, sequence: str, funcid: None = None) -> None:
+    def unbind(self, sequence: str, funcid: str | None = None) -> None:
         self.canvas.tag_unbind(self._name, sequence, funcid)
 
 
@@ -217,10 +217,10 @@ class RoundedRect(BaseShape):
              sequence: str | None = None,
              func: Callable[[tkinter.Event], None] | None = None,
              add: str | bool = True,
-             section: SectionType | None = None) -> None:
-        self.canvas.tag_bind(self._tags[section], sequence, func, add)
+             section: SectionType | None = None) -> str:
+        return self.canvas.tag_bind(self._tags[section], sequence, func, add)
 
-    def unbind(self, sequence: str, funcid: None = None, section: SectionType | None = None) -> None:
+    def unbind(self, sequence: str, funcid: str | None = None, section: SectionType | None = None) -> None:
         self.canvas.tag_unbind(self._tags[section], sequence, funcid)
 
     def _polygons_method(self,
@@ -507,13 +507,13 @@ class BorderedRoundedRect(BaseShape):
              sequence: str | None = None,
              func: Callable[[tkinter.Event], None] | None = None,
              add: str | bool = True,
-             section: SectionType | None = None) -> None:
-        self._border.bind(sequence, func, add, section)
-        self._main.bind(sequence, func, add, section)
+             section: SectionType | None = None) -> tuple[str, str]:
+        return (self._border.bind(sequence, func, add, section),
+                self._main.bind(sequence, func, add, section))
 
-    def unbind(self, sequence: str, funcid: None = None, section: SectionType | None = None) -> None:
-        self._border.unbind(sequence, funcid, section)
-        self._main.unbind(sequence, funcid, section)
+    def unbind(self, sequence: str, funcid: tuple[str, str] | None = None, section: SectionType | None = None) -> None:
+        self._border.unbind(sequence, None if funcid is None else funcid[0], section)
+        self._main.unbind(sequence, None if funcid is None else funcid[1], section)
 
 
 @dataclass(frozen=True)
@@ -563,7 +563,7 @@ class Arrow(BaseShape):
             points = ((- size / 2 + radius, + size * 0.2 - radius),
                       (    0              , - size * 0.3 + radius),
                       (+ size / 2 - radius, + size * 0.2 - radius))
-            points = rototraslation(points, angle, x_position, y_position)
+            points = rototranslation(points, angle, x_position, y_position)
 
             self.canvas.coords(self._name, *collapse_points(points))
             self.canvas.itemconfigure(self._name, width=round(radius * 2))
@@ -620,7 +620,7 @@ class Bar(BaseShape):
             radius = size / 10
             points = ((0, + size / 2 - radius),
                       (0, - size / 2 + radius))
-            points = rototraslation(points, angle, x_position, y_position)
+            points = rototranslation(points, angle, x_position, y_position)
 
             self.canvas.coords(self._name, *collapse_points(points))
             self.canvas.itemconfigure(self._name, width=round(radius * 2))
@@ -738,8 +738,8 @@ class Star(BaseShape):
                            (       0      , + size * 0.278))
             #points for right half (horizontal flip)
             right_points = tuple((-x, y) for x, y in left_points)
-            left_points = rototraslation(left_points, 0, x_position, y_position)
-            right_points = rototraslation(right_points, 0, x_position, y_position)
+            left_points = rototranslation(left_points, 0, x_position, y_position)
+            right_points = rototranslation(right_points, 0, x_position, y_position)
 
             self.canvas.coords(f"{self._name}_left", *collapse_points(left_points))
             self.canvas.coords(f"{self._name}_right", *collapse_points(right_points))
@@ -801,7 +801,7 @@ class Triangle(BaseShape):
             points = ((- size / 2 + radius, + size * 0.3 - radius),
                       (    0              , - size * 0.4 + radius),
                       (+ size / 2 - radius, + size * 0.3 - radius))
-            points = rototraslation(points, angle, x_position, y_position)
+            points = rototranslation(points, angle, x_position, y_position)
 
             self.canvas.coords(self._name, *collapse_points(points))
             self.canvas.itemconfigure(self._name, width=round(radius * 2))

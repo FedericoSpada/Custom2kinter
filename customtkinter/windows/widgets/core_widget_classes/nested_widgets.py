@@ -245,13 +245,11 @@ class TextLike(ABC):
 class CanvasWithLabel(ABC):
     def __init__(self, width: int, height: int, canvas_width: int, canvas_height: int) -> None:
         self._bg_canvas = CTkCanvas(master=self,
-                                    highlightthickness=0,
                                     width=width,
                                     height=height)
         self._bg_canvas.grid(row=0, column=0, rowspan=3, columnspan=3, sticky="nsew")
 
         self._canvas = CTkCanvas(master=self,
-                                 highlightthickness=0,
                                  width=canvas_width,
                                  height=canvas_height)
 

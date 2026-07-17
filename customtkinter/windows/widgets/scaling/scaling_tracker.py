@@ -8,8 +8,8 @@ from ..utility import get_window_root_of_widget
 
 class ScalingTracker:
     deactivate_automatic_dpi_awareness: bool = False
-    update_loop_interval: int = 100  # [ms]
-    loop_pause_after_new_scaling: int = 1500  # [ms]
+    update_loop_interval: int = 500  # [ms]
+    loop_pause_after_new_scaling: int = 2000  # [ms]
 
     # contains window objects as keys with list of widget callbacks as elements
     _window_widgets_dict: dict[tkinter.Tk | tkinter.Toplevel, list[Callable[[float, float], None]]] = {}
@@ -183,9 +183,7 @@ class ScalingTracker:
                         alpha = window.attributes("-alpha")
                         window.attributes("-alpha", 0.15)
 
-                    window.block_update_dimensions_event()
                     cls.update_scaling_callbacks_for_window(window)
-                    window.unblock_update_dimensions_event()
 
                     if sys.platform.startswith("win"):
                         window.attributes("-alpha", alpha)

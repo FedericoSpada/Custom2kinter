@@ -73,6 +73,7 @@ class CTkToolTip(CTkFloatingFrame):
         self._title: str | Callable[[], str] | None = kwargs.pop("title", None)
         self._text: str | Iterable[str] | Callable[[], str | Iterable[str]] | None = kwargs.pop("text", None)
         self._after_id: str | None = None
+        self._bind_ids: dict[str, str] = {}
 
         #labels
         self._title_label = CTkLabel(self, **self._theme_tt_info["label"])
@@ -89,15 +90,15 @@ class CTkToolTip(CTkFloatingFrame):
 
     def _create_bindings(self, sequence: str | None = None) -> None:
         if sequence is None or sequence == "<Enter>":
-            self._widget.bind("<Enter>", self._on_enter, add = True)
+            self._bind_ids["<Enter>"] = self._widget.bind("<Enter>", self._on_enter, add=True)
         if sequence is None or sequence == "<Leave>":
-            self._widget.bind("<Leave>", self._on_leave, add = True)
+            self._bind_ids["<Leave>"] = self._widget.bind("<Leave>", self._on_leave, add=True)
         if self._close_on_interaction:
             if sequence is None or sequence == "<Button>":
-                self._widget.bind("<Button>", self._on_leave, add = True)
+                self._bind_ids["<Button>"] = self._widget.bind("<Button>", self._on_leave, add=True)
         if self._mode == "live_mouse":
             if sequence is None or sequence == "<Motion>":
-                self._widget.bind("<Motion>", self._on_motion, add = True)
+                self._bind_ids["<Motion>"] = self._widget.bind("<Motion>", self._on_motion, add=True)
 
     def _update_geometry(self) -> None:
         border_spacing = self._theme_tt_info["border_spacing"]
@@ -119,11 +120,8 @@ class CTkToolTip(CTkFloatingFrame):
     def destroy(self) -> None:
         self._unschedule()
         try:
-            self._widget.unbind("<Enter>")
-            self._widget.unbind("<Leave>")
-            self._widget.unbind("<Button>")
-            if self._mode == "live_mouse":
-                self._widget.unbind("<Motion>")
+            for sequence, funcid in self._bind_ids.items():
+                self._widget.unbind(sequence, funcid)
         except tkinter.TclError:
             pass
         super().destroy()

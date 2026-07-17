@@ -1,6 +1,6 @@
 __version__ = "5.3.0"
 
-from tkinter import Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event
+from tkinter import Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, TclError
 from tkinter.constants import *
 import tkinter.filedialog as filedialog
 from typing_extensions import Literal
@@ -70,7 +70,7 @@ from .windows.widgets.core_rendering import SectionType
 from .windows.widgets.font import FontType
 from .windows.widgets.image import ImageType
 
-_ = Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, CENTER, filedialog  # prevent IDE from removing unused imports
+_ = Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, TclError, CENTER, filedialog  # prevent IDE from removing unused imports
 
 
 def set_appearance_mode(mode: Literal["light", "dark", "system"]) -> None:

@@ -23,7 +23,7 @@ class CTkInputDialogThemedArgs(TypedDict, total=False, closed=True):
     entry: CTkEntryArgs
     combobox: CTkComboBoxArgs
 
-class CTkInputDialogArgs(TypedDict, total=False, closed=True):
+class CTkInputDialogArgs(CTkInputDialogThemedArgs, total=False, closed=True):
     default_value: str
     values: list[str] | None
 
@@ -74,7 +74,7 @@ class CTkInputDialog(CTkToplevel):
 
     def _create_widgets(self) -> None:
         self.grid_columnconfigure((0, 1), weight=1)
-        self.rowconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
         self._label = CTkLabel(master=self,
                                width=300,
@@ -128,5 +128,5 @@ class CTkInputDialog(CTkToplevel):
         self.destroy()
 
     def get_input(self) -> str | None:
-        self.master.wait_window(self)
+        self.wait_window(self)
         return self._user_input

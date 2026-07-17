@@ -29,8 +29,8 @@ class CTkCanvas(tkinter.Canvas):
 
     _radius_to_char_fine: dict[int, str] = {}  # dict to map radius to font circle character
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args: Any, highlightthickness: int = 0, **kwargs: Any) -> None:
+        super().__init__(*args, highlightthickness=highlightthickness, **kwargs)
         self.shapes_counter: int = 0
         self._aa_circle_canvas_ids: set[int] = set()
 

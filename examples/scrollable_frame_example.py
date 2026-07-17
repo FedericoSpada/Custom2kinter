@@ -130,7 +130,7 @@ class App(customtkinter.CTk):
             scrollbar.pack(pady=5)
             scrollbar.set(0.3*n, 0.1 + 0.4*n)
         self.nested_scrollble_frame = customtkinter.CTkScrollableFrame(master=self.scrollable_frame_wsw, height=200, label={"text": "Nested CTkScrollableFrame"})
-        self.nested_scrollble_frame.pack(fill="x", expand=True, padx = 5, pady=5)
+        self.nested_scrollble_frame.pack(fill="x", expand=True, padx=5, pady=5)
         self.nested_scrollble_frame.grid_rowconfigure((0, 1), weight=1)
         self.nested_scrollble_frame.grid_columnconfigure((0, 1), weight=1)
         for n in range(4):
