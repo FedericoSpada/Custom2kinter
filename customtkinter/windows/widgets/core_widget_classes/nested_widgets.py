@@ -298,5 +298,6 @@ class CanvasWithLabel(ABC):
 
     def _set_cursor(self, mode: Literal["normal", "clickable"]) -> None:
         if cursor := get_proper_cursor(mode):
+            self._bg_canvas.configure(cursor=cursor)
             self._canvas.configure(cursor=cursor)
             self._text_label.configure(cursor=cursor)

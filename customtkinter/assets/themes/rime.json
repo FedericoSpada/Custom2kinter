@@ -1,0 +1,24 @@
+{
+  "Colors": {
+    "primary": ["#6E8BA4", "#4A5D6B"],
+    "secondary": ["#5F7A8E", "#3A4A54"],
+    "tertiary": ["#4C6B8E", "#2F3B4D"],
+    "border_primary": ["#A3A8AB", "#6C6F71"],
+    "border_secondary": ["#8A8C8D", "#9B9C9F"],
+    "border_tertiary": ["#6C7B82", "#9D9F9F"],
+    "text": ["#2A2C2F", "#F2F7FC"],
+    "text_disabled": ["#9B9B9B", "#8A8A8A"],
+    "text_light": ["#9B9F9F", "#A8A8A8"],
+    "text_light_disabled": ["#A8A8A8", "#8A8A8A"],
+    "text_negative": ["#F2F7FC", "#F2F7FC"],
+    "text_negative_disabled": ["#B4BCC1", "#A8A8A8"],
+    "symbol": ["#F2F7FC", "#B4BCC1"],
+    "background_window": ["#E0E6E9", "#2B2D2F"],
+    "background_primary": ["#C0C8CE", "#2D2F33"],
+    "background_secondary": ["#B4BCC1", "#2E3135"],
+    "background_tertiary": ["#97A5AE", "#2F3337"],
+    "background_text": ["#F4F7F9", "#2D2F2F"],
+    "background_border": ["#8A8F93", "#3D3F42"],
+    "background_widget": ["#96A2A6", "#4A4C4F"]
+  }
+}

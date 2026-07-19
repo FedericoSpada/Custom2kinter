@@ -1,8 +1,8 @@
 {
   "Colors": {
-    "primary": ["#3B8ED0", "#1F6AA5"],
-    "secondary": ["#36719F", "#144870"],
-    "tertiary": ["#27577D", "#203A4F"],
+    "primary": ["gray63", "gray31"],
+    "secondary": ["gray56", "gray38"],
+    "tertiary": ["gray44", "gray25"],
     "border_primary": ["#979DA2", "#565B5E"],
     "border_secondary": ["#6E7174", "#7A848D"],
     "border_tertiary": ["#3E454A", "#949A9F"],
@@ -19,6 +19,6 @@
     "background_tertiary": ["gray76", "gray23"],
     "background_text": ["#F9F9FA", "#343638"],
     "background_border": ["gray65", "gray28"],
-    "background_widget": ["#939BA2", "#4A4D50"]
+    "background_widget": ["gray53", "#6A6D72"]
   }
 }

@@ -1,0 +1,24 @@
+{
+  "Colors": {
+    "primary": ["#76B492", "#4E8F69"],
+    "secondary": ["#6EAA8C", "#307652"],
+    "tertiary": ["#66A086", "#125D3B"],
+    "border_primary": ["#7E977D", "#465D54"],
+    "border_secondary": ["#95A290", "#678070"],
+    "border_tertiary": ["#3E454A", "#949A9F"],
+    "text": ["gray10", "#F0F8ED"],
+    "text_disabled": ["gray50", "gray45"],
+    "text_light": ["gray52", "gray62"],
+    "text_light_disabled": ["gray60", "gray45"],
+    "text_negative": ["#F0F8ED", "#F0F8ED"],
+    "text_negative_disabled": ["gray74", "gray60"],
+    "symbol": ["#F0F8ED", "gray90"],
+    "background_window": ["#B0C9A0", "#243918"],
+    "background_primary": ["#A3BE91", "#2C441E"],
+    "background_secondary": ["#9AB77C", "#304B17"],
+    "background_tertiary": ["#91B067", "#35530E"],
+    "background_text": ["#C9E6D5", "#2A4B3A"],
+    "background_border": ["#8A9E72", "gray28"],
+    "background_widget": ["#95A594", "#4D5C4D"]
+  }
+}

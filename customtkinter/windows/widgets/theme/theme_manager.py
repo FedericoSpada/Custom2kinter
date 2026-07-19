@@ -101,13 +101,17 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
 class ThemeManager:
 
     _theme: dict[str, ThemeInfo] = {}  # contains all the theme data
-    _built_in_themes: list[str] = ["blue", "green", "gold", "dark-blue"]
+    _built_in_themes: list[str] = ["blue", "gold", "green", "lavender", "metal", "orange", "pink",
+                                   "red", "dark-blue", "dark-orange", "autumn", "breeze", "carrot",
+                                   "cherry", "coffee", "earth", "marsh", "midnight", "patina",
+                                   "rime", "rose", "violet"]
     _last_loaded_theme: str | None = None
 
     @classmethod
     def load_theme(cls, theme_name_or_path: str, add: bool = False) -> None:
         script_directory = os.path.dirname(os.path.abspath(__file__))
 
+        theme: dict[str, Any]
         if theme_name_or_path in cls._built_in_themes:
             customtkinter_path = pathlib.Path(script_directory).parent.parent.parent
             with open(os.path.join(customtkinter_path, "assets", "themes", f"{theme_name_or_path}.json"), "r") as f:
@@ -116,35 +120,34 @@ class ThemeManager:
             with open(theme_name_or_path, "r") as f:
                 theme = json.load(f)
 
-        # store theme path for saving
-        cls._last_loaded_theme = theme_name_or_path
+        if "Colors" in theme:
+            with open(os.path.join(customtkinter_path, "assets", "themes", "_common.json"), "r") as f:
+                theme.update(json.load(f))
 
-        # filter theme values for platform
-        for key, info in theme.items():
-            # check if values for key differ on platforms
-            if "macOS" in info:
-                if sys.platform == "darwin":
-                    theme[key] = info["macOS"]
-                elif sys.platform.startswith("win"):
-                    theme[key] = info["Windows"]
-                else:
-                    theme[key] = info["Linux"]
-
+        cls._replace_platform(theme)
         if add:
             deep_update(cls._theme, theme)
         else:
             cls._theme = theme
+        cls._replace_references(cls._theme)
+
+        # store theme path for saving
+        cls._last_loaded_theme = theme_name_or_path
 
     @classmethod
     def add_key(cls, custom_key: str, **kwargs: Unpack[ThemeInfo]) -> None:
         if custom_key in cls._theme:
             raise KeyError(f"Custom Key '{custom_key}' already defined: use 'update_key' method instead.")
+        cls._replace_platform(kwargs)
+        cls._replace_references(kwargs)
         cls._theme[custom_key] = kwargs
 
     @classmethod
     def update_key(cls, custom_key: str, **kwargs: Unpack[ThemeInfo]) -> None:
         if custom_key not in cls._theme:
             raise KeyError(f"Custom Key '{custom_key}' not found in the loaded theme: use 'add_key' method instead.")
+        cls._replace_platform(kwargs)
+        cls._replace_references(kwargs)
         deep_update(cls._theme[custom_key], kwargs)
 
     @classmethod
@@ -156,6 +159,7 @@ class ThemeManager:
                 deep_update(theme_info, cls._theme[custom_key])
             else:
                 raise KeyError(f"Custom Key '{custom_key}' not found in the loaded theme.")
+        cls._replace_references(kwargs)
         deep_update(theme_info, kwargs)
         return theme_info
 
@@ -170,3 +174,36 @@ class ThemeManager:
                 json.dump(cls._theme, f, indent=2)
         else:
             raise ValueError("Nothing to save.")
+
+    @classmethod
+    def _replace_platform(cls, dictionary: dict) -> None:
+        for key, value in dictionary.items():
+            if isinstance(value, dict):
+                if "macOS" in value:
+                    if sys.platform == "darwin":
+                        dictionary[key] = value["macOS"]
+                    elif sys.platform.startswith("win"):
+                        dictionary[key] = value["Windows"]
+                    else:
+                        dictionary[key] = value["Linux"]
+                else:
+                    cls._replace_platform(value)
+
+    @classmethod
+    def _replace_references(cls, dictionary: dict) -> None:
+        for key, value in dictionary.items():
+            if isinstance(value, dict):
+                cls._replace_references(value)
+
+            elif isinstance(value, str) and value.startswith("@"):
+                #if the value actually starts with "@", it can be escaped using "@@"
+                if value.startswith("@@"):
+                    new_value = value.removeprefix("@")
+                else:
+                    try:
+                        new_value = cls._theme
+                        for name in value.removeprefix("@").split("."):
+                            new_value = new_value[name]
+                    except (KeyError, TypeError) as exc:
+                        raise ValueError(f"Theme reference '{value}' could not be resolved.") from exc
+                dictionary[key] = new_value

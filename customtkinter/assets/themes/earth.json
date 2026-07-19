@@ -1,8 +1,8 @@
 {
   "Colors": {
-    "primary": ["#3B8ED0", "#1F6AA5"],
-    "secondary": ["#36719F", "#144870"],
-    "tertiary": ["#27577D", "#203A4F"],
+    "primary": ["#1EB44D", "#00891E"],
+    "secondary": ["#1AA446", "#006E1B"],
+    "tertiary": ["#166833", "#005F12"],
     "border_primary": ["#979DA2", "#565B5E"],
     "border_secondary": ["#6E7174", "#7A848D"],
     "border_tertiary": ["#3E454A", "#949A9F"],
@@ -13,12 +13,12 @@
     "text_negative": ["#DCE4EE", "#DCE4EE"],
     "text_negative_disabled": ["gray74", "gray60"],
     "symbol": ["#DCE4EE", "gray90"],
-    "background_window": ["gray92", "gray14"],
-    "background_primary": ["gray86", "gray17"],
-    "background_secondary": ["gray81", "gray20"],
-    "background_tertiary": ["gray76", "gray23"],
+    "background_window": ["#DCE4EE", "#18507D"],
+    "background_primary": ["#BBD1E4", "#27577D"],
+    "background_secondary": ["#A8C3D9", "#2B6096"],
+    "background_tertiary": ["#95B5CE", "#2F69AF"],
     "background_text": ["#F9F9FA", "#343638"],
-    "background_border": ["gray65", "gray28"],
+    "background_border": ["#8EADC4", "#36719F"],
     "background_widget": ["#939BA2", "#4A4D50"]
   }
 }

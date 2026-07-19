@@ -89,10 +89,10 @@ class _Showroom(CTk):
         self.scaling_spinbox = CTkSpinBox(self.sidebar_frame, from_=0.5, to=2.0, buttonincrement=0.1, format="{:.0%}",
                                           command=set_widget_scaling,
                                           border_width=0,
-                                          fg_color=self.theme_optionmenu.cget("fg_color"),
-                                          button_color=self.theme_optionmenu.cget("button_color"),
-                                          button_hover_color=self.theme_optionmenu.cget("button_hover_color"),
-                                          text_color=self.theme_optionmenu.cget("text_color"))
+                                          fg_color="@CTkOptionMenu.fg_color",
+                                          button_color="@CTkOptionMenu.button_color",
+                                          button_hover_color="@CTkOptionMenu.button_hover_color",
+                                          text_color="@CTkOptionMenu.text_color")
         self.scaling_spinbox.set(get_widget_scaling())
         self.drawing_label = CTkLabel(self.sidebar_frame, text="Drawing method:", anchor="w")
         self.drawing_optionmenu = CTkOptionMenu(self.sidebar_frame, values=DRAWING_METHODS,
@@ -421,7 +421,7 @@ class _CTkSegmentedButtonsFrame(CTkFrame):
 
         self.seg_button_1 = CTkSegmentedButton(self, values=["CTkSegmentedButton", "Value 2", "Value 3"])
         self.seg_button_2 = CTkSegmentedButton(self, values=["Buttons are", "spread to", "respect the", "provided width"], box_width=100)
-        self.seg_button_3 = CTkSegmentedButton(self, values=["vertical", "Max radius", "Value 3", "Value 4"], orientation="vertical", corner_radius=1000, height=35)
+        self.seg_button_3 = CTkSegmentedButton(self, values=["vertical", "Max radius", "Value 3", "Value 4"], orientation="vertical", corner_radius=1000)
 
         self.seg_button_1.set("CTkSegmentedButton")
         self.seg_button_3.set("vertical")
@@ -466,8 +466,8 @@ class _CTkLabelsFrame(CTkFrame):
     def __init__(self, master, **kwargs: Any) -> None:
         super().__init__(master, **kwargs)
 
-        self.label_1 = CTkLabel(self, text="CTkLabel", height=1)
-        self.label_2 = CTkLabel(self, text="with border", border_width=2, corner_radius=6)
+        self.label_1 = CTkLabel(self, text="CTkLabel")
+        self.label_2 = CTkLabel(self, text="with border", border_width=2, corner_radius=6, width=90, height=40)
         self.label_3 = CTkLabel(self, text="with image", image="logo", compound="right")
         self.label_4 = CTkLabel(self, text="Text\nover\nmultiple lines", justify="right")
 
@@ -551,7 +551,7 @@ class _CTkSwitchesFrame(CTkFrame):
         self.switch_1 = CTkSwitch(self, variable=self.var, width=130)
         self.switch_2 = CTkSwitch(self, text="negative border", border_width=-3, width=130)
         self.switch_3 = CTkSwitch(self, text="vertical", orientation="vertical", corner_radius=5, button_length=2, border_width=0)
-        self.switch_4 = CTkSwitch(self, text="Fixed settings", hover=False, compound="bottom", corner_radius=0, button_length=5, border_width=5, thickness=30, internal_spacing=0, width=130)
+        self.switch_4 = CTkSwitch(self, text="Fixed settings", hover=False, compound="bottom", corner_radius=0, button_length=5, border_width=5, thickness=30, internal_spacing=0)
         self.frame = CTkFrame(self, fg_color="transparent", width=0, height=0)
         self.switch_5_1 = CTkSwitch(self.frame, text="Circuit breaker-like", hover=False, compound="right", orientation="vertical", corner_radius=0, button_length=6, border_width=6, thickness=20)
         self.switch_5_2 = CTkSwitch(self.frame, text="", hover=False, compound="left", orientation="vertical", corner_radius=0, button_length=6, border_width=6, thickness=20, width=0)

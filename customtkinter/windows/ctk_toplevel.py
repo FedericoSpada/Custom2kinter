@@ -224,7 +224,7 @@ class CTkToplevel(tkinter.Toplevel, CTkAppearanceModeBaseClass, CTkScalingBaseCl
 
     def wm_iconphoto(self,
                      default: bool,
-                     *images: tuple[CTkImage, ...]) -> None:
+                     *images: CTkImage) -> None:
         """ Sets the window icon to the specified images (you can provide many pre-scaled images).\n
         If 'default' is True, the change will affect ALL past and future windows for which wm_iconphoto
         wasn't called or was called with 'default=True'.\n

@@ -1,8 +1,8 @@
 {
   "Colors": {
-    "primary": ["#3B8ED0", "#1F6AA5"],
-    "secondary": ["#36719F", "#144870"],
-    "tertiary": ["#27577D", "#203A4F"],
+    "primary": ["#FFA500", "#FF8C00"],
+    "secondary": ["#FF8C00", "#FF6600"],
+    "tertiary": ["#FF7700", "#FF4500"],
     "border_primary": ["#979DA2", "#565B5E"],
     "border_secondary": ["#6E7174", "#7A848D"],
     "border_tertiary": ["#3E454A", "#949A9F"],

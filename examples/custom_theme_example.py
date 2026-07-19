@@ -84,6 +84,23 @@ print(f"{values['highlight_color']=}")
 print(f"{values['number_of_buttons']=}")
 print(f"{values['prefix']=}")
 
+#You can also specify a value as a reference to another one using the form "@<key>.<subkey>.<subsubkey>.<...>".
+# The string will be replaced immediately with the value the referenced object has at the time of creation
+# (subsequent changes to the referenced value won't affect this one).
+customtkinter.ThemeManager.add_key("Mixture",
+                                   corner_radius="@CTkOptionMenu.corner_radius",
+                                   border_width="@CTkRadioButton.border_width_checked",
+                                   fg_color="@Colors.background_text")
+spinbox = customtkinter.CTkSpinBox(master=frame,
+                                   corner_radius="@Mixture.corner_radius",
+                                   fg_color="@CTkOptionMenu.fg_color",
+                                   border_color="@CTkOptionMenu.button_color",
+                                   button_color="@CTkOptionMenu.button_color",
+                                   button_hover_color="@CTkOptionMenu.button_hover_color",
+                                   text_color="@CTkOptionMenu.text_color")
+spinbox.set(0.0)
+spinbox.pack(pady=10, padx=10)
+
 #You can easily generate a JSON file with the current settings by calling ThemeManager.save_theme(),
 # so that you can restore it later.
 if False:
