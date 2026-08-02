@@ -10,10 +10,10 @@ from typing_extensions import Literal, TypedDict, Unpack
 from .core_widget_classes import CTkContainer
 from .core_widget_classes.ctk_widget import CTkWidgetArgs
 from .font.ctk_font import FontType
-from .theme import ColorType, TransparentColorType, ThemeManager
+from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .ctk_frame import CTkFrame
 from .ctk_button import CTkButton
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, first_value
 
 
 class CTkSegmentedButtonThemedArgs(TypedDict, total=False, closed=True):
@@ -33,6 +33,7 @@ class CTkSegmentedButtonThemedArgs(TypedDict, total=False, closed=True):
     text_color: ColorType
     text_color_disabled: ColorType
     font: FontType
+    anchor: AnchorType
 
 class CTkSegmentedButtonArgs(CTkSegmentedButtonThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
@@ -151,6 +152,7 @@ class CTkSegmentedButton(CTkFrame):
                                hover_color=self._theme_sb_info["unselected_hover_color"],
                                text_color=self._theme_sb_info["text_color"],
                                text_color_disabled=self._theme_sb_info["text_color_disabled"],
+                               anchor=self._theme_sb_info["anchor"],
                                text=value,
                                font=self._theme_sb_info["font"],
                                state=self._state,
@@ -195,6 +197,7 @@ class CTkSegmentedButton(CTkFrame):
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkSegmentedButtonArgs]) -> None:
         require_corners = False
         require_geometry = False
+        button_kwargs = {}
 
         if "orientation" in kwargs:
             self._theme_sb_info["orientation"] = kwargs.pop("orientation")
@@ -203,32 +206,27 @@ class CTkSegmentedButton(CTkFrame):
 
         if "box_width" in kwargs:
             self._theme_sb_info["box_width"] = kwargs.pop("box_width")
-            for button in self._buttons.values():
-                button.configure(width=self._theme_sb_info["box_width"])
+            button_kwargs["width"] = self._theme_sb_info["box_width"]
 
         if "box_height" in kwargs:
             self._theme_sb_info["box_height"] = kwargs.pop("box_height")
-            for button in self._buttons.values():
-                button.configure(height=self._theme_sb_info["box_height"])
+            button_kwargs["height"] = self._theme_sb_info["box_height"]
 
         if "corner_radius" in kwargs:
             self._theme_sb_info["corner_radius"] = kwargs.pop("corner_radius")
-            for button in self._buttons.values():
-                button.configure(corner_radius=self._theme_sb_info["corner_radius"])
+            button_kwargs["corner_radius"] = self._theme_sb_info["corner_radius"]
 
         if "border_width" in kwargs:
             self._theme_sb_info["border_width"] = kwargs.pop("border_width")
-            for button in self._buttons.values():
-                button.configure(border_width=self._theme_sb_info["border_width"])
+            button_kwargs["border_width"] = self._theme_sb_info["border_width"]
 
         if "bg_color" in kwargs:
             require_corners = True
 
         if "fg_color" in kwargs:
             self._theme_sb_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            button_kwargs["border_color"] = self._theme_sb_info["fg_color"]
             require_corners = True
-            for button in self._buttons.values():
-                button.configure(border_color=self._theme_sb_info["fg_color"])
 
         if "selected_color" in kwargs:
             self._theme_sb_info["selected_color"] = self._check_color_type(kwargs.pop("selected_color"))
@@ -254,23 +252,22 @@ class CTkSegmentedButton(CTkFrame):
 
         if "text_color" in kwargs:
             self._theme_sb_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
-            for button in self._buttons.values():
-                button.configure(text_color=self._theme_sb_info["text_color"])
+            button_kwargs["text_color"] = self._theme_sb_info["text_color"]
 
         if "text_color_disabled" in kwargs:
             self._theme_sb_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
-            for button in self._buttons.values():
-                button.configure(text_color_disabled=self._theme_sb_info["text_color_disabled"])
+            button_kwargs["text_color_disabled"] = self._theme_sb_info["text_color_disabled"]
 
         if "font" in kwargs:
-            font = kwargs.pop("font")
-            for button in self._buttons.values():
-                button.configure(font=font)
+            button_kwargs["font"] = kwargs.pop("font")
+
+        if "anchor" in kwargs:
+            self._theme_sb_info["anchor"] = kwargs.pop("anchor")
+            button_kwargs["anchor"] = self._theme_sb_info["anchor"]
 
         if "state" in kwargs:
             self._state = kwargs.pop("state")
-            for button in self._buttons.values():
-                button.configure(state=self._state)
+            button_kwargs["state"] = self._state
 
         if "values" in kwargs:
             self._values = kwargs.pop("values")
@@ -297,6 +294,8 @@ class CTkSegmentedButton(CTkFrame):
             self._background_corner_colors = kwargs.pop("background_corner_colors")
             require_corners = True
 
+        for button in self._buttons.values():
+            button.configure(**button_kwargs)
         super().configure(require_redraw=require_redraw, **kwargs)
         if require_corners:
             for n in range(len(self._buttons)):
@@ -317,10 +316,19 @@ class CTkSegmentedButton(CTkFrame):
             return self._command
         elif attribute_name == "background_corner_colors":
             return self._background_corner_colors
+        elif attribute_name == "font":
+            return first_value(self._buttons).cget("font")
         elif attribute_name in self._theme_sb_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_sb_info[attribute_name]
         else:
             return super().cget(attribute_name)
+
+    def button(self, name: str) -> CTkButton:
+        """ Returns reference to the button with given name. """
+        if name in self._buttons:
+            return self._buttons[name]
+        else:
+            raise ValueError(f"CTkSegmentedButton has no value '{name}'")
 
     def set(self, value: str) -> None:
         """ Changes the selected value to the desired one, regardless of the widget's state and admissible values. """

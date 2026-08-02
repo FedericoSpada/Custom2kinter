@@ -9,7 +9,7 @@ from .theme import AnchorType, ThemeManager
 from .font import CTkFont
 from .ctk_floating_frame import CTkFloatingFrame, CTkFloatingFrameArgs, CTkFloatingFrameThemedArgs
 from .ctk_label import CTkLabel, CTkLabelArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_monitor_info
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_monitor_info, get_string, Stringable
 
 
 class CTkToolTipThemedArgs(CTkFloatingFrameThemedArgs, total=False, closed=True):
@@ -27,8 +27,8 @@ class CTkToolTipArgs(CTkToolTipThemedArgs, total=False, closed=True):
     close_on_interaction: bool
     pre_command: Callable[[], Literal["break"] | None] | None
     command: Callable[[], None] | None
-    title: str | Callable[[], str] | None
-    text: str | Iterable[str] | Callable[[], str | Iterable[str]] | None
+    title: Stringable | None
+    text: Stringable | None
 
 
 class CTkToolTip(CTkFloatingFrame):
@@ -70,8 +70,8 @@ class CTkToolTip(CTkFloatingFrame):
         self._close_on_interaction: bool = kwargs.pop("close_on_interaction", True)
         self._pre_command: Callable[[], Literal["break"] | None] | None = kwargs.pop("pre_command", None)
         self._command: Callable[[], None] | None = kwargs.pop("command", None)
-        self._title: str | Callable[[], str] | None = kwargs.pop("title", None)
-        self._text: str | Iterable[str] | Callable[[], str | Iterable[str]] | None = kwargs.pop("text", None)
+        self._title: Stringable | None = kwargs.pop("title", None)
+        self._text: Stringable | None = kwargs.pop("text", None)
         self._after_id: str | None = None
         self._bind_ids: dict[str, str] = {}
 
@@ -168,13 +168,13 @@ class CTkToolTip(CTkFloatingFrame):
             self._title = kwargs.pop("title")
             require_geometry = True
             if self.is_open() and self._title is not None:
-                self._title_label.configure(text=self._get_string(self._title))
+                self._title_label.configure(text=get_string(self._title))
 
         if "text" in kwargs:
             self._text = kwargs.pop("text")
             require_geometry = True
             if self.is_open() and self._text is not None:
-                self._text_label.configure(text=self._get_string(self._text))
+                self._text_label.configure(text=get_string(self._text))
 
         if "label" in kwargs:
             label_kwargs = kwargs.pop("label")
@@ -183,12 +183,11 @@ class CTkToolTip(CTkFloatingFrame):
 
         # "mode" and "close_on_interaction" are not changeable after creation
 
+        super().configure(require_redraw=require_redraw, **kwargs)
         if require_geometry:
             self._update_geometry()
         if require_show and self.is_open():
             self.show()
-
-        super().configure(require_redraw=require_redraw, **kwargs)
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "mode":
@@ -205,8 +204,6 @@ class CTkToolTip(CTkFloatingFrame):
             return self._title
         elif attribute_name == "text":
             return self._text
-        elif attribute_name in CTkFloatingFrameArgs.__annotations__:
-            return super().cget(attribute_name)
         elif attribute_name in self._theme_tt_info and attribute_name not in CTkFloatingFrameArgs.__annotations__:
             return self._theme_tt_info[attribute_name]
         elif attribute_name.startswith("label_"):
@@ -220,8 +217,8 @@ class CTkToolTip(CTkFloatingFrame):
 
         #if _pre_command() returns exactly "break", operation is stopped
         if retval != "break":
-            title_str = self._get_string(self._title)
-            text_str = self._get_string(self._text)
+            title_str = get_string(self._title)
+            text_str = get_string(self._text)
             if title_str is not None:
                 self._title_label.configure(text=title_str)
             if text_str is not None:
@@ -248,7 +245,7 @@ class CTkToolTip(CTkFloatingFrame):
         delay = self._theme_tt_info["delay"]
         if self._state == tkinter.NORMAL:
             if delay > 0:
-                self._after_id = self._widget.after(delay, self.show)
+                self._after_id = self.after(delay, self.show)
             elif delay == 0:
                 self.show()
 
@@ -262,23 +259,8 @@ class CTkToolTip(CTkFloatingFrame):
 
     def _unschedule(self) -> None:
         if self._after_id is not None:
-            self._widget.after_cancel(self._after_id)
+            self.after_cancel(self._after_id)
             self._after_id = None
-
-    def _get_string(self, target: str | Iterable[str] | Callable[[], str | Iterable[str]] | None) -> str | None:
-        if callable(target):
-            target = target()
-
-        if isinstance(target, str):
-            string = target
-        elif isinstance(target, Iterable):
-            string = "\n".join(target)
-        elif target is None:
-            string = None
-        else:
-            raise TypeError(f"CTkToolTip title and text must be a string, iterable of strings, or a "
-                            f"callable returning them, not {type(target)}.")
-        return string
 
     def _get_monitor_info(self) -> tuple[int, int, int, int]:
         try:

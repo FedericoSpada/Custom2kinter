@@ -9,23 +9,26 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
 
 
 class CTkEntryThemedArgs(TypedDict, total=False, closed=True):
     width: int
     height: int
+    box_height: int
     corner_radius: int
     border_width: int
     border_spacing: int
     bg_color: TransparentColorType
     fg_color: TransparentColorType
     border_color: ColorType
+    symbol_color: ColorType
     text_color: ColorType
     placeholder_text_color: ColorType
     placeholder_text: str  #not used if a textvariable is provided
     font: FontType
     justify: Literal["left", "center", "right"]
+    compound: Literal["none", "left", "right"]
     show: str
 
 #Explanations can be found here: https://tkdocs.com/shipman/entry.html
@@ -47,6 +50,8 @@ class ValidTkEntryArgs(TypedDict, total=False, closed=True):
 class CTkEntryArgs(CTkEntryThemedArgs, ValidTkEntryArgs, total=False, closed=True):
     state: Literal["normal", "disabled", "readonly"]
     textvariable: tkinter.StringVar | None
+    pre_command: Callable[[], Literal["break"] | None] | None
+    command: Callable[[], None] | None
 
 
 class CTkEntry(CTkWidget, EntryLike):
@@ -82,17 +87,20 @@ class CTkEntry(CTkWidget, EntryLike):
         # functionality
         self._state: Literal["normal", "disabled", "readonly"] = kwargs.pop("state", tkinter.NORMAL)
         self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
+        self._pre_command: Callable[[], Literal["break"] | None] | None = kwargs.pop("pre_command", None)
+        self._command: Callable[[], None] | None = kwargs.pop("command", None)
         self._placeholder_text_active: bool = False
         self._has_focus: bool = False
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
         self._font.add_size_configure_callback(self._update_font)
+        self._font_clear: CTkFont = CTkFont(family="Segoe UI", size=self._theme_info["box_height"])
 
         self._canvas = CTkCanvas(master=self,
                                  width=self._apply_scaling(self._desired_width),
                                  height=self._apply_scaling(self._desired_height))
-        self._canvas.grid(row=0, column=0, sticky="nsew")
+        self._canvas.grid(row=0, column=0, columnspan=2, sticky="nsew")
         self._rounded_rect = BorderedRoundedRect(self._canvas)
 
         EntryLike.__init__(self,
@@ -109,6 +117,12 @@ class CTkEntry(CTkWidget, EntryLike):
         self._bind_targets.append(self._entry)
         self._focus_target = self._entry
 
+        self._clear_btn = tkinter.Label(master=self,
+                                        height=1,
+                                        text="\u274C",
+                                        font=self._apply_font_scaling(self._font_clear),
+                                        cursor=get_proper_cursor("clickable"))
+
         # check for unknown arguments
         check_kwargs_empty(kwargs, raise_error=True)
 
@@ -122,11 +136,14 @@ class CTkEntry(CTkWidget, EntryLike):
             self._entry.bind("<FocusIn>", self._on_focus_in)
         if sequence is None or sequence == "<FocusOut>":
             self._entry.bind("<FocusOut>", self._on_focus_out)
+        if sequence is None:
+            self._clear_btn.bind("<ButtonRelease-1>", self.invoke)
 
     def _set_scaling(self, new_widget_scaling: float, new_window_scaling: float) -> None:
         super()._set_scaling(new_widget_scaling, new_window_scaling)
 
         self._entry.configure(font=self._apply_font_scaling(self._font))
+        self._clear_btn.configure(font=self._apply_font_scaling(self._font_clear))
         self._canvas.configure(width=self._apply_scaling(self._desired_width),
                                height=self._apply_scaling(self._desired_height))
         self._draw()
@@ -170,6 +187,7 @@ class CTkEntry(CTkWidget, EntryLike):
                 text_color = self._apply_appearance_mode(self._theme_info["text_color"])
 
             self._canvas.configure(bg=self._apply_appearance_mode(self._bg_color))
+            self._clear_btn.configure(bg=fg_color, fg=self._apply_appearance_mode(self._theme_info["symbol_color"]))
             self._rounded_rect.set_main_color(fg_color)
             self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
             self._entry.configure(bg=fg_color, disabledbackground=fg_color, readonlybackground=fg_color, highlightcolor=fg_color)
@@ -178,9 +196,33 @@ class CTkEntry(CTkWidget, EntryLike):
     def _update_geometry(self) -> None:
         spacing = self._rounded_rect.info.get("inscribed_spacing", 0)
         border_spacing = self._apply_scaling(self._theme_info["border_spacing"])
-        self._entry.grid(row=0, column=0, sticky="nsew", padx=spacing + border_spacing, pady=spacing)
+        compound = self._theme_info["compound"]
+
+        if compound == "left":
+            self.grid_columnconfigure(0, weight=0)
+            self.grid_columnconfigure(1, weight=1)
+        else:
+            self.grid_columnconfigure(0, weight=1)
+            self.grid_columnconfigure(1, weight=0)
+
+        if compound == "right":
+            self._entry.grid(row=0, column=0, sticky="nsew", padx=(spacing + border_spacing, 0), pady=spacing)
+            self._clear_btn.grid(row=0, column=1, padx=(border_spacing, spacing + border_spacing), pady=spacing)
+        elif compound == "left":
+            self._clear_btn.grid(row=0, column=0, padx=(spacing + border_spacing, border_spacing), pady=spacing)
+            self._entry.grid(row=0, column=1, sticky="nsew", padx=(0, border_spacing + spacing), pady=spacing)
+        else:
+            self._entry.grid(row=0, column=0, sticky="nsew", padx=spacing + border_spacing, pady=spacing)
+            self._clear_btn.grid_forget()
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkEntryArgs]) -> None:
+        require_geometry = False
+
+        if "box_height" in kwargs:
+            self._theme_info["box_height"] = kwargs.pop("box_height")
+            self._font_clear.configure(size=self._theme_info["box_height"])
+            self._clear_btn.configure(font=self._apply_font_scaling(self._font_clear))
+
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
@@ -191,7 +233,7 @@ class CTkEntry(CTkWidget, EntryLike):
 
         if "border_spacing" in kwargs:
             self._theme_info["border_spacing"] = kwargs.pop("border_spacing")
-            self._update_geometry()
+            require_geometry = True
 
         if "fg_color" in kwargs:
             self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
@@ -199,6 +241,10 @@ class CTkEntry(CTkWidget, EntryLike):
 
         if "border_color" in kwargs:
             self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            require_redraw = True
+
+        if "symbol_color" in kwargs:
+            self._theme_info["symbol_color"] = self._check_color_type(kwargs.pop("symbol_color"))
             require_redraw = True
 
         if "text_color" in kwargs:
@@ -230,17 +276,29 @@ class CTkEntry(CTkWidget, EntryLike):
             self._theme_info["justify"] = kwargs.pop("justify")
             self._entry.configure(justify=self._theme_info["justify"])
 
-        if "state" in kwargs:
-            self._state = kwargs.pop("state")
-            self._entry.configure(state=self._state)
+        if "compound" in kwargs:
+            self._theme_info["compound"] = kwargs.pop("compound")
+            require_geometry = True
 
         if "show" in kwargs:
             self._theme_info["show"] = kwargs.pop("show")
             if not self._placeholder_text_active:
                 self._entry.configure(show=self._theme_info["show"])
 
+        if "state" in kwargs:
+            self._state = kwargs.pop("state")
+            self._entry.configure(state=self._state)
+
+        if "pre_command" in kwargs:
+            self._pre_command = kwargs.pop("pre_command")
+
+        if "command" in kwargs:
+            self._command = kwargs.pop("command")
+
         self._entry.configure(**pop_from_dict_by_iterable(kwargs, ValidTkEntryArgs.__annotations__))
         super().configure(require_redraw=require_redraw, **kwargs)
+        if require_geometry:
+            self._update_geometry()
 
     def cget(self, attribute_name: str) -> Any:
         if attribute_name == "font":
@@ -280,6 +338,19 @@ class CTkEntry(CTkWidget, EntryLike):
     def _on_focus_out(self, _: tkinter.Event | None = None) -> None:
         self._has_focus = False
         self._activate_placeholder()
+
+    def invoke(self, _: tkinter.Event | None = None) -> None:
+        """ Clears the content of the entry if it isn't disabled and the 'pre_command' allows it.\n
+        Can be called to simulate the user who clicks on the 'X' button. """
+        if self._state == tkinter.NORMAL:
+            retval = "" if self._pre_command is None else self._pre_command()
+
+            #if _pre_command() returns exactly "break", operation is stopped
+            if retval != "break":
+                self.delete(0, "end")
+
+                if self._command is not None:
+                    self._command()
 
     def delete(self, first_index: str | int, last_index: str | int | None = None) -> None:
         self._entry.delete(first_index, last_index)

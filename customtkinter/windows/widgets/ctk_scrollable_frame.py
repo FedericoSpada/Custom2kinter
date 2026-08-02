@@ -18,7 +18,8 @@ from .utility import pop_from_dict_by_iterable, check_kwargs_empty
 class CTkScrollableFrameThemedArgs(CTkFrameThemedArgs, total=False, closed=True):
     border_spacing: int
     orientation: Literal["horizontal", "vertical", "both"]
-    activate_scrollbars: bool
+    fit_content: bool  #if True, the frame expands to show as much as possible, so width/height are ignored
+    show_scrollbars: bool
     scrollbar: CTkScrollbarArgs
     label: CTkLabelArgs
 
@@ -112,7 +113,7 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             self._parent_canvas.bind("<Configure>", self._fit_frame_dimensions_to_canvas)
 
     def _check_if_scrollbars_needed(self, continue_loop: bool = False) -> None:
-        if self._theme_info["activate_scrollbars"]:
+        if self._theme_info["show_scrollbars"]:
             new_hide_hor_scrollbar = self._parent_canvas.xview() == (0.0, 1.0) #horizontal scrollbar not needed
             new_hide_ver_scrollbar = self._parent_canvas.yview() == (0.0, 1.0) #vertical scrollbar not needed
         else:
@@ -147,8 +148,25 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
         scrollbar_border = border_width + border_spacing
         delta_spacing = max(0, mean_spacing - canvas_spacing)
 
-        #force the frame to keep specified dimensions and not shrink to fit its content
-        self._parent_frame.grid_propagate(False)
+        self._parent_canvas.grid_forget()
+        if self._theme_info["fit_content"]:
+            self._parent_frame.grid_propagate(True)
+            if self._theme_info["orientation"] == "vertical":
+                self._parent_canvas.configure(width=self._apply_scaling(self._parent_frame.cget("width")),
+                                              height=self.winfo_reqheight())
+            elif self._theme_info["orientation"] == "horizontal":
+                self._parent_canvas.configure(width=self.winfo_reqwidth(),
+                                              height=self._parent_frame.cget("height"))
+            else:
+                self._parent_canvas.configure(width=self.winfo_reqwidth(),
+                                              height=self.winfo_reqheight())
+        else:
+            #force the frame to keep specified dimensions and not shrink/expand to fit its content
+            self._parent_frame.grid_propagate(False)
+            self._pf_original_configure(width=self._parent_frame.cget("width"),
+                                        height=self._parent_frame.cget("height"))
+            self._parent_canvas.configure(width=0,
+                                          height=0)
 
         # configure 3x2 grid
         self._parent_frame.grid_rowconfigure(0, weight=0, minsize=canvas_spacing)
@@ -227,6 +245,10 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             self._theme_info["border_spacing"] = kwargs.pop("border_spacing")
             self._update_geometry()
 
+        if "fit_content" in kwargs:
+            self._theme_info["fit_content"] = kwargs.pop("fit_content")
+            self._update_geometry()
+
         if "scrollable_width" in kwargs:
             self._scrollable_width = kwargs.pop("scrollable_width")
             super().configure(width=self._apply_scaling(self._scrollable_width))
@@ -243,8 +265,8 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             self._yscrollincrement = kwargs.pop("yscrollincrement")
             self._ver_scrollbar.configure(scrollincrement=self._apply_scaling(self._yscrollincrement))
 
-        if "activate_scrollbars" in kwargs:
-            self._theme_info["activate_scrollbars"] = kwargs.pop("activate_scrollbars")
+        if "show_scrollbars" in kwargs:
+            self._theme_info["show_scrollbars"] = kwargs.pop("show_scrollbars")
 
         if "scrollbar" in kwargs:
             scrollbar_kwargs = kwargs.pop("scrollbar")
@@ -300,6 +322,46 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
             self._hor_scrollbar.view_scroll(-normalized_delta, "units")
         else:
             self._ver_scrollbar.view_scroll(-normalized_delta, "units")
+
+    def _get_widget_coordinates(self, widget: CTkWidget) -> tuple[int, int]:
+        #calculate the position of the widget in the coordinates of the frame by scanning
+        # the hierarchy up until the frame or the main window
+        x = 0
+        y = 0
+        while widget is not self and widget is not None:
+            x += widget.winfo_x()
+            y += widget.winfo_y()
+            widget = widget.master
+        #if main window has been reached -> widget is not a relative of the frame
+        if widget is None:
+            raise ValueError("The widget is not a child or grandchild of the frame.")
+        return x, y
+
+    def see(self, widget: CTkWidget) -> None:
+        """ Scrolls the frame so that the provided widget is visible.\n
+        If the widget is not a child or grandchild of the frame, a ValueError is raised. """
+
+        x, y = self._get_widget_coordinates(widget)
+        _, _, width, height = self._parent_canvas.bbox("all")
+        self.xview_moveto(x / width)
+        self.yview_moveto(y / height)
+
+    def is_visible(self, widget: CTkWidget) -> bool:
+        """ Returns whether the provided widget is fully visible.\n
+        If the widget is not a child or grandchild of the frame, a ValueError is raised. """
+
+        widget_left, widget_top = self._get_widget_coordinates(widget)
+        widget_right = widget_left + widget.winfo_width()
+        widget_bottom = widget_top + widget.winfo_height()
+
+        #retrieve visible coordinates
+        visible_left = self._parent_canvas.canvasx(0)
+        visible_right = self._parent_canvas.canvasx(self._parent_canvas.winfo_width())
+        visible_top = self._parent_canvas.canvasy(0)
+        visible_bottom = self._parent_canvas.canvasy(self._parent_canvas.winfo_height())
+
+        return (widget_left >= visible_left and widget_right <= visible_right and
+                widget_top >= visible_top and widget_bottom <= visible_bottom)
 
     def xview(self, *args: Any) -> tuple[float, float] | None:
         self._hor_scrollbar.view(*args)

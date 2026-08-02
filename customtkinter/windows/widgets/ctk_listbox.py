@@ -201,6 +201,13 @@ class CTkListBox(CTkScrollableFrame):
         else:
             return super().cget(attribute_name)
 
+    def button(self, name: str) -> CTkToggleButton:
+        """ Returns reference to the button with given name. """
+        if name in self._buttons:
+            return self._buttons[name]
+        else:
+            raise ValueError(f"CTkListBox has no value '{name}'")
+
     def invoke(self, value: str, _: bool | None = None) -> str:
         """ Toggles the active status for the provided value.\n
         Can be called to simulate the user who clicks on a specific button. """

@@ -27,6 +27,7 @@ class CTkProgressBarThemedArgs(TypedDict, total=False, closed=True):
     text_color: ColorType
     font: FontType
     show_value: bool
+    show_zero: bool
 
 class CTkProgressBarArgs(CTkProgressBarThemedArgs, total=False, closed=True):
     mode: Literal["determinate", "indeterminate", "single_run"]
@@ -154,7 +155,7 @@ class CTkProgressBar(CTkWidget):
             progress_value_2 = min(1.0, progress_value + (self.indeterminate_width / 2))
         else:
             progress_value_1 = 0.0
-            if self._value == 0.0:
+            if self._value == 0.0 and not self._theme_info["show_zero"]:
                 progress_value_2 = 0.0
             else:
                 #we correct the value so that the minimal length is 2 * corner_radius
@@ -227,6 +228,10 @@ class CTkProgressBar(CTkWidget):
         if "show_value" in kwargs:
             self._theme_info["show_value"] = kwargs.pop("show_value")
             self.set()
+
+        if "show_zero" in kwargs:
+            self._theme_info["show_zero"] = kwargs.pop("show_zero")
+            require_redraw = True
 
         if "variable" in kwargs:
             if self._variable is not None:

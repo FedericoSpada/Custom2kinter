@@ -67,6 +67,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         # targets for basic operations that child classes can fill as needed
         self._bind_targets: list[tkinter.Misc] = []
         self._focus_target: tkinter.Misc | None = None
+        self._destroyed: bool = False
 
         # check for unknown arguments
         check_kwargs_empty(kwargs, raise_error=True)
@@ -101,6 +102,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
 
     def destroy(self) -> None:
         """ Destroy this and all descendants widgets. """
+        self._destroyed = True
 
         # call destroy methods of super classes
         tkinter.Frame.destroy(self)
@@ -132,7 +134,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         # if there are still items in the kwargs dict, raise ValueError
         check_kwargs_empty(kwargs, raise_error=True)
 
-        if require_redraw:
+        if require_redraw and not self._destroyed:
             self._draw(force_colors_update=True)
 
     def cget(self, attribute_name: str) -> Any:
@@ -150,7 +152,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
     def _update_dimensions_event(self, event: tkinter.Event) -> None:
         """ Called when the window has been resized, and so contained widgets changed dimensions """
         # only redraw if dimensions changed (for performance)
-        if self._current_width != event.width or self._current_height != event.height:
+        if (self._current_width != event.width or self._current_height != event.height) and not self._destroyed:
             self._current_width = event.width
             self._current_height = event.height
             self._draw()  # faster drawing without color changes

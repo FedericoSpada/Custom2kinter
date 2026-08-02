@@ -105,7 +105,6 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         self._window_exists: bool = False  # indicates if the window is already shown through update() or mainloop() after init
         self._withdraw_called_before_window_exists: bool = False  # indicates if withdraw() was called before window is first shown through update() or mainloop()
         self._iconify_called_before_window_exists: bool = False  # indicates if iconify() was called before window is first shown through update() or mainloop()
-        self.focused_widget_before_withdraw: tkinter.Misc | None = None
 
         # check for unknown arguments
         check_kwargs_empty(kwargs, raise_error=True)
@@ -183,12 +182,8 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
 
     def mainloop(self, *args: Any, **kwargs: Any) -> None:
         if not self._window_exists:
-            if sys.platform.startswith("win"):
-                self._windows_set_titlebar_color(self._get_appearance_mode())
-
-                if not self._withdraw_called_before_window_exists and not self._iconify_called_before_window_exists:
-                    self.deiconify()
-
+            if not self._withdraw_called_before_window_exists and not self._iconify_called_before_window_exists:
+                self.deiconify()
             self._window_exists = True
 
         if not self._default_icon_set:
@@ -204,7 +199,8 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         current_resizable_values = super().resizable(width, height)
 
         if sys.platform.startswith("win"):
-            self._windows_set_titlebar_color(self._get_appearance_mode())
+            #for some reason, the titlebar changes color after calling this method...
+            self.after_idle(self._windows_set_titlebar_color, self._get_appearance_mode())
 
         return current_resizable_values
 
@@ -324,22 +320,17 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         if sys.platform.startswith("win") and not self.deactivate_windows_header_manipulation:
 
             if self._window_exists:
+                #if the change is performed with the window in withdrawn state, the new color is applyed immediately,
+                # otherwise it fades from one color to the other one. for this reason, we save the previous status,
+                # change it to withdrawn and restore it afterwards.
                 self._state_before_windows_set_titlebar_color = self.state()
-                self.focused_widget_before_withdraw = self.focus_get()
-                super().withdraw()  # hide window so that it can be redrawn after the titlebar change so that the color change is visible
+                super().withdraw()
             else:
-                self.focused_widget_before_withdraw = self.focus_get()
                 super().withdraw()
                 super().update()
 
-            if appearance_mode.lower() == "dark":
-                value = ctypes.c_int(1)
-            elif appearance_mode.lower() == "light":
-                value = ctypes.c_int(0)
-            else:
-                return
-
             try:
+                value = ctypes.c_int(1 if appearance_mode == "dark" else 0)
                 hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
                 DWMWA_USE_IMMERSIVE_DARK_MODE = 20
                 DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19
@@ -353,7 +344,6 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
                     ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1,
                                                                ctypes.byref(value),
                                                                ctypes.sizeof(value))
-
             except Exception as err:
                 print(err)
 
@@ -361,15 +351,9 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
                 if self._state_before_windows_set_titlebar_color == "normal":
                     self.deiconify()
                 elif self._state_before_windows_set_titlebar_color == "iconic":
-                    self.iconify()
-                elif self._state_before_windows_set_titlebar_color == "zoomed":
-                    self.state("zoomed")
+                    super().iconify()
                 else:
                     self.state(self._state_before_windows_set_titlebar_color)  # other states
-
-            if self.focused_widget_before_withdraw is not None:
-                self.after(10, self.focused_widget_before_withdraw.focus)
-                self.focused_widget_before_withdraw = None
 
     def _set_appearance_mode(self) -> None:
         if sys.platform.startswith("win"):

@@ -2,7 +2,6 @@ __version__ = "5.3.0"
 
 from tkinter import Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, TclError
 from tkinter.constants import *
-import tkinter.filedialog as filedialog
 from typing_extensions import Literal
 
 # import manager classes
@@ -49,6 +48,7 @@ from .windows.widgets import CTkSymbolBox
 from .windows.widgets import CTkTabview
 from .windows.widgets import CTkTextbox
 from .windows.widgets import CTkToggleButton
+from .windows.widgets import CTkToast
 from .windows.widgets import CTkToolTip
 from .windows.widgets import CTkScrollableFrame
 
@@ -56,6 +56,24 @@ from .windows.widgets import CTkScrollableFrame
 from .windows import CTk
 from .windows import CTkToplevel
 from .windows import CTkInputDialog
+from .windows import CTkMessageDialog
+from .windows import CTkFontDialog
+from .windows import showinfo
+from .windows import showwarning
+from .windows import showerror
+from .windows import askquestion
+from .windows import askokcancel
+from .windows import askyesno
+from .windows import askyesnocancel
+from .windows import askretrycancel
+from .windows import askabortretryignore
+from .windows import askdirectory
+from .windows import askopenfilename
+from .windows import askopenfilenames
+from .windows import asksaveasfilename
+from .windows import askcolor
+from .windows import askrgbcolor
+from .windows import askfont
 
 # import auxiliary classes
 from .windows.widgets.font import CTkFont
@@ -69,8 +87,11 @@ from .windows.widgets.core_rendering import DrawingMethodType
 from .windows.widgets.core_rendering import SectionType
 from .windows.widgets.font import FontType
 from .windows.widgets.image import ImageType
+from .windows.ctk_dialogs import IconType
+from .windows.ctk_dialogs import AnswersType
+from .windows.ctk_dialogs import ReplyType
 
-_ = Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, TclError, CENTER, filedialog  # prevent IDE from removing unused imports
+_ = Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, TclError, CENTER  # prevent IDE from removing unused imports
 
 
 def set_appearance_mode(mode: Literal["light", "dark", "system"]) -> None:

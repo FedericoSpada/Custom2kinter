@@ -5,8 +5,8 @@ import ctypes.util
 import tkinter
 import sys
 import re
-from typing import Iterable, TypeVar, TYPE_CHECKING
-from typing_extensions import Literal
+from typing import Callable, Iterable, Union, TypeVar, TYPE_CHECKING
+from typing_extensions import Literal, TypeAlias
 
 if TYPE_CHECKING:
     from ..theme import AnchorType
@@ -163,3 +163,25 @@ def get_monitor_info(x: int, y: int) -> tuple[int, int, int, int]:
 
     else:
         raise NotImplementedError(f"get_monitor_info is not supported on {sys.platform}")
+
+
+Stringable: TypeAlias = Union[str, Iterable[str], Callable[[], Union[str, Iterable[str]]]]
+
+def get_string(stringable: Stringable | None) -> str | None:
+    if callable(stringable):
+        stringable = stringable()
+
+    if isinstance(stringable, str):
+        string = stringable
+    elif isinstance(stringable, Iterable):
+        string = "\n".join(stringable)
+    elif stringable is None:
+        string = None
+    else:
+        raise TypeError(f"A Stringable object must be a string, iterable of strings, or a "
+                        f"callable returning them, not {type(stringable)}.")
+    return string
+
+
+def opposite_direction(direction: Literal["left", "right", "top", "bottom"]) -> Literal["left", "right", "top", "bottom"]:
+    return {"left": "right", "right": "left", "top": "bottom", "bottom": "top"}[direction]

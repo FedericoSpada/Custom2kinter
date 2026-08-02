@@ -20,5 +20,6 @@ from .ctk_symbolbox import CTkSymbolBox
 from .ctk_tabview import CTkTabview
 from .ctk_textbox import CTkTextbox
 from .ctk_togglebutton import CTkToggleButton
+from .ctk_toast import CTkToast
 from .ctk_tooltip import CTkToolTip
 from .ctk_scrollable_frame import CTkScrollableFrame

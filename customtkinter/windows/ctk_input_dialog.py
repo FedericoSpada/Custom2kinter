@@ -115,7 +115,7 @@ class CTkInputDialog(CTkToplevel):
                                         **button_kwargs)
         self._cancel_button.grid(row=2, column=1, columnspan=1, padx=(10, 20), pady=(0, 20), sticky="ew")
 
-        self.after(150, self._input.focus)  # set focus to input widget with slight delay, otherwise it won't work
+        self.after(150, self._input.focus_set)  # set focus to input widget with slight delay, otherwise it won't work
         self._input.bind("<Return>", self._ok_event)
 
     def _ok_event(self, _: tkinter.Event | None = None) -> None:

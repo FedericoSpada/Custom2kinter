@@ -12,7 +12,7 @@ from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .ctk_entry import ValidTkEntryArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, opposite_direction
 
 
 class CTkSpinBoxThemedArgs(TypedDict, total=False, closed=True):
@@ -198,7 +198,7 @@ class CTkSpinBox(CTkWidget, CTkScrollable, EntryLike):
         super()._draw(force_colors_update)
 
         compound = self._theme_info["compound"]
-        not_compound = "left" if compound == "right" else "right"
+        not_compound = opposite_direction(compound)
         left_section_width = self._current_width - self._current_height if compound == "right" else self._current_height
 
         requires_recoloring_1 = self._rounded_rect.update(self._current_width,

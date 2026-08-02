@@ -71,23 +71,23 @@ frame_3.grid(row=0, column=3, sticky="nsew")
 frame_3.grid_rowconfigure((0, 1, 2, 3, 4), weight=1)
 frame_3.grid_columnconfigure(0, weight=1)
 
-textbox_3 = customtkinter.CTkTextbox(frame_3, activate_scrollbars=False)
+textbox_3 = customtkinter.CTkTextbox(frame_3, show_scrollbars=False)
 textbox_3.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
 textbox_3.insert("0.0", "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.\n\n" * 20)
 
-textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=10, border_width=2, activate_scrollbars=False)
+textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=10, border_width=2, show_scrollbars=False)
 textbox_3.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
 textbox_3.insert("0.0", "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.\n\n" * 20)
 
-textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=0, border_width=2, activate_scrollbars=False)
+textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=0, border_width=2, show_scrollbars=False)
 textbox_3.grid(row=2, column=0, sticky="nsew", padx=20, pady=20)
 textbox_3.insert("0.0", "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.\n\n" * 20)
 
-textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=0, border_width=2, activate_scrollbars=False)
+textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=0, border_width=2, show_scrollbars=False)
 textbox_3.grid(row=3, column=0, sticky="nsew", padx=20, pady=20)
 textbox_3.insert("0.0", "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.\n\n" * 20)
 
-textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=0, border_width=0, activate_scrollbars=False, border_spacing=10)
+textbox_3 = customtkinter.CTkTextbox(frame_3, corner_radius=0, border_width=0, show_scrollbars=False, border_spacing=10)
 textbox_3.grid(row=4, column=0, sticky="nsew", padx=20, pady=20)
 textbox_3.insert("0.0", "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.\n\n" * 20)
 

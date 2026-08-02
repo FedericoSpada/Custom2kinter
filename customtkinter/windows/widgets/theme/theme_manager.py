@@ -13,7 +13,7 @@ from ..utility import deep_update
 #old syntax for retrocompatibility reasons
 ColorType: TypeAlias = Union[Literal["transparent"], str, tuple[str, str], list[str]]
 TransparentColorType: TypeAlias = Union[Literal["transparent"], ColorType]
-AnchorType : TypeAlias = Literal["center", "n", "ne", "e", "se", "s", "sw", "w", "nw"]
+AnchorType: TypeAlias = Literal["center", "n", "ne", "e", "se", "s", "sw", "w", "nw"]
 
 
 class ThemeInfo(TypedDict, total=False, extra_items=Any):
@@ -33,7 +33,7 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     internal_spacing: int
     bg_color: TransparentColorType
     fg_color: TransparentColorType
-    fg_color_header: TransparentColorType
+    fg_color_header: TransparentColorType | None
     fg_color_checked: ColorType
     fg_color_unchecked: ColorType
     top_fg_color: ColorType
@@ -55,7 +55,9 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     transparency: float
     hover: bool
     show_value: bool
-    activate_scrollbars: bool
+    show_zero: bool
+    show_scrollbars: bool
+    fit_content: bool
     placeholder_text: str
     title: str
     text: str
@@ -80,6 +82,7 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     compound: Literal["center", "left", "right", "top", "bottom", "none"]
     wraplength: int
     delay: int
+    duration: int
     minimum_pixel_length: int
     min_character_width: int
     columns: int

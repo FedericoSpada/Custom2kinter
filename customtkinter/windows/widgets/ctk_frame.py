@@ -18,7 +18,7 @@ class CTkFrameThemedArgs(TypedDict, total=False, closed=True):
     border_width: int
     bg_color: TransparentColorType
     fg_color: TransparentColorType
-    top_fg_color: ColorType
+    top_fg_color: ColorType  #used if the actual bg_color is equal to fg_color
     border_color: ColorType
 
 class CTkFrameArgs(CTkFrameThemedArgs, total=False, closed=True):
@@ -57,9 +57,7 @@ class CTkFrame(CTkWidget, CTkContainer):
 
         # update fg_color: use "top" version if not forced and parent frame has the same fg_color
         # (if _fg_color is "transparent" we don't change it)
-        if (("fg_color" not in theme_args or "top_fg_color" in theme_args) and
-            isinstance(self.master, CTkContainer) and
-            self.master.get_fg_color() == self._fg_color):
+        if (("fg_color" not in theme_args or "top_fg_color" in theme_args) and self._fg_color == self._bg_color):
             self._fg_color = self._theme_info["top_fg_color"]
 
         self._background_corner_colors: tuple[ColorType, ...] | None = kwargs.pop("background_corner_colors", None)

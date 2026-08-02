@@ -23,7 +23,7 @@ class CTkSectionViewThemedArgs(TypedDict, total=False, closed=True):
     bg_color: TransparentColorType
     fg_color_header: TransparentColorType
     fg_color: TransparentColorType
-    top_fg_color: ColorType
+    top_fg_color: ColorType  #used if the actual bg_color is equal to fg_color
     hover_color: ColorType
     hover: bool
     open_symbol: SymbolType   #when clicked, the section will open

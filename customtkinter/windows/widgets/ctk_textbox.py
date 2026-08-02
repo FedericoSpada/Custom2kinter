@@ -25,7 +25,7 @@ class CTkTextboxThemedArgs(TypedDict, total=False, closed=True):
     border_color: ColorType
     text_color: ColorType
     font: FontType
-    activate_scrollbars: bool
+    show_scrollbars: bool
     scrollbar: CTkScrollbarArgs
 
 #Explanations can be found here: https://tkdocs.com/shipman/text.html
@@ -150,7 +150,7 @@ class CTkTextbox(CTkWidget, CTkScrollable, TextLike):
         self._draw(force_colors_update=True)
 
     def _check_if_scrollbars_needed(self, continue_loop: bool = False) -> None:
-        if self._theme_info["activate_scrollbars"]:
+        if self._theme_info["show_scrollbars"]:
             new_hide_hor_scrollbar = self._text.xview() == (0.0, 1.0) #horizontal scrollbar not needed
             new_hide_ver_scrollbar = self._text.yview() == (0.0, 1.0) #vertical scrollbar not needed
         else:
@@ -299,8 +299,8 @@ class CTkTextbox(CTkWidget, CTkScrollable, TextLike):
             self._font.add_size_configure_callback(self._update_font)
             self._update_font()
 
-        if "activate_scrollbars" in kwargs:
-            self._theme_info["activate_scrollbars"] = kwargs.pop("activate_scrollbars")
+        if "show_scrollbars" in kwargs:
+            self._theme_info["show_scrollbars"] = kwargs.pop("show_scrollbars")
 
         if "xscrollincrement" in kwargs:
             self._hor_scrollbar.configure(scrollincrement=kwargs.pop("xscrollincrement"))

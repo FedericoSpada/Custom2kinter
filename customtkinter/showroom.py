@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Any
+from typing import Any, Callable
 from functools import partial
 from tkinter import TclVersion
 
@@ -19,6 +19,7 @@ from . import CTk
 from . import CTkToplevel
 from . import CTkInputDialog
 from . import CTkFont
+from . import CTkImage
 
 from . import CTkButton
 from . import CTkCheckBox
@@ -42,8 +43,24 @@ from . import CTkSymbolBox
 from . import CTkTabview
 from . import CTkTextbox
 from . import CTkToggleButton
+from . import CTkToast
 from . import CTkToolTip
 from . import CTkScrollableFrame
+from . import showinfo
+from . import showwarning
+from . import showerror
+from . import askokcancel
+from . import askyesno
+from . import askyesnocancel
+from . import askretrycancel
+from . import askabortretryignore
+from . import askdirectory
+from . import askopenfilename
+from . import askopenfilenames
+from . import asksaveasfilename
+from . import askcolor
+from . import askrgbcolor
+from . import askfont
 
 
 def run_showroom() -> None:
@@ -129,6 +146,7 @@ class _Showroom(CTk):
                                             command=self._update_sections)
         self.entry_filter = CTkEntry(self.commands_frame,
                                      placeholder_text="Filter by Name",
+                                     command=self._update_sections,
                                      justify="center",
                                      width=180)
         self.entry_filter.bind("<KeyRelease>", self._update_sections)
@@ -142,6 +160,7 @@ class _Showroom(CTk):
         self.sectionview = CTkSectionView(self.scrollframe,
                                           max_open=2,
                                           border_spacing=10,
+                                          command=self._see_header,
                                           symbol={"font": {"size": 16},
                                                   "anchor": "center",
                                                   "corner_radius": 6,
@@ -213,6 +232,8 @@ class _Showroom(CTk):
             ("FloatingFrame"  , _CTkFloatingFramesFrame  , "Frames"       ),
             ("Toplevel"       , _CTkToplevelsFrame       , "Windows"      ),
             ("InputDialog"    , _CTkInputDialogsFrame    , "Windows"      ),
+            ("Dialogs"        , _CTkDialogsFrame         , "Windows"      ),
+            ("Toast"          , _CTkToastsFrame          , "Miscellaneous"),
             ("ToolTip"        , _CTkToolTipsFrame        , "Miscellaneous"),
         ]
 
@@ -239,6 +260,13 @@ class _Showroom(CTk):
         if self.toggle_order.get():
             visible_sections.sort()
         self.sectionview.set(visible_sections, [])
+
+    def _see_header(self, name: str) -> None:
+        self.update_idletasks()
+        header = self.sectionview.header(name)
+        section = self.sectionview.section(name)
+        if not self.scrollframe.is_visible(header) or not self.scrollframe.is_visible(section):
+            self.scrollframe.see(header)
 
 
 
@@ -421,7 +449,10 @@ class _CTkSegmentedButtonsFrame(CTkFrame):
 
         self.seg_button_1 = CTkSegmentedButton(self, values=["CTkSegmentedButton", "Value 2", "Value 3"])
         self.seg_button_2 = CTkSegmentedButton(self, values=["Buttons are", "spread to", "respect the", "provided width"], box_width=100)
-        self.seg_button_3 = CTkSegmentedButton(self, values=["vertical", "Max radius", "Value 3", "Value 4"], orientation="vertical", corner_radius=1000)
+        self.seg_button_3 = CTkSegmentedButton(self, values=["vertical", "Max radius", "with images", "anchor w"], orientation="vertical", corner_radius=1000, anchor="w")
+
+        for value in self.seg_button_3.cget("values"):
+            self.seg_button_3.button(value).configure(image="logo")
 
         self.seg_button_1.set("CTkSegmentedButton")
         self.seg_button_3.set("vertical")
@@ -440,9 +471,9 @@ class _CTkListBoxesFrame(CTkFrame):
                                     width=150,
                                     values=["CTkListBox", "vertical", "1 column", "1 selection"] + values)
         self.listbox_2 = CTkListBox(self,
-                                    width=300,
-                                    height=100,
-                                    values=["horizontal", "3 rows", "multi selection"] + values,
+                                    fit_content=True,
+                                    height=300,
+                                    values=["horizontal", "fit_content", "3 rows", "multi selection", "custom images"] + values,
                                     max_selected=0,
                                     orientation="horizontal",
                                     rows=3)
@@ -457,6 +488,9 @@ class _CTkListBoxesFrame(CTkFrame):
                                     columns=4,
                                     label={"text": "Title that spans the whole width"})
 
+        for value in values:
+            self.listbox_2.button(value).configure(image="logo")
+
         self.listbox_1.pack(pady=5)
         self.listbox_2.pack(pady=5)
         self.listbox_3.pack(pady=5)
@@ -469,12 +503,14 @@ class _CTkLabelsFrame(CTkFrame):
         self.label_1 = CTkLabel(self, text="CTkLabel")
         self.label_2 = CTkLabel(self, text="with border", border_width=2, corner_radius=6, width=90, height=40)
         self.label_3 = CTkLabel(self, text="with image", image="logo", compound="right")
-        self.label_4 = CTkLabel(self, text="Text\nover\nmultiple lines", justify="right")
+        self.label_4 = CTkLabel(self, text="inside\nimage", image=CTkImage("logo", width=100, height=100), compound="center")
+        self.label_5 = CTkLabel(self, text="Text\nover multiple lines\nright justified", justify="right")
 
         self.label_1.pack(pady=5)
         self.label_2.pack(pady=5)
         self.label_3.pack(pady=5)
         self.label_4.pack(pady=5)
+        self.label_5.pack(pady=5)
 
 
 class _CTkEntriesFrame(CTkFrame):
@@ -482,8 +518,8 @@ class _CTkEntriesFrame(CTkFrame):
         super().__init__(master, **kwargs)
 
         self.entry_1 = CTkEntry(self)
-        self.entry_2 = CTkEntry(self, placeholder_text="Placeholder text", width=200)
-        self.entry_3 = CTkEntry(self, placeholder_text="Password", show="*", justify="center", corner_radius=1000)
+        self.entry_2 = CTkEntry(self, placeholder_text="Placeholder text", width=200, compound="left")
+        self.entry_3 = CTkEntry(self, placeholder_text="Password", show="*", justify="center", compound="none", corner_radius=1000)
 
         self.entry_1.set("CTkEntry")
 
@@ -808,7 +844,6 @@ class _CTkToplevelsFrame(CTkFrame):
         toplevel.resizable(True, True)
         label = CTkLabel(toplevel, text="A new window that can contains anything")
         label.pack(padx=5, pady=5)
-        self.after(50, toplevel.lift)
 
 
 class _CTkInputDialogsFrame(CTkFrame):
@@ -832,6 +867,93 @@ class _CTkInputDialogsFrame(CTkFrame):
                                 text="You can choose just one of the valid inputs",
                                 values=["value 1", "value 2", "value 3", "value 4"])
         dialog.get_input()
+
+
+class _CTkDialogsFrame(CTkFrame):
+    def __init__(self, master, **kwargs: Any) -> None:
+        super().__init__(master, **kwargs)
+
+        filetypes = [("File type", ".ext1"), ("Multiple types", ".ext2 .ext3"), ("All files", ".*")]
+
+        self.dialogs = [
+            (showinfo, ("Message to be displayed",)),
+            (showwarning, ("Message to be displayed", "Detail to be added")),
+            (showerror, ("Message very long, even on\nmultiple lines", "Detail very long, even on\nmultiple\nlines")),
+            (askokcancel, ("Message to be displayed",)),
+            (askyesno, ("Message", "Detail to be added")),
+            (askyesnocancel, ("Message",)),
+            (askretrycancel, ("Message", "Detail")),
+            (askabortretryignore, ("",)),
+            (askdirectory, ()),
+            (askopenfilename, (filetypes,)),
+            (askopenfilenames, (filetypes,)),
+            (asksaveasfilename, (filetypes,)),
+            (askcolor, ("#FEDE13",)),
+            (askrgbcolor, ((13, 5, 95),)),
+            (askfont, (None, self))
+        ]
+
+        self.grid_columnconfigure((0, 2), weight=1)
+        for n, (fx, args) in enumerate(self.dialogs):
+            btn = CTkButton(self, text=fx.__name__, command=partial(self._open_dialog, fx, args))
+            col = n % 3
+            sticky = "ew" if col == 1 else ("e" if col == 0 else "w")
+            btn.grid(row=n // 3, column=col, sticky=sticky, padx=2, pady=2)
+
+    def _open_dialog(self, fx: Callable, args: tuple) -> None:
+        fx(fx.__name__, *args)
+
+
+class _CTkToastsFrame(CTkFrame):
+    def __init__(self, master, **kwargs: Any) -> None:
+        super().__init__(master, **kwargs)
+
+        self.counter_1: int = 0
+        self.kwargs_1: list[dict[str, Any]] = [
+            {"title": "CTkToast", "text": "A small window placed\nin the corner of the monitor/window\nused to notify something."},
+            {"text": "Text only, error style.", "style": "error"},
+            {"title": "With Title", "text": "Custom color, compound top.", "fg_color_header": ("black", "white"), "compound": "top"},
+            {"text": "No header, last 1s", "fg_color_header": "transparent", "duration": 1000},
+            {"text": "Duration 0: user must click it to close it.", "duration": 0, "style": "warning"}
+        ]
+        self.button_toast_1 = CTkButton(self, text="Open CTkToast", command=self.open_toast_1)
+
+        self.counter_2: int = 0
+        self.kwargs_2: list[dict[str, Any]] = [
+            {"text": "Relative to frame", "master": self},
+            {"text": "Relative to window", "master": self.winfo_toplevel()},
+            {"text": "Relative to monitor", "master": None}
+        ]
+        self.button_toast_2 = CTkButton(self, text="in different positions", command=self.open_toast_2)
+
+        self.toast = CTkToast(title="Fast!",
+                              text="Select something before it's too late.",
+                              close_on_interaction=False)
+        self.optionmenu_in_toast = CTkOptionMenu(self.toast,
+                                                 values=["Any widget", "can be placed", "in a CTkToast"],
+                                                 command=lambda _: self.toast.close())
+        self.button_toast_3 = CTkButton(self, text="with any widgets", command=self.toast.show)
+
+        self.button_toast_1.pack(pady=5)
+        self.button_toast_2.pack(pady=5)
+        self.button_toast_3.pack(pady=5)
+        self.optionmenu_in_toast.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 10))
+
+    def open_toast_1(self) -> None:
+        CTkToast(**self.kwargs_1[self.counter_1]).show()
+        self.counter_1 = (self.counter_1 + 1) % len(self.kwargs_1)
+
+    def open_toast_2(self) -> None:
+        anchors = ("nw", "ne", "se", "sw")
+        anchor = anchors[self.counter_2 % len(anchors)]
+        styles = ("success", "info", "warning", "error", "info") #duplicate to have len()=5
+        kwargs = {}
+        kwargs.update(self.kwargs_2[self.counter_2 % len(self.kwargs_2)])
+        kwargs["text"] += f", anchor {anchor}."
+        kwargs["anchor"] = anchor
+        kwargs["style"] = styles[self.counter_2 % len(styles)]
+        CTkToast(**kwargs).show()
+        self.counter_2 += 1
 
 
 class _CTkToolTipsFrame(CTkFrame):

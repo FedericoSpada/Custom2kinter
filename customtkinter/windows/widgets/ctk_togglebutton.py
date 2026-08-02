@@ -93,7 +93,7 @@ class CTkToggleButton(CTkButton, CTkToggleable):
         check_kwargs_empty(kwargs, raise_error=True)
 
     def _set_cursor(self) -> None:
-        if cursor := get_proper_cursor("normal" if self._state != tkinter.NORMAL else "clickable"):
+        if cursor := get_proper_cursor("normal" if super().cget("state") != tkinter.NORMAL else "clickable"):
             self.configure(cursor=cursor)
 
     def _get_conditional_arguments(self) -> dict[str, Any]:
