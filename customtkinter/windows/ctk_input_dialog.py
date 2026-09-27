@@ -10,7 +10,7 @@ from .widgets.ctk_entry import CTkEntry, CTkEntryArgs
 from .widgets.ctk_combobox import CTkComboBox, CTkComboBoxArgs
 from .widgets.font import CTkFont, FontType
 from .widgets.theme import ColorType, ThemeManager
-from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class CTkInputDialogThemedArgs(TypedDict, total=False, closed=True):
@@ -24,8 +24,8 @@ class CTkInputDialogThemedArgs(TypedDict, total=False, closed=True):
     combobox: CTkComboBoxArgs
 
 class CTkInputDialogArgs(CTkInputDialogThemedArgs, total=False, closed=True):
-    default_value: str
     values: list[str] | None
+    default_value: str
 
 
 class CTkInputDialog(CTkToplevel):
@@ -43,16 +43,14 @@ class CTkInputDialog(CTkToplevel):
         self._theme_id_info: CTkInputDialogThemedArgs = ThemeManager.get_info("CTkInputDialog", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_id_info:
-            if "_color" in key:
-                self._theme_id_info[key] = self._check_color_type(self._theme_id_info[key], transparency=False)
+        check_colors(self._theme_id_info, CTkInputDialogThemedArgs)
 
         super().__init__(master=master,
                          fg_color=self._theme_id_info["fg_color"],
                          title=self._theme_id_info["title"])
 
-        self._default_value: str = kwargs.pop("default_value", "")
         self._values: list[str] | None = kwargs.pop("values", None)
+        self._default_value: str = kwargs.pop("default_value", "")
         self._user_input: str | None = None
         self._running: bool = False
 

@@ -9,7 +9,7 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class CTkRadioButtonThemedArgs(TypedDict, total=False, closed=True):
@@ -58,10 +58,7 @@ class CTkRadioButton(CTkWidget, CTkToggleable, CanvasWithLabel):
         self._theme_info: CTkRadioButtonThemedArgs = ThemeManager.get_info("CTkRadioButton", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key == "bg_color")
+        check_colors(self._theme_info, CTkRadioButtonThemedArgs)
 
         CTkWidget.__init__(self,
                            master=master,
@@ -73,7 +70,7 @@ class CTkRadioButton(CTkWidget, CTkToggleable, CanvasWithLabel):
         # font and text
         self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         # functionality
         self._state = kwargs.pop("state", tkinter.NORMAL)
@@ -198,13 +195,15 @@ class CTkRadioButton(CTkWidget, CTkToggleable, CanvasWithLabel):
                 self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
 
     def destroy(self) -> None:
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         CTkToggleable.destroy(self)
         CTkWidget.destroy(self)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkRadioButtonArgs]) -> None:
         require_new_state = False
         require_geometry = False
+
+        check_colors(kwargs, CTkRadioButtonThemedArgs)
 
         if "box_width" in kwargs:
             self._theme_info["box_width"] = kwargs.pop("box_width")
@@ -233,23 +232,23 @@ class CTkRadioButton(CTkWidget, CTkToggleable, CanvasWithLabel):
             require_geometry = True
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "hover_color" in kwargs:
-            self._theme_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_info["hover_color"] = kwargs.pop("hover_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = kwargs.pop("text_color_disabled")
             require_redraw = True
 
         if "text" in kwargs:
@@ -258,9 +257,9 @@ class CTkRadioButton(CTkWidget, CTkToggleable, CanvasWithLabel):
             require_geometry = True
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "anchor" in kwargs:
@@ -334,6 +333,8 @@ class CTkRadioButton(CTkWidget, CTkToggleable, CanvasWithLabel):
         self._draw(force_colors_update=True)
 
     def invoke(self, _: tkinter.Event | None = None) -> None:
+        """ Changes the state to "checked" if the widget is not disabled.\n
+        Can be called to simulate the user who clicks on the widget. """
         if not self._check_state:
             super().invoke()
 

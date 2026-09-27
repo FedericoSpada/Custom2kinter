@@ -10,7 +10,7 @@ from ..appearance_mode import CTkAppearanceModeBaseClass
 from ..scaling import CTkScalingBaseClass
 from .ctk_container import CTkContainer
 from ..theme import AnchorType, ColorType, TransparentColorType
-from ..utility import pop_from_dict_by_iterable, check_kwargs_empty
+from ..utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class ValidTkFrameArgs(TypedDict, total=False, closed=True):
@@ -29,6 +29,9 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
     def __init__(self,
                  master: CTkContainer,
                  **kwargs: Unpack[CTkWidgetArgs]) -> None:
+
+        #validity checks
+        check_colors(kwargs, CTkWidgetArgs)
 
         # call init methods of super classes
         tkinter.Frame.__init__(self,
@@ -55,7 +58,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         # if requested color is "transparent", it is set equal to the fg_color of the parent widget,
         # so that this widget seems to be transparent
         bg_color = kwargs.pop("bg_color", "transparent")
-        self._bg_color: ColorType = self._detect_color_of_master() if bg_color == "transparent" else self._check_color_type(bg_color)
+        self._bg_color: ColorType = self._detect_color_of_master() if bg_color == "transparent" else bg_color
 
         # save latest geometry function and kwargs
         class GeometryCallDict(TypedDict):
@@ -117,12 +120,14 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         raise AttributeError("'config' is not implemented for CTk widgets. For consistency, always use 'configure' instead.")
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkWidgetArgs]) -> None:
+        check_colors(kwargs, CTkWidgetArgs)
+
         if "width" in kwargs or "height" in kwargs:
             self._set_dimensions(width=kwargs.pop("width", None),
                                  height=kwargs.pop("height", None))
 
         if "bg_color" in kwargs:
-            new_bg_color = self._check_color_type(kwargs.pop("bg_color"), transparency=True)
+            new_bg_color = kwargs.pop("bg_color")
             if new_bg_color == "transparent":
                 self._bg_color = self._detect_color_of_master()
             else:
@@ -215,8 +220,8 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         if not (add == "+" or add is True):
             raise ValueError("'add' argument can only be '+' or True to preserve internal callbacks")
 
-        frame_events = ("Configure", "Map", "Unmap", "Expose", "Visibility",
-                        "Destroy", "Enter", "Leave", "FocusIn", "FocusOut")
+        frame_events = ("Configure", "Map", "Unmap", "Expose", "Visibility", "Destroy",
+                        "Enter", "Leave", "FocusIn", "FocusOut", "Activate", "Deactivate")
         if any(event_type in sequence for event_type in frame_events):
             return super().bind(sequence, func, add=True)
         else:

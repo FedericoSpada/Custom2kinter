@@ -48,7 +48,7 @@ class CTkFont(Font):
         #functionality
         self._family: str = super().cget("family")
         self._tuple_style_string: str = self._get_style_string()
-        self._size_configure_callback_list: list[Callable[[], None]] = []
+        self._configure_callback_list: list[Callable[[], None]] = []
 
     @classmethod
     def from_parameter(cls, parameter: FontType) -> CTkFont:
@@ -89,14 +89,15 @@ class CTkFont(Font):
                              "font={'family': '<name>', 'size': <size in px>}\n" +
                              "font='<theme_key>'")
 
-    def add_size_configure_callback(self, callback: Callable[[], None]) -> None:
+    def add_configure_callback(self, callback: Callable[[], None]) -> None:
         """ Adds a function that gets called when the font gets configured """
-        self._size_configure_callback_list.append(callback)
+        self._configure_callback_list.append(callback)
 
-    def remove_size_configure_callback(self, callback: Callable[[], None]) -> None:
+    def remove_configure_callback(self, callback: Callable[[], None]) -> None:
         """ Removes a function that gets called when the font gets configured """
+        self.metrics()
         try:
-            self._size_configure_callback_list.remove(callback)
+            self._configure_callback_list.remove(callback)
         except ValueError:
             pass
 
@@ -121,8 +122,8 @@ class CTkFont(Font):
         # update style string for create_scaled_tuple() method
         self._tuple_style_string = self._get_style_string()
 
-        # call all functions registered with add_size_configure_callback()
-        for callback in self._size_configure_callback_list:
+        # call all functions registered with add_configure_callback()
+        for callback in self._configure_callback_list:
             callback()
 
     def cget(self, attribute_name: str) -> Any:

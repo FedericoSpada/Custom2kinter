@@ -9,7 +9,7 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import BorderedRoundedRect, RoundedRect
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_width_height_from_orientation
 
 
 class CTkSwitchThemedArgs(TypedDict, total=False, closed=True):
@@ -62,10 +62,7 @@ class CTkSwitch(CTkWidget, CTkToggleable, CanvasWithLabel):
         self._theme_info: CTkSwitchThemedArgs = ThemeManager.get_info("CTkSwitch", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key in ("border_color", "bg_color"))
+        check_colors(self._theme_info, CTkSwitchThemedArgs)
 
         CTkWidget.__init__(self,
                            master=master,
@@ -77,7 +74,7 @@ class CTkSwitch(CTkWidget, CTkToggleable, CanvasWithLabel):
         # text and font
         self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         # functionality
         self._state = kwargs.pop("state", tkinter.NORMAL)
@@ -236,7 +233,7 @@ class CTkSwitch(CTkWidget, CTkToggleable, CanvasWithLabel):
             self._slider.set_color(self._apply_appearance_mode(self._theme_info["button_color"]))
 
     def destroy(self) -> None:
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         CTkToggleable.destroy(self)
         CTkWidget.destroy(self)
 
@@ -244,6 +241,8 @@ class CTkSwitch(CTkWidget, CTkToggleable, CanvasWithLabel):
         require_new_state = False
         require_canvas_configure = False
         require_geometry = False
+
+        check_colors(kwargs, CTkSwitchThemedArgs)
 
         if "thickness" in kwargs:
             self._theme_info["thickness"] = kwargs.pop("thickness")
@@ -277,31 +276,31 @@ class CTkSwitch(CTkWidget, CTkToggleable, CanvasWithLabel):
             require_geometry = True
 
         if "fg_color_checked" in kwargs:
-            self._theme_info["fg_color_checked"] = self._check_color_type(kwargs.pop("fg_color_checked"))
+            self._theme_info["fg_color_checked"] = kwargs.pop("fg_color_checked")
             require_redraw = True
 
         if "fg_color_unchecked" in kwargs:
-            self._theme_info["fg_color_unchecked"] = self._check_color_type(kwargs.pop("fg_color_unchecked"))
+            self._theme_info["fg_color_unchecked"] = kwargs.pop("fg_color_unchecked")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"), transparency=True)
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = kwargs.pop("button_color")
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = kwargs.pop("button_hover_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = kwargs.pop("text_color_disabled")
             require_redraw = True
 
         if "text" in kwargs:
@@ -310,9 +309,9 @@ class CTkSwitch(CTkWidget, CTkToggleable, CanvasWithLabel):
             require_geometry = True
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "anchor" in kwargs:

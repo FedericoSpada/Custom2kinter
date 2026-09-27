@@ -1,5 +1,6 @@
 from .utility_functions import pop_from_dict_by_iterable
 from .utility_functions import check_kwargs_empty
+from .utility_functions import check_colors
 from .utility_functions import deep_update
 from .utility_functions import first_value
 from .utility_functions import parse_geometry_string

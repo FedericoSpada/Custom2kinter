@@ -11,7 +11,7 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_width_height_from_orientation
 
 
 class CTkProgressBarThemedArgs(TypedDict, total=False, closed=True):
@@ -54,10 +54,7 @@ class CTkProgressBar(CTkWidget):
         self._theme_info: CTkProgressBarThemedArgs = ThemeManager.get_info("CTkProgressBar", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key == "bg_color")
+        check_colors(self._theme_info, CTkProgressBarThemedArgs)
 
         # set default dimensions according to orientation
         width, height = get_width_height_from_orientation(self._theme_info["orientation"],
@@ -85,7 +82,7 @@ class CTkProgressBar(CTkWidget):
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         self._canvas = CTkCanvas(master=self,
                                  width=self._apply_scaling(self._desired_width),
@@ -131,7 +128,7 @@ class CTkProgressBar(CTkWidget):
         self.stop()
         if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
 
         super().destroy()
 
@@ -187,6 +184,8 @@ class CTkProgressBar(CTkWidget):
             self._canvas.itemconfigure(self._text_id, fill=self._apply_appearance_mode(self._theme_info["text_color"]))
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkProgressBarArgs]) -> None:
+        check_colors(kwargs, CTkProgressBarThemedArgs)
+
         if "thickness" in kwargs:
             self._theme_info["thickness"] = kwargs.pop("thickness")
             kwargs["width" if self._theme_info["orientation"] == "vertical" else "height"] = self._theme_info["thickness"]
@@ -204,25 +203,25 @@ class CTkProgressBar(CTkWidget):
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "progress_color" in kwargs:
-            self._theme_info["progress_color"] = self._check_color_type(kwargs.pop("progress_color"))
+            self._theme_info["progress_color"] = kwargs.pop("progress_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "show_value" in kwargs:
@@ -328,13 +327,18 @@ class CTkProgressBar(CTkWidget):
 
     def _internal_loop(self) -> None:
         if self._loop_running:
-            new_value = self._value + self._progress_speed * self.update_time / 1000.0
-            if new_value > 1.0 and self._mode != "single_run":
-                new_value -= 1.0
+            new_value = self._value + self._progress_speed * self.update_time / 1000.
+            if self._mode != "single_run":
+                if new_value > 1.0:
+                    new_value -= 1.0
+                elif new_value < 0.0:
+                    new_value += 1.0
 
             self.set(new_value)
 
-            if self._mode == "single_run" and self._value >= 1.0:
+            if (self._mode == "single_run" and
+                ((self._value >= 1.0 and self._progress_speed > 0) or
+                 (self._value <= 0.0 and self._progress_speed < 0))):
                 self._loop_after_id = None
                 self._loop_running = False
             else:

@@ -11,7 +11,7 @@ from ..appearance_mode import CTkAppearanceModeBaseClass
 from ..scaling import CTkScalingBaseClass
 from ..theme import ColorType, ThemeManager
 from ..font import CTkFont, FontType
-from ..utility import pop_from_dict_by_iterable, check_kwargs_empty
+from ..utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class DropdownMenuThemedArgs(TypedDict, total=False, closed=True):
@@ -47,7 +47,7 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         #functionality
         self._values: list[str] = kwargs.pop("values", [])
@@ -61,7 +61,7 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
 
     def destroy(self) -> None:
         if isinstance(self._font, CTkFont):
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
 
         # call destroy methods of super classes
         tkinter.Menu.destroy(self)
@@ -135,26 +135,28 @@ class DropdownMenu(tkinter.Menu, CTkAppearanceModeBaseClass, CTkScalingBaseClass
         return bool(self.winfo_viewable())
 
     def configure(self, **kwargs: Unpack[DropdownMenuArgs]) -> None:
+        check_colors(kwargs, DropdownMenuThemedArgs)
+
         if "min_character_width" in kwargs:
             self._theme_info["min_character_width"] = kwargs.pop("min_character_width")
             self._add_menu_commands()
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             super().configure(bg=self._apply_appearance_mode(self._theme_info["fg_color"]))
 
         if "hover_color" in kwargs:
-            self._theme_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_info["hover_color"] = kwargs.pop("hover_color")
             super().configure(activebackground=self._apply_appearance_mode(self._theme_info["hover_color"]))
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             super().configure(fg=self._apply_appearance_mode(self._theme_info["text_color"]))
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "command" in kwargs:

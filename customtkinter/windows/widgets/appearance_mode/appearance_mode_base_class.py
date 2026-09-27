@@ -50,19 +50,3 @@ class CTkAppearanceModeBaseClass(ABC):
             return color[AppearanceModeTracker.get_mode()]
         else:
             return color
-
-    @staticmethod
-    def _check_color_type(color: TransparentColorType,
-                          transparency: bool = False) -> TransparentColorType:
-        if color is None:
-            raise ValueError("color is None, for transparency set color='transparent'")
-        elif isinstance(color, (tuple, list)) and (color[0] == "transparent" or color[1] == "transparent"):
-            raise ValueError(f"transparency is not allowed in tuple color {color}, use 'transparent'")
-        elif color == "transparent" and not transparency:
-            raise ValueError("transparency is not allowed for this attribute")
-        elif isinstance(color, str):
-            return color
-        elif isinstance(color, (tuple, list)) and len(color) == 2 and isinstance(color[0], str) and isinstance(color[1], str):
-            return tuple(color)
-        else:
-            raise ValueError(f"color {color} must be string ('transparent' or 'color-name' or 'hex-color') or tuple of two strings, not {type(color)}")

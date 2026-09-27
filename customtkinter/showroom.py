@@ -161,11 +161,11 @@ class _Showroom(CTk):
                                           max_open=2,
                                           border_spacing=10,
                                           command=self._see_header,
-                                          symbol={"font": {"size": 16},
-                                                  "anchor": "center",
-                                                  "corner_radius": 6,
-                                                  "box_width": 20,
-                                                  "box_height": 20})
+                                          symbolbox={"font": {"size": 16},
+                                                     "anchor": "center",
+                                                     "corner_radius": 6,
+                                                     "box_width": 20,
+                                                     "box_height": 20})
 
         self.scrollframe.pack(side="top", fill="both", expand=True, pady=(5, 0))
         self.sectionview.pack(side="top", fill="both", expand=True)
@@ -242,7 +242,7 @@ class _Showroom(CTk):
                                 fg_color="transparent",
                                 corner_radius=0)
             frame.pack(side="top", fill="both", expand=True, padx=5)
-            self.sectionview.symbol(name).configure(fg_color=self.categories[category])
+            self.sectionview.symbolbox(name).configure(fg_color=self.categories[category])
 
     def _change_theme(self, new_theme: str) -> None:
         set_default_color_theme(new_theme)
@@ -453,6 +453,7 @@ class _CTkSegmentedButtonsFrame(CTkFrame):
 
         for value in self.seg_button_3.cget("values"):
             self.seg_button_3.button(value).configure(image="logo")
+        self.seg_button_3.button("Max radius").configure(state="disabled")
 
         self.seg_button_1.set("CTkSegmentedButton")
         self.seg_button_3.set("vertical")
@@ -549,7 +550,7 @@ class _CTkRadioButtonsFrame(CTkFrame):
 
         self.radio_var = IntVar(value=0)
         self.radio_button_1 = CTkRadioButton(self, variable=self.radio_var, value=0, width=130)
-        self.radio_button_2 = CTkRadioButton(self, variable=self.radio_var, value=1, text="Fixed settings", hover=False, border_width_checked=8, border_width_unchecked=6, width=130)
+        self.radio_button_2 = CTkRadioButton(self, variable=self.radio_var, value=1, text="Mixed settings", hover=False, border_width_checked=8, border_width_unchecked=6, width=130)
         self.radio_button_3 = CTkRadioButton(self, variable=self.radio_var, value=2, text="disabled", state="disabled", width=130)
         self.radio_button_4 = CTkRadioButton(self, variable=self.radio_var, value=3, text="compound top", compound="top", internal_spacing=0, width=130)
 
@@ -587,7 +588,7 @@ class _CTkSwitchesFrame(CTkFrame):
         self.switch_1 = CTkSwitch(self, variable=self.var, width=130)
         self.switch_2 = CTkSwitch(self, text="negative border", border_width=-3, width=130)
         self.switch_3 = CTkSwitch(self, text="vertical", orientation="vertical", corner_radius=5, button_length=2, border_width=0)
-        self.switch_4 = CTkSwitch(self, text="Fixed settings", hover=False, compound="bottom", corner_radius=0, button_length=5, border_width=5, thickness=30, internal_spacing=0)
+        self.switch_4 = CTkSwitch(self, text="Mixed settings", hover=False, compound="bottom", corner_radius=0, button_length=5, border_width=5, thickness=30, internal_spacing=0)
         self.frame = CTkFrame(self, fg_color="transparent", width=0, height=0)
         self.switch_5_1 = CTkSwitch(self.frame, text="Circuit breaker-like", hover=False, compound="right", orientation="vertical", corner_radius=0, button_length=6, border_width=6, thickness=20)
         self.switch_5_2 = CTkSwitch(self.frame, text="", hover=False, compound="left", orientation="vertical", corner_radius=0, button_length=6, border_width=6, thickness=20, width=0)
@@ -618,13 +619,13 @@ class _CTkProgressBarsFrame(CTkFrame):
         self.label_2 = CTkLabel(self.left_frame, text="indeterminate mode", height=1)
         self.progressbar_2 = CTkProgressBar(self.left_frame, mode="indeterminate", progress_speed=0.25)
         self.label_3 = CTkLabel(self.left_frame, text="single_run mode", height=1)
-        self.progressbar_3 = CTkProgressBar(self.left_frame, mode="single_run", show_value=True, thickness=20)
+        self.progressbar_3 = CTkProgressBar(self.left_frame, mode="single_run", progress_speed=-0.5, show_value=True, thickness=20)
         self.progressbar_4 = CTkProgressBar(self.outer_frame, orientation="vertical", variable=self.var, corner_radius=3, border_width=3, thickness=45, show_value=True)
 
         self.progressbar_1.start()
         self.progressbar_2.start()
         self.progressbar_3.bind("<Button-1>", self._start_single_run)
-        self.progressbar_3.set(text="Click me")
+        self.progressbar_3.set(value=1.0, text="Click me")
 
         self.outer_frame.pack()
         self.left_frame.pack(side="left")
@@ -637,7 +638,7 @@ class _CTkProgressBarsFrame(CTkFrame):
         self.progressbar_4.pack(side="left", padx=(20, 0), pady=5)
 
     def _start_single_run(self, _: Event) -> None:
-        self.progressbar_3.set(0.0)
+        self.progressbar_3.set(1.0)
         self.progressbar_3.start()
 
 
@@ -803,7 +804,7 @@ class _CTkSectionViewsFrame(CTkFrame):
                                             close_symbol="v",
                                             border_spacing=5,
                                             internal_spacing=0,
-                                            symbol={"compound": "left"},
+                                            symbolbox={"compound": "left"},
                                             max_open=0)
         sec1 = self.sectionview_2.add("Different style")
         sec2 = self.sectionview_2.add("No limit to open sections")

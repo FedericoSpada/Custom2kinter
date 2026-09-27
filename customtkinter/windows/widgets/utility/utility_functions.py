@@ -5,11 +5,9 @@ import ctypes.util
 import tkinter
 import sys
 import re
-from typing import Callable, Iterable, Union, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Iterable, Union, TypeVar
 from typing_extensions import Literal, TypeAlias
 
-if TYPE_CHECKING:
-    from ..theme import AnchorType
 
 KT = TypeVar("KT")
 VT = TypeVar("VT")
@@ -37,6 +35,25 @@ def check_kwargs_empty(kwargs: dict, raise_error: bool = False) -> bool:
             return True
     else:
         return False
+
+
+def check_colors(kwargs: dict[str, Any], valid_args: type) -> None:
+    for arg, typeref in valid_args.__annotations__.items():
+        typeref = typeref.__forward_arg__
+
+        if "ColorType" in typeref and arg in kwargs:
+            color = kwargs[arg]
+
+            if color is None:
+                raise ValueError(f"{arg} is None, for transparency set {arg}='transparent'.")
+            elif isinstance(color, (tuple, list)) and (color[0] == "transparent" or color[1] == "transparent"):
+                raise ValueError(f"transparency is not allowed in tuple color {color}, use just 'transparent'.")
+            elif color == "transparent" and "TransparentColorType" not in typeref:
+                raise ValueError(f"Transparency is not allowed for {arg} attribute.")
+            elif isinstance(color, (tuple, list)) and len(color) == 2 and isinstance(color[0], str) and isinstance(color[1], str):
+                kwargs[arg] = tuple(color)
+            elif not isinstance(color, str):
+                raise ValueError(f"{arg} must be a string ('transparent', 'color-name' or '#hex-color') or tuple of two strings, not {type(color)}")
 
 
 def deep_update(base: dict[KT, VT], new: dict[KT, VT]) -> None:

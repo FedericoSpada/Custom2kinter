@@ -10,7 +10,7 @@ from .theme import TransparentColorType, ThemeManager
 from .font import CTkFont
 from .ctk_floating_frame import CTkFloatingFrame, CTkFloatingFrameArgs, CTkFloatingFrameThemedArgs
 from .ctk_label import CTkLabel, CTkLabelArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_monitor_info, opposite_direction, get_string, Stringable
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_monitor_info, opposite_direction, get_string, Stringable
 
 
 AnchorType: TypeAlias = Literal["ne", "se", "sw", "nw"]
@@ -28,7 +28,7 @@ class CTkToastThemedArgs(CTkFloatingFrameThemedArgs, total=False, closed=True):
     label: CTkLabelArgs
 
 class CTkToastArgs(CTkToastThemedArgs, total=False, closed=True):
-    style: Literal["success", "info", "warning", "error"]  #valid only if fg_color_header is None
+    style: Literal["info", "success", "warning", "error"]  #valid only if fg_color_header is None
     close_on_interaction: bool
     pre_command: Callable[[], Literal["break"] | None] | None
     command: Callable[[], None] | None
@@ -40,15 +40,15 @@ class CTkToast(CTkFloatingFrame):
     """
     Toast notification widget that floats on top of the parent window.
     Shows a message with a colored accent stripe, auto-dismisses after a configurable duration
-    or when the user click it, and stacks when multiple toasts are active.
+    or when the user clicks it, and stacks when multiple toasts are active.
     For detailed information check out the documentation.
     """
 
     fade_out_duration: int = 300  #[ms]
     update_time: int = 40   # interval in [ms], to update transparency on closure
 
-    style_colors = {"success": "#2CC985",
-                    "info":    "#3B8ED0",
+    style_colors = {"info":    "#3B8ED0",
+                    "success": "#2CC985",
                     "warning": "#E8A838",
                     "error":   "#E04545"}
 
@@ -66,10 +66,7 @@ class CTkToast(CTkFloatingFrame):
         if self._theme_to_info["fg_color_header"] is None:
             self._theme_to_info["fg_color_header"] = self.style_colors[kwargs.pop("style", "info")]
 
-        for key in self._theme_to_info:
-            if "_color" in key:
-                self._theme_to_info[key] = self._check_color_type(self._theme_to_info[key],
-                                                                  transparency=key in ["fg_color", "fg_color_header"])
+        check_colors(self._theme_to_info, CTkToastThemedArgs)
 
         #frame
         frame_kwargs = {key: self._theme_to_info[key] for key in CTkFloatingFrameThemedArgs.__annotations__}
@@ -274,7 +271,7 @@ class CTkToast(CTkFloatingFrame):
 
     def close(self, immediate: bool = False) -> None:
         self._unschedule()
-        if immediate:
+        if immediate or self.fade_out_duration <= 0:
             super().close()
             for toasts in self._open_toasts.values():
                 try:

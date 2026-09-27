@@ -9,12 +9,12 @@ from .core_widget_classes import CTkContainer
 from .core_widget_classes.ctk_widget import CTkWidgetArgs
 from .theme import ColorType, ThemeManager
 from .ctk_frame import CTkFrame, CTkFrameThemedArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_proper_cursor
 
 
 class CTkGridViewThemedArgs(CTkFrameThemedArgs, total=False, closed=True):
+    thickness: int
     border_spacing: int
-    internal_spacing: int
     hover_color: ColorType
     hover: bool
 
@@ -22,8 +22,8 @@ class CTkGridViewArgs(CTkGridViewThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
     min_rows_size: float     # minimal rows dimension in [%] w.r.t. overall height
     min_columns_size: float  # minimal columns dimension in [%] w.r.t. overall width
-    pre_command: Callable[[int | None, int| None], Literal["break"] | None] | None
-    command: Callable[[int | None, int| None], None] | None
+    pre_command: Callable[[int | None, int | None], Literal["break"] | None] | None
+    command: Callable[[int | None, int | None], None] | None
 
 
 class CTkGridView(CTkFrame):
@@ -47,9 +47,7 @@ class CTkGridView(CTkFrame):
         self._theme_gv_info: CTkGridViewThemedArgs = ThemeManager.get_info("CTkGridView", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_gv_info:
-            if key == "hover_color":
-                self._theme_gv_info[key] = self._check_color_type(self._theme_gv_info[key], transparency=False)
+        check_colors(self._theme_gv_info, CTkGridViewThemedArgs)
 
         super().__init__(master=master,
                          width=self._theme_gv_info["width"],
@@ -222,8 +220,8 @@ class CTkGridView(CTkFrame):
             self.grid_columnconfigure(n, weight=self._column_weights[n], uniform="c")
 
     def _update_separators(self) -> None:
+        thickness = self._apply_scaling(self._theme_gv_info["thickness"])
         spacing = self._theme_gv_info["border_spacing"]
-        thickness = self._apply_scaling(self._theme_gv_info["internal_spacing"])
 
         actual_cols, actual_rows = self.grid_size()
         target_rows = len(self._row_weights)
@@ -361,6 +359,8 @@ class CTkGridView(CTkFrame):
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkGridViewArgs]) -> None:
         frame_kwargs = {}
 
+        check_colors(kwargs, CTkGridViewThemedArgs)
+
         if "corner_radius" in kwargs:
             corner_radius = kwargs.pop("corner_radius")
             self._theme_gv_info["corner_radius"] = corner_radius
@@ -381,6 +381,10 @@ class CTkGridView(CTkFrame):
             self._theme_gv_info["border_color"] = kwargs.pop("border_color")
             frame_kwargs["border_color"] = self._theme_gv_info["border_color"]
 
+        if "thickness" in kwargs:
+            self._theme_gv_info["thickness"] = kwargs.pop("thickness")
+            self._update_separators()
+
         if "border_spacing" in kwargs:
             border_spacing = kwargs.pop("border_spacing")
             self._theme_gv_info["border_spacing"] = border_spacing
@@ -389,12 +393,8 @@ class CTkGridView(CTkFrame):
                 if frame.winfo_ismapped():
                     frame.grid(padx=border_spacing, pady=border_spacing)
 
-        if "internal_spacing" in kwargs:
-            self._theme_gv_info["internal_spacing"] = kwargs.pop("internal_spacing")
-            self._update_separators()
-
         if "hover_color" in kwargs:
-            self._theme_gv_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_gv_info["hover_color"] = kwargs.pop("hover_color")
 
         if "hover" in kwargs:
             self._theme_gv_info["hover"] = kwargs.pop("hover")
@@ -454,7 +454,7 @@ class CTkGridView(CTkFrame):
                frame: CTkFrame | None = None) -> CTkFrame:
         """ Creates new frame with given name and returns it.\n
         You can also provide an already existing frame that has this widget as master.\n
-        If an the other parameters are provided, the new frame is placed at that position. """
+        If the other parameters are provided, the new frame is placed at that position. """
         if name in self._inner_frames:
             raise ValueError(f"CTkGridView already has frame named '{name}'")
 
@@ -482,7 +482,7 @@ class CTkGridView(CTkFrame):
         self._inner_frames.pop(name).destroy()
 
     def show(self, name: str, row: int, column: int, rowspan: int = 1, columnspan: int = 1) -> None:
-        """ Shows a previously hidden frame by name and place it at the provided position. """
+        """ Shows a hidden frame by name and place it at the provided position. """
         if name not in self._inner_frames:
             raise ValueError(f"CTkGridView has no frame named '{name}'")
 

@@ -9,7 +9,7 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import BorderedRoundedRect, Checkmark
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class CTkCheckBoxThemedArgs(TypedDict, total=False, closed=True):
@@ -59,10 +59,7 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
         self._theme_info: CTkCheckBoxThemedArgs = ThemeManager.get_info("CTkCheckBox", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key == "bg_color")
+        check_colors(self._theme_info, CTkCheckBoxThemedArgs)
 
         CTkWidget.__init__(self,
                            master=master,
@@ -74,7 +71,7 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
         # text and font
         self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         # functionality
         self._state = kwargs.pop("state", tkinter.NORMAL)
@@ -218,13 +215,15 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
                 self._rounded_rect.set_border_color(self._apply_appearance_mode(self._theme_info["border_color"]))
 
     def destroy(self) -> None:
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         CTkToggleable.destroy(self)
         CTkWidget.destroy(self)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkCheckBoxArgs]) -> None:
         require_new_state = False
         require_geometry = False
+
+        check_colors(kwargs, CTkCheckBoxThemedArgs)
 
         if "box_width" in kwargs:
             self._theme_info["box_width"] = kwargs.pop("box_width")
@@ -249,27 +248,27 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
             require_geometry = True
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "hover_color" in kwargs:
-            self._theme_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_info["hover_color"] = kwargs.pop("hover_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "symbol_color" in kwargs:
-            self._theme_info["symbol_color"] = self._check_color_type(kwargs.pop("symbol_color"))
+            self._theme_info["symbol_color"] = kwargs.pop("symbol_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = kwargs.pop("text_color_disabled")
             require_redraw = True
 
         if "text" in kwargs:
@@ -278,9 +277,9 @@ class CTkCheckBox(CTkWidget, CTkToggleable, CanvasWithLabel):
             require_geometry = True
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "anchor" in kwargs:

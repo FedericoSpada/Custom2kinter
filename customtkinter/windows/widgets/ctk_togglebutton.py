@@ -8,7 +8,7 @@ from .core_widget_classes import CTkContainer, CTkToggleable
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .image import CTkImage, ImageType
 from .ctk_button import CTkButton, CTkButtonThemedArgs, CTkButtonArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_proper_cursor
 
 
 class CTkToggleButtonThemedArgs(CTkButtonThemedArgs, total=False, closed=True):
@@ -51,15 +51,7 @@ class CTkToggleButton(CTkButton, CTkToggleable):
         self._theme_tb_info: CTkToggleButtonThemedArgs = ThemeManager.get_info("CTkToggleButton", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_tb_info:
-            if "_color" in key:
-                self._theme_tb_info[key] = self._check_color_type(self._theme_tb_info[key],
-                                                                  transparency=key in ("fg_color",
-                                                                                       "fg_color_checked",
-                                                                                       "fg_color_unchecked",
-                                                                                       "hover_color_checked",
-                                                                                       "hover_color_unchecked",
-                                                                                       "bg_color"))
+        check_colors(self._theme_tb_info, CTkToggleButtonThemedArgs)
 
         # images
         self._image_checked: CTkImage = CTkImage.from_parameter(self._theme_tb_info["image_checked"])
@@ -122,20 +114,22 @@ class CTkToggleButton(CTkButton, CTkToggleable):
         require_new_state = False
         require_condargs = False
 
+        check_colors(kwargs, CTkToggleButtonThemedArgs)
+
         if "fg_color_checked" in kwargs:
-            self._theme_tb_info["fg_color_checked"] = self._check_color_type(kwargs.pop("fg_color_checked"), transparency=True)
+            self._theme_tb_info["fg_color_checked"] = kwargs.pop("fg_color_checked")
             require_condargs = True
 
         if "fg_color_unchecked" in kwargs:
-            self._theme_tb_info["fg_color_unchecked"] = self._check_color_type(kwargs.pop("fg_color_unchecked"), transparency=True)
+            self._theme_tb_info["fg_color_unchecked"] = kwargs.pop("fg_color_unchecked")
             require_condargs = True
 
         if "hover_color_checked" in kwargs:
-            self._theme_tb_info["hover_color_checked"] = self._check_color_type(kwargs.pop("hover_color_checked"), transparency=True)
+            self._theme_tb_info["hover_color_checked"] = kwargs.pop("hover_color_checked")
             require_condargs = True
 
         if "hover_color_unchecked" in kwargs:
-            self._theme_tb_info["hover_color_unchecked"] = self._check_color_type(kwargs.pop("hover_color_unchecked"), transparency=True)
+            self._theme_tb_info["hover_color_unchecked"] = kwargs.pop("hover_color_unchecked")
             require_condargs = True
 
         if "text_checked" in kwargs:

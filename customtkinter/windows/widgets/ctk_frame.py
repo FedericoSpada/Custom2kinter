@@ -8,7 +8,7 @@ from .core_widget_classes import CTkContainer
 from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class CTkFrameThemedArgs(TypedDict, total=False, closed=True):
@@ -42,10 +42,7 @@ class CTkFrame(CTkWidget, CTkContainer):
         self._theme_info: CTkFrameThemedArgs = ThemeManager.get_info("CTkFrame", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key in ("fg_color", "bg_color"))
+        check_colors(self._theme_info, CTkFrameThemedArgs)
 
         CTkWidget.__init__(self,
                            master=master,
@@ -133,6 +130,8 @@ class CTkFrame(CTkWidget, CTkContainer):
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkFrameArgs]) -> None:
         require_propagate = False
 
+        check_colors(kwargs, CTkFrameThemedArgs)
+
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
@@ -142,7 +141,7 @@ class CTkFrame(CTkWidget, CTkContainer):
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._fg_color = kwargs.pop("fg_color")
             self._theme_info["fg_color"] = self._fg_color
             require_redraw = True
             require_propagate = True
@@ -153,7 +152,7 @@ class CTkFrame(CTkWidget, CTkContainer):
                 require_propagate = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "background_corner_colors" in kwargs:

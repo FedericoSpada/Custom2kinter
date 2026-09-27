@@ -12,7 +12,7 @@ from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .ctk_entry import ValidTkEntryArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, opposite_direction
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_proper_cursor, opposite_direction
 
 
 class CTkComboBoxThemedArgs(TypedDict, total=False, closed=True):
@@ -66,10 +66,7 @@ class CTkComboBox(CTkWidget, EntryLike):
         self._theme_info: CTkComboBoxThemedArgs = ThemeManager.get_info("CTkComboBox", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key == "bg_color")
+        check_colors(self._theme_info, CTkComboBoxThemedArgs)
 
         CTkWidget.__init__(self,
                            master=master,
@@ -79,7 +76,7 @@ class CTkComboBox(CTkWidget, EntryLike):
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         # functionality
         self._mode: Literal["replace", "toggle", "type", "command"] = kwargs.pop("mode", "replace")
@@ -176,7 +173,7 @@ class CTkComboBox(CTkWidget, EntryLike):
         self._canvas.grid(row=0, column=0, sticky="nsew")
 
     def destroy(self) -> None:
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         super().destroy()
 
     def _draw(self, force_colors_update: bool = False) -> None:
@@ -247,6 +244,8 @@ class CTkComboBox(CTkWidget, EntryLike):
                          pady=spacing)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkComboBoxArgs]) -> None:
+        check_colors(kwargs, CTkComboBoxThemedArgs)
+
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
@@ -260,31 +259,31 @@ class CTkComboBox(CTkWidget, EntryLike):
             self._update_geometry()
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = kwargs.pop("button_color")
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = kwargs.pop("button_hover_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = kwargs.pop("text_color_disabled")
             require_redraw = True
 
         if "placeholder_text_color" in kwargs:
-            self._theme_info["placeholder_text_color"] = self._check_color_type(kwargs.pop("placeholder_text_color"))
+            self._theme_info["placeholder_text_color"] = kwargs.pop("placeholder_text_color")
             require_redraw = True
 
         if "placeholder_text" in kwargs:
@@ -296,9 +295,9 @@ class CTkComboBox(CTkWidget, EntryLike):
             self._theme_info["hover"] = kwargs.pop("hover")
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "justify" in kwargs:
@@ -376,7 +375,7 @@ class CTkComboBox(CTkWidget, EntryLike):
         elif attribute_name in ValidTkEntryArgs.__annotations__:
             return self._entry.cget(attribute_name)
         elif attribute_name.startswith("dropdown_"):
-            self._dropdown_menu.cget(attribute_name.removeprefix("dropdown_"))
+            return self._dropdown_menu.cget(attribute_name.removeprefix("dropdown_"))
         else:
             return super().cget(attribute_name)
 

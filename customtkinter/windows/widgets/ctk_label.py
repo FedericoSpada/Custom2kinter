@@ -10,7 +10,7 @@ from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .image import CTkImage, ImageType
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class CTkLabelThemedArgs(TypedDict, total=False, closed=True):
@@ -59,10 +59,7 @@ class CTkLabel(CTkWidget):
         self._theme_info: CTkLabelThemedArgs = ThemeManager.get_info("CTkLabel", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key in ("fg_color", "bg_color"))
+        check_colors(self._theme_info, CTkLabelThemedArgs)
 
         super().__init__(master=master,
                          bg_color=self._theme_info["bg_color"],
@@ -84,7 +81,7 @@ class CTkLabel(CTkWidget):
 
         # text and font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
         self._text_label = tkinter.Label(master=self,
                                          font=self._apply_font_scaling(self._font),
                                          text=self._theme_info["text"],
@@ -157,7 +154,7 @@ class CTkLabel(CTkWidget):
         self._update_geometry()
 
     def destroy(self) -> None:
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         self._image.remove_configure_callback(self._update_image)
         super().destroy()
 
@@ -273,6 +270,8 @@ class CTkLabel(CTkWidget):
         require_image = False
         label_kwargs = pop_from_dict_by_iterable(kwargs, ValidTkLabelArgs.__annotations__)
 
+        check_colors(kwargs, CTkLabelThemedArgs)
+
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
@@ -290,19 +289,19 @@ class CTkLabel(CTkWidget):
             require_geometry = True
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = kwargs.pop("text_color_disabled")
             require_redraw = True
 
         if "text" in kwargs:
@@ -311,9 +310,9 @@ class CTkLabel(CTkWidget):
             require_geometry = True
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "anchor" in kwargs:

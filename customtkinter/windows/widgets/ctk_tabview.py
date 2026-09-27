@@ -9,8 +9,9 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .ctk_frame import CTkFrame
+from .ctk_button import CTkButton
 from .ctk_segmented_button import CTkSegmentedButton, CTkSegmentedButtonArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class CTkTabviewThemedArgs(TypedDict, total=False, closed=True):
@@ -50,10 +51,7 @@ class CTkTabview(CTkWidget, CTkContainer):
         self._theme_info: CTkTabviewThemedArgs = ThemeManager.get_info("CTkTabview", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key in ("fg_color", "bg_color"))
+        check_colors(self._theme_info, CTkTabviewThemedArgs)
 
         CTkWidget.__init__(self,
                            master=master,
@@ -204,6 +202,8 @@ class CTkTabview(CTkWidget, CTkContainer):
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkTabviewArgs]) -> None:
         require_propagate = False
 
+        check_colors(kwargs, CTkTabviewThemedArgs)
+
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
@@ -213,7 +213,7 @@ class CTkTabview(CTkWidget, CTkContainer):
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._fg_color = kwargs.pop("fg_color")
             require_redraw = True
             require_propagate = True
 
@@ -221,7 +221,7 @@ class CTkTabview(CTkWidget, CTkContainer):
             require_propagate = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "pre_command" in kwargs:
@@ -265,6 +265,13 @@ class CTkTabview(CTkWidget, CTkContainer):
         """ Returns reference to the tab with given name. """
         if name in self._tab_frames:
             return self._tab_frames[name]
+        else:
+            raise ValueError(f"CTkTabview has no tab named '{name}'")
+
+    def button(self, name: str) -> CTkButton:
+        """ Returns reference to the button associated to the tab with given name. """
+        if name in self._tab_frames:
+            return self._segmented_button.button(name)
         else:
             raise ValueError(f"CTkTabview has no tab named '{name}'")
 

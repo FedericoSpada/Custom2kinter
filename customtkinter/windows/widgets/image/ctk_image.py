@@ -71,11 +71,11 @@ class CTkImage:
                              "Image argument must be 'None', a tuple of len 3 to 4, " +
                              "an instance of CTkImage, an instance of CTkImageArgs or a str representing a custom theme key.\n" +
                              "\nUsage example:\n" +
-                             "image=customtkinter.CTkImage(light_image='<path>', dark_image='<path>', width=<width>, height=<height>)\n" +
-                             "image=('<path>', <width>, <height>)\n" +
-                             "image=('<light_path>', '<dark_path>', <width>, <height>)\n" +
-                             "image={'light_image': '<path>', 'dark_image': '<path>', 'width': <width>, 'height': <height>}\n" +
-                             "image='<theme_key>'\n" +
+                             "image=customtkinter.CTkImage(light_image=<light_path>, dark_image=<dark_path>, width=<width>, height=<height>)\n" +
+                             "image=(<path>, <width>, <height>)\n" +
+                             "image=(<light_path>, <dark_path>, <width>, <height>)\n" +
+                             "image={'light_image': <path>, 'dark_image': <path>, 'width': <width>, 'height': <height>}\n" +
+                             "image=<theme_key>\n" +
                              "image=None")
 
     def add_configure_callback(self, callback: Callable[[], None]) -> None:

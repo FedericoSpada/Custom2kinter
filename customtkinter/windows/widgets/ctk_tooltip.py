@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tkinter
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 from typing_extensions import Literal, Unpack
 
 from .core_widget_classes import CTkWidget
@@ -9,7 +9,7 @@ from .theme import AnchorType, ThemeManager
 from .font import CTkFont
 from .ctk_floating_frame import CTkFloatingFrame, CTkFloatingFrameArgs, CTkFloatingFrameThemedArgs
 from .ctk_label import CTkLabel, CTkLabelArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_monitor_info, get_string, Stringable
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_monitor_info, get_string, Stringable
 
 
 class CTkToolTipThemedArgs(CTkFloatingFrameThemedArgs, total=False, closed=True):
@@ -35,7 +35,7 @@ class CTkToolTip(CTkFloatingFrame):
     """
     Frame that appears when the user moves the mouse on the master widget.\n
     It is filled with up to 2 CTkLabels if 'title' and 'text' are provided, but it can contain other widgets as well.\n
-    'command' is invoked before the widget is displayed: if "break" is returned, the widget is not shown.\n
+    'pre_command' is invoked before the widget is displayed: if "break" is returned, the widget is not shown.\n
     'title' and 'text' can also be Iterable[str] (combined with "\\n" to produce the actual string) or
     functions that are invoked before the widget is displayed to retrieve the value to be shown.\n
     The position of this widget depends on the mode:
@@ -54,10 +54,7 @@ class CTkToolTip(CTkFloatingFrame):
         self._theme_tt_info: CTkToolTipThemedArgs = ThemeManager.get_info("CTkToolTip", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_tt_info:
-            if "_color" in key:
-                self._theme_tt_info[key] = self._check_color_type(self._theme_tt_info[key],
-                                                                  transparency=key == "fg_color")
+        check_colors(self._theme_tt_info, CTkToolTipThemedArgs)
 
         #frame
         frame_kwargs = {key: self._theme_tt_info[key] for key in CTkFloatingFrameThemedArgs.__annotations__}

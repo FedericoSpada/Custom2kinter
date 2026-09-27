@@ -12,7 +12,7 @@ from .core_widget_classes.dropdown_menu import DropdownMenu, DropdownMenuArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, Arrow
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, opposite_direction
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_proper_cursor, opposite_direction
 
 
 class CTkOptionMenuThemedArgs(TypedDict, total=False, closed=True):
@@ -55,10 +55,7 @@ class CTkOptionMenu(CTkWidget):
         self._theme_info: CTkOptionMenuThemedArgs = ThemeManager.get_info("CTkOptionMenu", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key == "bg_color")
+        check_colors(self._theme_info, CTkOptionMenuThemedArgs)
 
         super().__init__(master=master,
                          bg_color=self._theme_info["bg_color"],
@@ -67,7 +64,7 @@ class CTkOptionMenu(CTkWidget):
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         # functionality
         self._state: Literal["normal", "disabled"] = kwargs.pop("state", tkinter.NORMAL)
@@ -158,7 +155,7 @@ class CTkOptionMenu(CTkWidget):
         if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
 
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         super().destroy()
 
     def _set_cursor(self) -> None:
@@ -224,6 +221,8 @@ class CTkOptionMenu(CTkWidget):
                               pady=spacing)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkOptionMenuArgs]) -> None:
+        check_colors(kwargs, CTkOptionMenuThemedArgs)
+
         if "corner_radius" in kwargs:
             self._theme_info["corner_radius"] = kwargs.pop("corner_radius")
             require_redraw = True
@@ -233,29 +232,29 @@ class CTkOptionMenu(CTkWidget):
             self._update_geometry()
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = kwargs.pop("button_color")
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = kwargs.pop("button_hover_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = kwargs.pop("text_color_disabled")
             require_redraw = True
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "values" in kwargs:

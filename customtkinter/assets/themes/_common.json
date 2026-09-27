@@ -119,10 +119,10 @@
   "CTkGridView": {
     "width": 200,
     "height": 200,
+    "thickness": 4,
     "corner_radius": 6,
     "border_width": 0,
     "border_spacing": 1,
-    "internal_spacing": 4,
     "bg_color": "transparent",
     "fg_color": "@Colors.background_primary",
     "top_fg_color": "@Colors.background_secondary",
@@ -144,7 +144,7 @@
     "hover": true,
     "open_symbol": "v",
     "close_symbol": "^",
-    "symbol": {
+    "symbolbox": {
       "height": 30,
       "box_width": 15,
       "box_height": 15,
@@ -505,6 +505,7 @@
     "box_height": 28,
     "corner_radius": 6,
     "border_width": 3,
+    "border_spacing": 3,
     "bg_color": "transparent",
     "fg_color": "@Colors.background_widget",
     "selected_color": "@Colors.primary",

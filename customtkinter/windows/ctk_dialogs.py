@@ -224,7 +224,7 @@ def askopenfilenames(title: str = "",
                      initialfile: str = "",
                      defaultextension: str = "") -> tuple[str, ...]:
     """ Opens a Popup where the user can select multiple files to be read;
-    returns a tuple containins all selected full paths or an empty tuple if the Popup was closed.\n
+    returns a tuple containing all selected full paths or an empty tuple if the Popup was closed.\n
     'filetypes' is composed of 2-element tuples where the first element represents a basic name
     for the type that will be displayed in a dropdown menu.
     The second element reports all extensions associated with the common name, separated by spaces.

@@ -7,7 +7,7 @@ from typing_extensions import Literal, Unpack
 from .core_widget_classes import CTkContainer
 from .theme import ColorType, ThemeManager
 from .ctk_label import CTkLabel, CTkLabelThemedArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_proper_cursor
 
 
 class CTkButtonThemedArgs(CTkLabelThemedArgs, total=False, closed=True):
@@ -38,10 +38,7 @@ class CTkButton(CTkLabel):
         self._theme_bu_info: CTkButtonThemedArgs = ThemeManager.get_info("CTkButton", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_bu_info:
-            if "_color" in key:
-                self._theme_bu_info[key] = self._check_color_type(self._theme_bu_info[key],
-                                                                  transparency=key in ("fg_color", "bg_color"))
+        check_colors(self._theme_bu_info, CTkButtonThemedArgs)
 
         #label
         label_kwargs = {key: self._theme_bu_info[key] for key in CTkLabelThemedArgs.__annotations__}
@@ -113,8 +110,10 @@ class CTkButton(CTkLabel):
             self.invoke()
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkButtonArgs]) -> None:
+        check_colors(kwargs, CTkButtonThemedArgs)
+
         if "hover_color" in kwargs:
-            self._theme_bu_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_bu_info["hover_color"] = kwargs.pop("hover_color")
             if self._mouse_inside:
                 self._on_enter()
 

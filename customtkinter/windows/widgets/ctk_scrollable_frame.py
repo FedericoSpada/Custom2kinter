@@ -393,6 +393,9 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
     def pack_forget(self) -> None:
         return self._parent_frame.pack_forget()
 
+    def pack_propagate(self, flag: bool | None) -> bool | None:
+        return self._parent_frame.pack_propagate(flag)
+
     def place_forget(self) -> None:
         return self._parent_frame.place_forget()
 
@@ -402,8 +405,8 @@ class CTkScrollableFrame(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBa
     def grid_remove(self) -> None:
         return self._parent_frame.grid_remove()
 
-    def grid_propagate(self, **kwargs: Any) -> bool | None:
-        return self._parent_frame.grid_propagate(**kwargs)
+    def grid_propagate(self, flag: bool | None) -> bool | None:
+        return self._parent_frame.grid_propagate(flag)
 
     def grid_info(self) -> Any:
         return self._parent_frame.grid_info()

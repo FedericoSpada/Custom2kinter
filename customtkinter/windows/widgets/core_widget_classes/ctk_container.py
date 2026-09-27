@@ -1,22 +1,31 @@
 from __future__ import annotations
 
-from typing import Iterable
-from abc import ABC
 import tkinter
-from ..theme import ColorType, TransparentColorType
-from ..appearance_mode import CTkAppearanceModeBaseClass
+from abc import ABC
+from typing import Iterable
+from typing_extensions import TypedDict, Unpack
 
+from ..theme import ColorType, TransparentColorType
+from ..utility import check_kwargs_empty, check_colors
+
+
+class CTkContainerArgs(TypedDict, total=False, closed=True):
+    fg_color: TransparentColorType
 
 
 class CTkContainer(ABC):
 
-    def __init__(self,
-                 fg_color: TransparentColorType) -> None:
+    def __init__(self, **kwargs: Unpack[CTkContainerArgs]) -> None:
+        #validity checks
+        check_colors(kwargs, CTkContainerArgs)
 
         # foreground color: it is used as bg_color for children widgets.
         # if set as "transparent", sub-classes must override get_fg_color()
         # to provide a different value
-        self._fg_color: TransparentColorType = CTkAppearanceModeBaseClass._check_color_type(fg_color, transparency=True)
+        self._fg_color: TransparentColorType = kwargs.pop("fg_color", "transparent")
+
+        # check for unknown arguments
+        check_kwargs_empty(kwargs, raise_error=True)
 
     def get_fg_color(self) -> ColorType:
         if self._fg_color == "transparent":

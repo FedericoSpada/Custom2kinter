@@ -9,7 +9,7 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect
 from .font import CTkFont, FontType
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_proper_cursor
 
 
 class CTkEntryThemedArgs(TypedDict, total=False, closed=True):
@@ -69,10 +69,7 @@ class CTkEntry(CTkWidget, EntryLike):
         self._theme_info: CTkEntryThemedArgs = ThemeManager.get_info("CTkEntry", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key in ("fg_color", "bg_color"))
+        check_colors(self._theme_info, CTkEntryThemedArgs)
 
         CTkWidget.__init__(self,
                            master=master,
@@ -94,7 +91,7 @@ class CTkEntry(CTkWidget, EntryLike):
 
         # font
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
         self._font_clear: CTkFont = CTkFont(family="Segoe UI", size=self._theme_info["box_height"])
 
         self._canvas = CTkCanvas(master=self,
@@ -165,7 +162,7 @@ class CTkEntry(CTkWidget, EntryLike):
         self._canvas.grid(column=0, row=0, sticky="nsew")
 
     def destroy(self) -> None:
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         super().destroy()
 
     def _draw(self, force_colors_update: bool = False) -> None:
@@ -218,6 +215,8 @@ class CTkEntry(CTkWidget, EntryLike):
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkEntryArgs]) -> None:
         require_geometry = False
 
+        check_colors(kwargs, CTkEntryThemedArgs)
+
         if "box_height" in kwargs:
             self._theme_info["box_height"] = kwargs.pop("box_height")
             self._font_clear.configure(size=self._theme_info["box_height"])
@@ -236,23 +235,23 @@ class CTkEntry(CTkWidget, EntryLike):
             require_geometry = True
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "symbol_color" in kwargs:
-            self._theme_info["symbol_color"] = self._check_color_type(kwargs.pop("symbol_color"))
+            self._theme_info["symbol_color"] = kwargs.pop("symbol_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "placeholder_text_color" in kwargs:
-            self._theme_info["placeholder_text_color"] = self._check_color_type(kwargs.pop("placeholder_text_color"))
+            self._theme_info["placeholder_text_color"] = kwargs.pop("placeholder_text_color")
             require_redraw = True
 
         if "textvariable" in kwargs:
@@ -267,9 +266,9 @@ class CTkEntry(CTkWidget, EntryLike):
                 self._set_regardless(self._theme_info["placeholder_text"])
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "justify" in kwargs:

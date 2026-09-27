@@ -47,7 +47,7 @@ class CTkScrollable(ABC):
         # the mouse has been moved outside the scrolled widget, so the scroll session ends immediately
         if cls.__scrolled_widget is not None:
             widget = event.widget
-            while widget is not None:
+            while hasattr(widget, "master"):
                 if widget is cls.__scrolled_widget:
                     break
                 widget = widget.master
@@ -58,7 +58,7 @@ class CTkScrollable(ABC):
         # the hierarchy of the targeted widget
         if cls.__scrolled_widget is None:
             widget = event.widget
-            while widget is not None:
+            while hasattr(widget, "master"):
                 if isinstance(widget, CTkScrollable):
                     #if found, it is the new target of the scroll session
                     cls.__scrolled_widget = widget

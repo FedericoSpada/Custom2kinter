@@ -8,7 +8,7 @@ from .core_widget_classes import CTkContainer, CTkScrollable
 from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_width_height_from_orientation
 
 
 class CTkScrollbarThemedArgs(TypedDict, total=False, closed=True):
@@ -46,10 +46,7 @@ class CTkScrollbar(CTkWidget, CTkScrollable):
         self._theme_info: CTkScrollbarThemedArgs = ThemeManager.get_info("CTkScrollbar", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key in ("border_color", "fg_color", "bg_color"))
+        check_colors(self._theme_info, CTkScrollbarThemedArgs)
 
         # set default dimensions according to orientation
         width, height = get_width_height_from_orientation(self._theme_info["orientation"],
@@ -174,6 +171,8 @@ class CTkScrollbar(CTkWidget, CTkScrollable):
         self._canvas.update_idletasks()
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkScrollbarArgs]) -> None:
+        check_colors(kwargs, CTkScrollbarThemedArgs)
+
         if "thickness" in kwargs:
             self._theme_info["thickness"] = kwargs.pop("thickness")
             kwargs["width" if self._theme_info["orientation"] == "vertical" else "height"] = self._theme_info["thickness"]
@@ -195,19 +194,19 @@ class CTkScrollbar(CTkWidget, CTkScrollable):
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = kwargs.pop("button_color")
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = kwargs.pop("button_hover_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"), transparency=True)
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "hover" in kwargs:

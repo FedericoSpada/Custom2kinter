@@ -11,7 +11,7 @@ from ..utility import deep_update
 
 
 #old syntax for retrocompatibility reasons
-ColorType: TypeAlias = Union[Literal["transparent"], str, tuple[str, str], list[str]]
+ColorType: TypeAlias = Union[str, tuple[str, str], list[str]]
 TransparentColorType: TypeAlias = Union[Literal["transparent"], ColorType]
 AnchorType: TypeAlias = Literal["center", "n", "ne", "e", "se", "s", "sw", "w", "nw"]
 
@@ -63,6 +63,7 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     text: str
     text_checked: str
     text_unchecked: str
+    show: str
     font: Any
     family: str
     size: int
@@ -96,7 +97,7 @@ class ThemeInfo(TypedDict, total=False, extra_items=Any):
     label: dict
     scrollbar: dict
     segmented_button: dict
-    symbol: dict
+    symbolbox: dict
     togglebutton: dict
     tooltip: dict
 
@@ -146,12 +147,12 @@ class ThemeManager:
         cls._theme[custom_key] = kwargs
 
     @classmethod
-    def update_key(cls, custom_key: str, **kwargs: Unpack[ThemeInfo]) -> None:
-        if custom_key not in cls._theme:
-            raise KeyError(f"Custom Key '{custom_key}' not found in the loaded theme: use 'add_key' method instead.")
+    def update_key(cls, key: str, **kwargs: Unpack[ThemeInfo]) -> None:
+        if key not in cls._theme:
+            raise KeyError(f"Custom Key '{key}' not found in the loaded theme: use 'add_key' method instead.")
         cls._replace_platform(kwargs)
         cls._replace_references(kwargs)
-        deep_update(cls._theme[custom_key], kwargs)
+        deep_update(cls._theme[key], kwargs)
 
     @classmethod
     def get_info(cls, default_key: str, custom_key: str | None = None, **kwargs: Unpack[ThemeInfo]) -> ThemeInfo:

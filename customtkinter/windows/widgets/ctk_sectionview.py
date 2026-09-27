@@ -11,7 +11,7 @@ from .core_widget_classes.ctk_widget import CTkWidgetArgs
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .ctk_frame import CTkFrame
 from .ctk_symbolbox import CTkSymbolBox, CTkSymbolBoxThemedArgs, SymbolType
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, deep_update, first_value, get_proper_cursor
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, deep_update, first_value, get_proper_cursor
 
 
 class CTkSectionViewThemedArgs(TypedDict, total=False, closed=True):
@@ -28,7 +28,7 @@ class CTkSectionViewThemedArgs(TypedDict, total=False, closed=True):
     hover: bool
     open_symbol: SymbolType   #when clicked, the section will open
     close_symbol: SymbolType  #when clicked, the section will get closed
-    symbol: CTkSymbolBoxThemedArgs
+    symbolbox: CTkSymbolBoxThemedArgs
 
 class CTkSectionViewArgs(CTkSectionViewThemedArgs, total=False, closed=True):
     state: Literal["normal", "disabled"]
@@ -58,13 +58,10 @@ class CTkSectionView(CTkFrame):
         self._theme_sv_info: CTkSectionViewThemedArgs = ThemeManager.get_info("CTkSectionView", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_sv_info:
-            if "_color" in key:
-                self._theme_sv_info[key] = self._check_color_type(self._theme_sv_info[key],
-                                                                  transparency=key not in ("top_fg_color", "hover_color"))
+        check_colors(self._theme_sv_info, CTkSectionViewThemedArgs)
 
         self._theme_sv_info["corner_radius"] = min(self._theme_sv_info["corner_radius"],
-                                                   self._theme_sv_info["symbol"]["height"] / 2)
+                                                   self._theme_sv_info["symbolbox"]["height"] / 2)
 
         super().__init__(master=master,
                          width=self._theme_sv_info["width"],
@@ -167,6 +164,9 @@ class CTkSectionView(CTkFrame):
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkSectionViewArgs]) -> None:
         require_corners = False
+
+        check_colors(kwargs, CTkSectionViewThemedArgs)
+
         if "corner_radius" in kwargs:
             self._theme_sv_info["corner_radius"] = kwargs.pop("corner_radius")
             require_corners = True
@@ -180,7 +180,7 @@ class CTkSectionView(CTkFrame):
             self._update_geometry()
 
         if "fg_color_header" in kwargs:
-            fg_color = self._check_color_type(kwargs.pop("fg_color_header"), transparency=True)
+            fg_color = kwargs.pop("fg_color_header")
             self._theme_sv_info["fg_color_header"] = fg_color
             self._prev_fg_color = fg_color
             require_corners = True
@@ -188,14 +188,14 @@ class CTkSectionView(CTkFrame):
                 header.configure(fg_color=fg_color)
 
         if "fg_color" in kwargs:
-            fg_color = self._check_color_type(kwargs.pop("fg_color"), transparency=True)
+            fg_color = kwargs.pop("fg_color")
             self._theme_sv_info["fg_color"] = fg_color
             require_corners = True
             for section in self._section_frames.values():
                 section.configure(fg_color=fg_color)
 
         if "hover_color" in kwargs:
-            self._theme_sv_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_sv_info["hover_color"] = kwargs.pop("hover_color")
 
         if "hover" in kwargs:
             self._theme_sv_info["hover"] = kwargs.pop("hover")
@@ -232,11 +232,11 @@ class CTkSectionView(CTkFrame):
         if "command" in kwargs:
             self._command = kwargs.pop("command")
 
-        if "symbol" in kwargs:
-            symbol_kwargs = kwargs.pop("symbol")
-            deep_update(self._theme_sv_info["symbol"], symbol_kwargs)
+        if "symbolbox" in kwargs:
+            symbolbox_kwargs = kwargs.pop("symbolbox")
+            deep_update(self._theme_sv_info["symbolbox"], symbolbox_kwargs)
             for symbol in self._symbols.values():
-                symbol.configure(**symbol_kwargs)
+                symbol.configure(**symbolbox_kwargs)
 
         super().configure(require_redraw=require_redraw, **kwargs)
         if require_corners:
@@ -254,8 +254,8 @@ class CTkSectionView(CTkFrame):
             return self._command
         elif attribute_name in self._theme_sv_info and attribute_name not in CTkWidgetArgs.__annotations__:
             return self._theme_sv_info[attribute_name]
-        elif attribute_name.startswith("symbol_"):
-            return first_value(self._symbols).cget(attribute_name.removeprefix("symbol_"))
+        elif attribute_name.startswith("symbolbox_"):
+            return first_value(self._symbols).cget(attribute_name.removeprefix("symbolbox_"))
         else:
             return super().cget(attribute_name)
 
@@ -273,7 +273,7 @@ class CTkSectionView(CTkFrame):
         else:
             raise ValueError(f"CTkSectionView has no section named '{name}'")
 
-    def symbol(self, name: str) -> CTkFrame:
+    def symbolbox(self, name: str) -> CTkSymbolBox:
         """ Returns reference to the CTkSymbolBox widget inside the section's header with given name. """
         if name in self._symbols:
             return self._symbols[name]
@@ -299,7 +299,7 @@ class CTkSectionView(CTkFrame):
                               state=self._state,
                               hover=False,
                               pre_command=lambda _: "break", #status is only changed by calling set() directly
-                              **self._theme_sv_info["symbol"])
+                              **self._theme_sv_info["symbolbox"])
         section = CTkFrame(self,
                            width=0,
                            height=10, #if frame is empty, some empty space will be visible
@@ -359,7 +359,7 @@ class CTkSectionView(CTkFrame):
                     self._configure_corners_for_index(len(self._visible_sections) - 1)
 
     def show(self, name: str, index: int | None = None) -> None:
-        """ Shows a previously hidden section by name and place it at the provided position. """
+        """ Shows a hidden section by name and place it at the provided position. """
         if name not in self._section_frames:
             raise ValueError(f"CTkSectionView has no section named '{name}'")
 
@@ -390,7 +390,7 @@ class CTkSectionView(CTkFrame):
         if name not in self._section_frames:
             raise ValueError(f"CTkSectionView has no section named '{name}'")
 
-        if name not in self._open_sections:
+        if name not in self._open_sections and name in self._visible_sections:
             self._open_sections.append(name)
             self._symbols[name].set(index=self._CLOSE_INDEX)
             self._configure_corners_for_index(self._visible_sections.index(name))

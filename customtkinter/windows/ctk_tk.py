@@ -14,7 +14,7 @@ from .widgets.scaling import CTkScalingBaseClass
 from .widgets.core_widget_classes import CTkContainer
 from .widgets.theme import ColorType, ThemeManager
 from .widgets.image import CTkImage
-from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty, parse_geometry_string
+from .widgets.utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, parse_geometry_string
 
 
 class CTkThemedArgs(TypedDict, total=False, closed=True):
@@ -70,9 +70,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
         self._theme_info: CTkThemedArgs = ThemeManager.get_info("CTk", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key], transparency=False)
+        check_colors(self._theme_info, CTkThemedArgs)
 
         self._enable_macos_dark_title_bar()
 
@@ -243,8 +241,10 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
             return geometry_string
 
     def configure(self, **kwargs: Unpack[CTkArgs]) -> None:
+        check_colors(kwargs, CTkThemedArgs)
+
         if "fg_color" in kwargs:
-            self._fg_color = self._check_color_type(kwargs.pop("fg_color"))
+            self._fg_color = kwargs.pop("fg_color")
             self._theme_info["fg_color"] = self._fg_color
             super().configure(bg=self._apply_appearance_mode(self._fg_color))
 

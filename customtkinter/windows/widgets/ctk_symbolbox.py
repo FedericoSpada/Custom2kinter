@@ -11,7 +11,7 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import BorderedRoundedRect, Arrow, Bar, Checkmark, RoundedRect, Star, Triangle
 from .font import CTkFont, FontType
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 SymbolType: TypeAlias = Literal["", "+", "x", "|", "/", "-", "\\", "^", ">", "v", "<",
@@ -55,7 +55,7 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
     It can be seen as a "generalized CTkCheckBox" that displays a list of symbols in sequence.
     The user can advance in the list by clicking the widget with the left button,
     or they can go back with the right button.\n
-    'fg_color' can be a list of colors which are used to color each symbol based on the their index.\n
+    'fg_color' can be a list of colors which are used to color each symbol based on their index.\n
     Duplicates are accepted and properly managed. If 'values' contains just a single element,
     the widget behaves like a CTkButton when left-clicked.\n
     For detailed information check out the documentation.
@@ -76,11 +76,9 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
         self._theme_info: CTkSymbolBoxThemedArgs = ThemeManager.get_info("CTkSymbolBox", theme_key, **theme_args)
 
         #validity checks
-        self._theme_info["fg_color"] = self._check_fg_color(self._theme_info["fg_color"])
-        for key in self._theme_info:
-            if "_color" in key and key != "fg_color":
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key == "bg_color")
+        checked_fg_color = self._check_fg_color(self._theme_info.pop("fg_color"))
+        check_colors(self._theme_info, CTkSymbolBoxThemedArgs)
+        self._theme_info["fg_color"] = checked_fg_color
 
         CTkWidget.__init__(self,
                            master=master,
@@ -91,7 +89,7 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
         # text and font
         self._textvariable: tkinter.StringVar | None = kwargs.pop("textvariable", None)
         self._font: CTkFont = CTkFont.from_parameter(self._theme_info["font"])
-        self._font.add_size_configure_callback(self._update_font)
+        self._font.add_configure_callback(self._update_font)
 
         # functionality
         self._state: Literal["normal", "disabled"] = kwargs.pop("state", tkinter.NORMAL)
@@ -378,11 +376,17 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
         if self._variable is not None:
             self._variable.trace_remove("write", self._variable_callback_name)
 
-        self._font.remove_size_configure_callback(self._update_font)
+        self._font.remove_configure_callback(self._update_font)
         super().destroy()
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkSymbolBoxArgs]) -> None:
         require_geometry = False
+
+        if "fg_color" in kwargs:
+            self._theme_info["fg_color"] = self._check_fg_color(kwargs.pop("fg_color"))
+            require_redraw = True
+
+        check_colors(kwargs, CTkSymbolBoxThemedArgs)
 
         if "box_width" in kwargs:
             self._theme_info["box_width"] = kwargs.pop("box_width")
@@ -406,28 +410,24 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
             self._theme_info["internal_spacing"] = kwargs.pop("internal_spacing")
             require_geometry = True
 
-        if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_fg_color(kwargs.pop("fg_color"))
-            require_redraw = True
-
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"))
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "symbol_color" in kwargs:
-            self._theme_info["symbol_color"] = self._check_color_type(kwargs.pop("symbol_color"))
+            self._theme_info["symbol_color"] = kwargs.pop("symbol_color")
             require_redraw = True
 
         if "hover_color" in kwargs:
-            self._theme_info["hover_color"] = self._check_color_type(kwargs.pop("hover_color"))
+            self._theme_info["hover_color"] = kwargs.pop("hover_color")
             require_redraw = True
 
         if "text_color" in kwargs:
-            self._theme_info["text_color"] = self._check_color_type(kwargs.pop("text_color"))
+            self._theme_info["text_color"] = kwargs.pop("text_color")
             require_redraw = True
 
         if "text_color_disabled" in kwargs:
-            self._theme_info["text_color_disabled"] = self._check_color_type(kwargs.pop("text_color_disabled"))
+            self._theme_info["text_color_disabled"] = kwargs.pop("text_color_disabled")
             require_redraw = True
 
         if "hover" in kwargs:
@@ -439,9 +439,9 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
             require_geometry = True
 
         if "font" in kwargs:
-            self._font.remove_size_configure_callback(self._update_font)
+            self._font.remove_configure_callback(self._update_font)
             self._font = CTkFont.from_parameter(kwargs.pop("font"))
-            self._font.add_size_configure_callback(self._update_font)
+            self._font.add_configure_callback(self._update_font)
             self._update_font()
 
         if "anchor" in kwargs:
@@ -536,7 +536,7 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
         Can be called to simulate the user who clicks on the widget. """
         if self._state == tkinter.NORMAL:
             new_index = self._current_index + (1 if direction == "top" else -1)
-            if self.pacman_effect:
+            if self.pacman_effect and self._values:
                 new_index = new_index % len(self._values)
             else:
                 new_index = max(0, min(new_index, len(self._values) - 1))
@@ -558,7 +558,7 @@ class CTkSymbolBox(CTkWidget, CanvasWithLabel):
         else:
             return self._values[index]
 
-    def index(self, value: str | None = None) -> int:
+    def index(self, value: SymbolType | None = None) -> int:
         """ Returns index of active symbol, raises ValueError if the symbol is missing.\n
         If the parameter is provided, returns the associated index or raises ValueError if the symbol is not found. """
         if value is None:

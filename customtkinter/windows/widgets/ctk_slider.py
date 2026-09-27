@@ -11,7 +11,7 @@ from .core_widget_classes.ctk_widget import CTkWidget, CTkWidgetArgs
 from .core_rendering import CTkCanvas, BorderedRoundedRect, RoundedRect
 from .theme import ColorType, TransparentColorType, ThemeManager
 from .ctk_tooltip import CTkToolTip, CTkToolTipThemedArgs
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty, get_proper_cursor, get_width_height_from_orientation
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors, get_proper_cursor, get_width_height_from_orientation
 
 
 class CTkSliderThemedArgs(TypedDict, total=False, closed=True):
@@ -38,9 +38,9 @@ class CTkSliderArgs(CTkSliderThemedArgs, total=False, closed=True):
     to: int | float
     number_of_steps: int | None
     format: str  #the syntax is explained here: https://docs.python.org/3/library/string.html#formatstrings
-    scrollincrement: float | None
-    variable1: tkinter.IntVar | tkinter.DoubleVar | None
-    variable2: tkinter.IntVar | tkinter.DoubleVar | None
+    scrollincrement: float
+    variable1: tkinter.DoubleVar | tkinter.IntVar | None
+    variable2: tkinter.DoubleVar | tkinter.IntVar | None
     command: Callable[[float], None] | Callable[[float, float], None] | None
 
 
@@ -53,7 +53,7 @@ class CTkSlider(CTkWidget, CTkScrollable):
                   The buttons can never swap positions, so it is guaranteed that value1 <= value2;
     - "out_range": 2 buttons with the highlighted part going outwards.
                    The buttons can never swap positions, so it is guaranteed that value1 <= value2;
-    - "any_range": 2 buttons which can swap positions. If value1 <= value2, it behaves like "in_range",
+    - "any_range": 2 buttons that can swap positions. If value1 <= value2, it behaves like "in_range",
                    otherwise like "out_range".
     For detailed information check out the documentation.
     """
@@ -72,10 +72,7 @@ class CTkSlider(CTkWidget, CTkScrollable):
         self._theme_info: CTkSliderThemedArgs = ThemeManager.get_info("CTkSlider", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_info:
-            if "_color" in key:
-                self._theme_info[key] = self._check_color_type(self._theme_info[key],
-                                                               transparency=key in ("border_color", "progress_color", "bg_color"))
+        check_colors(self._theme_info, CTkSliderThemedArgs)
 
         # set default dimensions according to orientation
         width, height = get_width_height_from_orientation(self._theme_info["orientation"],
@@ -261,6 +258,8 @@ class CTkSlider(CTkWidget, CTkScrollable):
                     slider.set_color(button_color)
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkSliderArgs]) -> None:
+        check_colors(kwargs, CTkSliderThemedArgs)
+
         if "thickness" in kwargs:
             self._theme_info["thickness"] = kwargs.pop("thickness")
             kwargs["width" if self._theme_info["orientation"] == "vertical" else "height"] = self._theme_info["thickness"]
@@ -282,23 +281,23 @@ class CTkSlider(CTkWidget, CTkScrollable):
             require_redraw = True
 
         if "fg_color" in kwargs:
-            self._theme_info["fg_color"] = self._check_color_type(kwargs.pop("fg_color"))
+            self._theme_info["fg_color"] = kwargs.pop("fg_color")
             require_redraw = True
 
         if "border_color" in kwargs:
-            self._theme_info["border_color"] = self._check_color_type(kwargs.pop("border_color"), transparency=True)
+            self._theme_info["border_color"] = kwargs.pop("border_color")
             require_redraw = True
 
         if "progress_color" in kwargs:
-            self._theme_info["progress_color"] = self._check_color_type(kwargs.pop("progress_color"), transparency=True)
+            self._theme_info["progress_color"] = kwargs.pop("progress_color")
             require_redraw = True
 
         if "button_color" in kwargs:
-            self._theme_info["button_color"] = self._check_color_type(kwargs.pop("button_color"))
+            self._theme_info["button_color"] = kwargs.pop("button_color")
             require_redraw = True
 
         if "button_hover_color" in kwargs:
-            self._theme_info["button_hover_color"] = self._check_color_type(kwargs.pop("button_hover_color"))
+            self._theme_info["button_hover_color"] = kwargs.pop("button_hover_color")
             require_redraw = True
 
         if "mode" in kwargs:

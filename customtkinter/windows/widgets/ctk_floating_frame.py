@@ -8,7 +8,7 @@ from typing_extensions import TypedDict, Unpack
 from .theme import AnchorType, ColorType, TransparentColorType, ThemeManager
 from .ctk_frame import CTkFrame, CTkFrameThemedArgs, CTkFrameArgs
 from ..ctk_toplevel import CTkToplevel
-from .utility import pop_from_dict_by_iterable, check_kwargs_empty
+from .utility import pop_from_dict_by_iterable, check_kwargs_empty, check_colors
 
 
 class CTkFloatingFrameThemedArgs(TypedDict, total=False, closed=True):
@@ -42,10 +42,7 @@ class CTkFloatingFrame(CTkFrame):
         self._theme_ff_info: CTkFloatingFrameThemedArgs = ThemeManager.get_info("CTkFloatingFrame", theme_key, **theme_args)
 
         #validity checks
-        for key in self._theme_ff_info:
-            if "_color" in key:
-                self._theme_ff_info[key] = self._check_color_type(self._theme_ff_info[key],
-                                                                  transparency=key == "fg_color")
+        check_colors(self._theme_ff_info, CTkFloatingFrameThemedArgs)
 
         # toplevel
         self._toplevel = CTkToplevel(master)
@@ -82,6 +79,10 @@ class CTkFloatingFrame(CTkFrame):
         if sys.platform.startswith("win"):
             self._toplevel.attributes("-transparentcolor", self._apply_appearance_mode(self.transparent_color))
         super()._set_appearance_mode()
+
+    def destroy(self) -> None:
+        super().destroy()
+        self._toplevel.destroy()
 
     def configure(self, require_redraw: bool = False, **kwargs: Unpack[CTkFloatingFrameArgs]) -> None:
         if "corner_radius" in kwargs:
