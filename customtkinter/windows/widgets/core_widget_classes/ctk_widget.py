@@ -265,7 +265,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         bordermode: Literal["inside", "outside", "ignore"]
 
     def place(self, apply_scaling: bool = True, **kwargs: Unpack[_PlaceArgs]) -> None:
-        """ Map this widget using the 'place' geometry manager. 
+        """ Map this widget using the 'place' geometry manager.
         Additional information is reported here: https://www.tcl-lang.org/man/tcl8.6/TkCmd/place.htm """
 
         if "width" in kwargs or "height" in kwargs:
@@ -294,7 +294,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         pady: float | int | str | tuple[float | int | str, float | int | str]
 
     def pack(self, apply_scaling: bool = True, **kwargs: Unpack[_PackArgs]) -> None:
-        """ Map this widget using the 'pack' geometry manager. 
+        """ Map this widget using the 'pack' geometry manager.
         Additional information is reported here: https://www.tcl-lang.org/man/tcl8.6/TkCmd/pack.htm """
 
         self._last_geometry_manager_call = {"function": super().pack, "apply_scaling": apply_scaling, "kwargs": kwargs}
@@ -320,7 +320,7 @@ class CTkWidget(tkinter.Frame, CTkAppearanceModeBaseClass, CTkScalingBaseClass, 
         pady: float | int | str | tuple[float | int | str, float | int | str]
 
     def grid(self, apply_scaling: bool = True, **kwargs: Unpack[_GridArgs]) -> None:
-        """ Map this widget using the 'grid' geometry manager. 
+        """ Map this widget using the 'grid' geometry manager.
         Additional information is reported here: https://www.tcl-lang.org/man/tcl8.6/TkCmd/grid.htm """
 
         self._last_geometry_manager_call = {"function": super().grid, "apply_scaling": apply_scaling, "kwargs": kwargs}

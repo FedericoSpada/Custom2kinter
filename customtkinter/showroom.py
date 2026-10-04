@@ -242,7 +242,7 @@ class _Showroom(CTk):
                                 fg_color="transparent",
                                 corner_radius=0)
             frame.pack(side="top", fill="both", expand=True, padx=5)
-            self.sectionview.symbolbox(name).configure(fg_color=self.categories[category])
+            self.sectionview.symbol(name).configure(fg_color=self.categories[category])
 
     def _change_theme(self, new_theme: str) -> None:
         set_default_color_theme(new_theme)

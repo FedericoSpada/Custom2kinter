@@ -88,3 +88,11 @@ search = "version = \"{current_version}\""
 [[tool.tbump.file]]
 src = "customtkinter/__init__.py"
 search = "__version__ = \"{current_version}\""
+
+[[tool.tbump.file]]
+src = "docs/source/conf.py"
+search = "version = \"{current_version}\""
+
+[[tool.tbump.file]]
+src = "docs/source/conf.py"
+search = "release = \"{current_version}\""

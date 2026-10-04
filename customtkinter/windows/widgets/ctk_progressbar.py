@@ -275,7 +275,7 @@ class CTkProgressBar(CTkWidget):
         \nFor 'indeterminate' mode:
         -   0% -> completely on the left/bottom
         -  50% -> completely on the right/top
-        - 100% -> again on the left/bottom, ready for a new cycle 
+        - 100% -> again on the left/bottom, ready for a new cycle
         \nFor other modes:
         -   0% -> completely on the left/bottom
         - 100% -> completely on the right/top
@@ -306,7 +306,7 @@ class CTkProgressBar(CTkWidget):
         \nFor 'indeterminate' mode:
         -   0% -> completely on the left/bottom
         -  50% -> completely on the right/top
-        - 100% -> again on the left/bottom, ready for a new cycle 
+        - 100% -> again on the left/bottom, ready for a new cycle
         \nFor other modes:
         -   0% -> completely on the left/bottom
         - 100% -> completely on the right/top """

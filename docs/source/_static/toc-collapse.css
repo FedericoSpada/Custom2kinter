@@ -1,0 +1,6 @@
+.toc-tree ul.toc-collapsible {
+  display: none;
+}
+.toc-tree li.toc-branch-current > ul.toc-collapsible {
+  display: block;
+}

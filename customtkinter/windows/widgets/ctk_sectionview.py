@@ -273,7 +273,7 @@ class CTkSectionView(CTkFrame):
         else:
             raise ValueError(f"CTkSectionView has no section named '{name}'")
 
-    def symbolbox(self, name: str) -> CTkSymbolBox:
+    def symbol(self, name: str) -> CTkSymbolBox:
         """ Returns reference to the CTkSymbolBox widget inside the section's header with given name. """
         if name in self._symbols:
             return self._symbols[name]

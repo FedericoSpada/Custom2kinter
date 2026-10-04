@@ -198,7 +198,7 @@ class CTk(tkinter.Tk, CTkAppearanceModeBaseClass, CTkScalingBaseClass, CTkContai
 
         if sys.platform.startswith("win"):
             #for some reason, the titlebar changes color after calling this method...
-            self.after_idle(self._windows_set_titlebar_color, self._get_appearance_mode())
+            self._windows_set_titlebar_color(self._get_appearance_mode())
 
         return current_resizable_values
 
