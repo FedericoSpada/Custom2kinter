@@ -59,10 +59,12 @@ class CTkFloatingFrame(CTkFrame):
             self._toplevel.attributes("-transparentcolor", self._apply_appearance_mode(self.transparent_color))
             self._toplevel.attributes("-toolwindow", True) # removes icon from taskbar
         elif sys.platform.startswith("darwin"):
-            if tkinter.TkVersion >= 9.0: #necessary to achieve transparent edges due to changes in Tk 9.x on MacOS
+            #on macOS with Tk 9.x, a different management is necessary,
+            # which doesn't allow setting a specific radius; the value is imposed by the OS
+            if tkinter.TkVersion >= 9.0 and self._theme_ff_info["corner_radius"] > 0:
                 self._toplevel.wm_attributes(stylemask=('fullsizecontent','titled'))
                 self._toplevel.title("")
-                self._theme_ff_info["corner_radius"] = 0
+                self._theme_ff_info["corner_radius"] = 5  #TODO: choose the most appropriate value to have a good rounded border that follows the corner of the frame (which radius is forced by the OS))
             else:
                 self._toplevel.overrideredirect(True)
                 self.transparent_color = "systemTransparent"
@@ -133,7 +135,9 @@ class CTkFloatingFrame(CTkFrame):
         self._toplevel.geometry(f"{width}x{height}+{x_root - x_delta}+{y_root - y_delta}",
                                 apply_scaling=False)
         self._toplevel.deiconify()
-        if tkinter.TkVersion >= 9.0 and sys.platform.startswith("darwin"): #necessary to achieve transparent edges due to changes in Tk 9.x on MacOS
+
+        #necessary to achieve transparent edges due to changes in Tk 9.x on macOS
+        if tkinter.TkVersion >= 9.0 and sys.platform.startswith("darwin") and self._theme_ff_info["corner_radius"] > 0:
             self._toplevel.wm_attributes(stylemask=('fullsizecontent','titled'))
 
     def close(self) -> None:
