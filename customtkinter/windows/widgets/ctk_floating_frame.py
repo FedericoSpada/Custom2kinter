@@ -50,16 +50,25 @@ class CTkFloatingFrame(CTkFrame):
         self._toplevel.attributes("-topmost", True)
         self._toplevel.attributes("-alpha", 1.0 - self._theme_ff_info["transparency"])
         self._toplevel.resizable(width=True, height=True)
-        self._toplevel.overrideredirect(True)
 
         if sys.platform.startswith("win"):
+            self._toplevel.overrideredirect(True)
             self._toplevel.attributes("-transparentcolor", self._apply_appearance_mode(self.transparent_color))
             self._toplevel.attributes("-toolwindow", True) # removes icon from taskbar
         elif sys.platform.startswith("darwin"):
-            self.transparent_color = "systemTransparent"
-            self._toplevel.attributes("-transparent", True)
+            #on macOS with Tk 9.x, a different management is necessary,
+            # which doesn't allow setting a specific radius; the value is imposed by the OS
+            if tkinter.TkVersion >= 9.0 and self._theme_ff_info["corner_radius"] > 0:
+                self._toplevel.wm_attributes(stylemask=('fullsizecontent','titled'))
+                self._toplevel.title("")
+                self._theme_ff_info["corner_radius"] = 5  #TODO: choose the most appropriate value to have a good rounded border that follows the corner of the frame (which radius is forced by the OS))
+            else:
+                self._toplevel.overrideredirect(True)
+                self.transparent_color = "systemTransparent"
+                self._toplevel.attributes("-transparent", True)
         else:
             #Linux doesn't support transparency, so we force the frame to cover all available space
+            self._toplevel.overrideredirect(True)
             self._theme_ff_info["corner_radius"] = 0
 
         # frame
@@ -127,6 +136,10 @@ class CTkFloatingFrame(CTkFrame):
         self._toplevel.geometry(f"{width}x{height}+{x_root - x_delta}+{y_root - y_delta}",
                                 apply_scaling=False)
         self._toplevel.deiconify()
+
+        #necessary to achieve transparent edges due to changes in Tk 9.x on macOS
+        if tkinter.TkVersion >= 9.0 and sys.platform.startswith("darwin") and self._theme_ff_info["corner_radius"] > 0:
+            self._toplevel.wm_attributes(stylemask=('fullsizecontent','titled'))
 
     def close(self) -> None:
         """ Hides the widget. """
