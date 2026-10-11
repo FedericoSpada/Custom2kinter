@@ -1,0 +1,236 @@
+from __future__ import annotations
+
+import ctypes
+import ctypes.util
+import tkinter
+import sys
+import re
+from pathlib import Path
+from typing import Any, Callable, Iterable, Union, TypeVar
+from typing_extensions import Literal, TypeAlias
+
+
+KT = TypeVar("KT")
+VT = TypeVar("VT")
+
+
+def get_asset_path(*relative_path: str) -> str:
+    """Returns the absolute path to a file or directory inside the package "assets" folder."""
+    assets_directory = Path(__file__).resolve().parent.parent / "assets"
+    return str(assets_directory.joinpath(*relative_path))
+
+
+def pop_from_dict_by_iterable(dictionary: dict[KT, VT], valid_keys: Iterable[KT]) -> dict[KT, VT]:
+    """Removes and creates new dict with key value pairs of dictionary, where key is in valid_keys."""
+    new_dictionary: dict[KT, VT] = {}
+
+    for key in list(dictionary.keys()):
+        if key in valid_keys:
+            new_dictionary[key] = dictionary.pop(key)
+
+    return new_dictionary
+
+
+def check_kwargs_empty(kwargs: dict, raise_error: bool = False) -> bool:
+    """
+    Returns True if kwargs are empty, False otherwise.
+
+    Raises:
+        ValueError: if raise_error is True and kwargs is not empty.
+    """
+    if len(kwargs) > 0:
+        if raise_error:
+            arguments = "', '".join(kwargs.keys())
+            phrase = "is not a supported argument" if len(kwargs) == 1 else "are not supported arguments"
+            raise ValueError(f"'{arguments}' {phrase}.\nLook at the documentation for supported arguments.")
+        else:
+            return True
+    else:
+        return False
+
+
+def check_colors(kwargs: dict[str, Any], valid_args: type) -> None:
+    """
+    Checks all color attributes contained in kwargs based on the settings provided with valid_args.
+    It also converts colors provided as lists to tuples.
+
+    Raises:
+        ValueError: if any color has been provided with a wrong value.
+    """
+    for arg, typeref in valid_args.__annotations__.items():
+        typeref = typeref.__forward_arg__
+
+        if "ColorType" in typeref and arg in kwargs:
+            color = kwargs[arg]
+
+            if color is None:
+                raise ValueError(f"{arg} is None, for transparency set {arg}='transparent'.")
+            elif isinstance(color, (tuple, list)) and (color[0] == "transparent" or color[1] == "transparent"):
+                raise ValueError(f"transparency is not allowed in tuple color {color}, use just 'transparent'.")
+            elif color == "transparent" and "TransparentColorType" not in typeref:
+                raise ValueError(f"Transparency is not allowed for {arg} attribute.")
+            elif isinstance(color, (tuple, list)) and len(color) == 2 and isinstance(color[0], str) and isinstance(color[1], str):
+                kwargs[arg] = tuple(color)
+            elif not isinstance(color, str):
+                raise ValueError(f"{arg} must be a string ('transparent', 'color-name' or '#hex-color') or tuple of two strings, not {type(color)}")
+
+
+def deep_update(base: dict[KT, VT], new: dict[KT, VT]) -> None:
+    """
+    Performs the 'update' operation of the old dict with the new one,
+    recursively for any sub-dict contained as value.
+    """
+    for key, value in new.items():
+        if isinstance(value, dict):
+            deep_update(base.setdefault(key, {}), value)
+        else:
+            base[key] = value
+
+def first_value(dictionary: dict[KT, VT]) -> VT:
+    """Returns the first value contained in the provided dict."""
+    return next(iter(dictionary.values()))
+
+
+def parse_geometry_string(geometry_string: str) -> tuple[int | None, ...]:
+    """Returns the single elements inside a tuple that compose the geometry string provided as argument."""
+    #                 index:   1                   2           3          4             5       6
+    # regex group structure: ('<width>x<height>', '<width>', '<height>', '+-<x>+-<y>', '-<x>', '-<y>')
+    result = re.search(r"((\d+)x(\d+)){0,1}(\+{0,1}([+-]{0,1}\d+)\+{0,1}([+-]{0,1}\d+)){0,1}", geometry_string)
+
+    width = int(result.group(2)) if result.group(2) is not None else None
+    height = int(result.group(3)) if result.group(3) is not None else None
+    x = int(result.group(5)) if result.group(5) is not None else None
+    y = int(result.group(6)) if result.group(6) is not None else None
+
+    return width, height, x, y
+
+
+def get_window_root_of_widget(widget: tkinter.Misc) -> tkinter.Tk | tkinter.Toplevel:
+    """Returns the tkinter.Tk or tkinter.Toplevel object that ultimately contains the provided widget."""
+    current_widget = widget
+    while not isinstance(current_widget, (tkinter.Tk, tkinter.Toplevel)):
+        current_widget = current_widget.master
+    return current_widget
+
+
+def get_proper_cursor(mode: Literal["normal", "clickable", "move_hor", "move_ver", "move_any"]) -> str | None:
+    """
+    Returns the string to be used as 'cursor' based on the OS and
+    a more general name that describes the functionality.
+    """
+    retval = None
+    if mode == "normal":
+        if sys.platform == "darwin" or sys.platform.startswith("win"):
+            retval = "arrow"
+    elif mode == "clickable":
+        if sys.platform == "darwin":
+            retval = "pointinghand"
+        elif sys.platform.startswith("win"):
+            retval = "hand2"
+    elif mode == "move_hor":
+        retval = "sb_h_double_arrow"
+    elif mode == "move_ver":
+        retval = "sb_v_double_arrow"
+    elif mode == "move_any":
+        retval = "fleur"
+    return retval
+
+
+def get_width_height_from_orientation(orientation: Literal["horizontal", "vertical"],
+                                      thickness: int,
+                                      length: int) -> tuple[int, int]:
+    """Returns a tuple (width, height) by converting the thickness and length based the requested orientation."""
+    if orientation == "vertical":
+        width = thickness
+        height = length
+    else:
+        width = length
+        height = thickness
+    return width, height
+
+
+def get_monitor_info(x: int, y: int) -> tuple[int, int, int, int]:
+    """
+    Returns (left, top, right, bottom) of the physical monitor containing (x, y).
+
+    Raises:
+        NotImplementedError: always on Linux.
+    """
+    if sys.platform.startswith("win"):
+        from ctypes import windll, wintypes, Structure, byref
+
+        class _RECT(Structure):
+            _fields_ = [("left", wintypes.LONG), ("top", wintypes.LONG),
+                        ("right", wintypes.LONG), ("bottom", wintypes.LONG)]
+
+        class _MONITORINFO(Structure):
+            _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", _RECT),
+                        ("rcWork", _RECT), ("dwFlags", wintypes.DWORD)]
+
+        pt = wintypes.POINT()
+        pt.x, pt.y = x, y
+        monitor = windll.user32.MonitorFromPoint(pt, 2)  # MONITOR_DEFAULTTONEAREST
+        info = _MONITORINFO()
+        info.cbSize = ctypes.sizeof(_MONITORINFO)
+        windll.user32.GetMonitorInfoW(monitor, byref(info))
+        r = info.rcMonitor
+        return r.left, r.top, r.right, r.bottom
+
+    elif sys.platform == "darwin":
+        CG = ctypes.cdll.LoadLibrary(
+            ctypes.util.find_library("CoreGraphics")
+            or "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
+        )
+
+        class _CGPoint(ctypes.Structure):
+            _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+
+        class _CGSize(ctypes.Structure):
+            _fields_ = [("width", ctypes.c_double), ("height", ctypes.c_double)]
+
+        class _CGRect(ctypes.Structure):
+            _fields_ = [("origin", _CGPoint), ("size", _CGSize)]
+
+        display_ids = (ctypes.c_uint32 * 8)()
+        count = ctypes.c_uint32(0)
+        CG.CGGetDisplaysWithPoint.restype = ctypes.c_int
+        CG.CGGetDisplaysWithPoint.argtypes = [
+            _CGPoint, ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(ctypes.c_uint32),
+        ]
+        CG.CGGetDisplaysWithPoint(
+            _CGPoint(float(x), float(y)), 8, display_ids, ctypes.byref(count)
+        )
+        display = display_ids[0] if count.value > 0 else CG.CGMainDisplayID()
+        CG.CGDisplayBounds.restype = _CGRect
+        CG.CGDisplayBounds.argtypes = [ctypes.c_uint32]
+        rect = CG.CGDisplayBounds(display)
+        lft, top = rect.origin.x, rect.origin.y
+        return int(lft), int(top), int(lft + rect.size.width), int(top + rect.size.height)
+
+    else:
+        raise NotImplementedError(f"get_monitor_info is not supported on {sys.platform}")
+
+
+Stringable: TypeAlias = Union[str, Iterable[str], Callable[[], Union[str, Iterable[str]]]]
+
+def get_string(stringable: Stringable | None) -> str | None:
+    """Converts a Stringable object to an actual string and returns it."""
+    if callable(stringable):
+        stringable = stringable()
+
+    if isinstance(stringable, str):
+        string = stringable
+    elif isinstance(stringable, Iterable):
+        string = "\n".join(stringable)
+    elif stringable is None:
+        string = None
+    else:
+        raise TypeError(f"A Stringable object must be a string, iterable of strings, or a "
+                        f"callable returning them, not {type(stringable)}.")
+    return string
+
+
+def opposite_direction(direction: Literal["left", "right", "top", "bottom"]) -> Literal["left", "right", "top", "bottom"]:
+    """Returns the opposite direction with respect to the provided one."""
+    return {"left": "right", "right": "left", "top": "bottom", "bottom": "top"}[direction]

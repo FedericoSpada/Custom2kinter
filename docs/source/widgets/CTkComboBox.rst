@@ -193,7 +193,7 @@ Example Code
 
    Inherited
    ~~~~~~~~~
-   
+
    .. include:: /arguments/tkentry.rst
 
 

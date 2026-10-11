@@ -6,6 +6,12 @@ All notable changes to this project are reported in the following.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`__,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+Given a version number MAJOR.MINOR.PATCH, increment the:
+
+- MAJOR version when an incompatible API change is made;
+- MINOR version when functionality is added in a backward-compatible manner;
+- PATCH version when a bug is fixed that doesn't break backward compatibility.
+
 
 [Unreleased]
 ------------

@@ -22,6 +22,7 @@ classifiers = [
    "Programming Language :: Python :: 3.12",
    "Programming Language :: Python :: 3.13",
    "Programming Language :: Python :: 3.14",
+   "Programming Language :: Python :: 3.15",
    "Development Status :: 5 - Production/Stable",
    "Operating System :: OS Independent",
    "Intended Audience :: Developers",
@@ -38,23 +39,21 @@ license-files = ["LICEN[CS]E*"]
 
 [project.urls]
 Homepage = "https://github.com/FedericoSpada/Custom2kinter"
-Changelog = "https://github.com/FedericoSpada/Custom2kinter/blob/master/CHANGELOG.md"
+Changelog = "https://custom2kinter.readthedocs.io/latest/development/Changelog.html"
 Issues = "https://github.com/FedericoSpada/Custom2kinter/issues"
-Documentation = "https://customtkinter.tomschimansky.com/documentation"
+Documentation = "https://custom2kinter.readthedocs.io/"
 
 [tool.setuptools]
 packages = [
    "customtkinter",
-   "customtkinter.windows",
-   "customtkinter.windows.widgets",
-   "customtkinter.windows.widgets.appearance_mode",
-   "customtkinter.windows.widgets.core_rendering",
-   "customtkinter.windows.widgets.core_widget_classes",
-   "customtkinter.windows.widgets.font",
-   "customtkinter.windows.widgets.image",
-   "customtkinter.windows.widgets.scaling",
-   "customtkinter.windows.widgets.theme",
-   "customtkinter.windows.widgets.utility",
+   "customtkinter.appearance_mode",
+   "customtkinter.core_rendering",
+   "customtkinter.core_widget_classes",
+   "customtkinter.font",
+   "customtkinter.image",
+   "customtkinter.scaling",
+   "customtkinter.theme",
+   "customtkinter.utility",
 ]
 
 [tool.tbump]

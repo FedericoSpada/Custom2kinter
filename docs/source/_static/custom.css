@@ -19,7 +19,7 @@
 
 /* increased dimension for title-like objects */
 .sig-name {
-    font-size: 1.3em;
+   font-size: 1.3em;
 }
 
 /* changes rendering for python elements inside the TOC */
@@ -56,14 +56,23 @@ dl.field-list > dd > ul.simple {
 }
 /* force margins for each parameter header */
 dl.field-list > dd > p:first-child:has(> strong) {
-  margin-top: 0.25rem !important;
-  margin-bottom: 0.25rem;
+   margin-top: 0.25rem !important;
+   margin-bottom: 0.25rem;
 }
 
 /* hides "hidden" python classes */
 dl.py.class.hidden-class > dt {
-    display: none;
+   display: none;
 }
 dl.py.class.hidden-class > dd {
-  margin-left: 0 !important;
+   margin-left: 0 !important;
+}
+
+/* donate button at the bottom */
+.paypal-donate-icon {
+   display: inline-block;
+   width: 140px !important;
+   height: 20px !important;
+   max-width: none;
+   background: url("paypal_donate_button.png") center / contain no-repeat;
 }

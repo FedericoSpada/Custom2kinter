@@ -66,8 +66,8 @@ You can run the following code to show a simple App that displays all available 
 
 .. code:: python
 
-   from customtkinter.showroom import run_showroom
-   run_showroom()
+   import customtkinter.utility.showroom as Showroom
+   Showroom.run()
 
 .. image:: images/showroom.png
    :alt: Showroom App

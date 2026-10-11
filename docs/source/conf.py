@@ -18,6 +18,7 @@ release = "5.3.0"
 extensions = [
     "sphinx_design",
     "sphinx_copybutton",
+    "notfound.extension",
     "sphinx.ext.extlinks"
 ]
 templates_path = ["_templates"]
@@ -42,6 +43,12 @@ html_theme_options = {
     "light_logo": "CustomTkinter_logo_light.png",
     "dark_logo": "CustomTkinter_logo_dark.png",
     "footer_icons": [
+        {
+            "name": "PayPal",
+            "url": "https://www.paypal.com/donate/?hosted_button_id=DRC8XDXN7SEH4",
+            "html": "<span class='paypal-donate-icon' aria-hidden='true'></span>",
+            "class": "",
+        },
         {
             "name": "LinkedIn",
             "url": "https://www.linkedin.com/in/federicospada13",
@@ -92,6 +99,17 @@ extlinks = {
     "tkdoc": ("https://tkdocs.com/shipman/%s.html", None),
     "tcldoc": ("https://www.tcl-lang.org/man/tcl8.6/TkCmd/%s.htm", None),
     "examples": ("https://github.com/FedericoSpada/Custom2kinter/blob/master/examples/%s_example.py", None),
+}
+
+# -- Options for notfound.extension ------------------------------------------
+# https://sphinx-notfound-page.readthedocs.io
+notfound_context = {
+    "title": "Page Not Found",
+    "body": """
+<h1>Page not found</h1>
+<p>Sorry, we couldn't find that page.</p>
+<p>Try using the search box or go to the homepage.</p>
+"""
 }
 
 # -- Setup -------------------------------------------------------------------

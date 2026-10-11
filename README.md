@@ -6,7 +6,7 @@
 </p>
 
 <div align="center">
-  
+
 [![PyPI](https://img.shields.io/pypi/v/custom2kinter)](https://pypi.org/project/custom2kinter/)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/custom2kinter?color=green&label=downloads)
 ![Total Downloads](https://static.pepy.tech/personalized-badge/custom2kinter?period=total&units=international_system&left_color=grey&right_color=green&left_text=total%20downloads)
@@ -19,7 +19,7 @@
 |----------------------------------------------|-|
 | Federico Spada | www.linkedin.com/in/federicospada13 |
 
-<a href="https://www.paypal.com/donate/?hosted_button_id=DRC8XDXN7SEH4"><img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/paypal_donate_button.png" width=250 alt="PayPal donation button"></a>
+<a href="https://www.paypal.com/donate/?hosted_button_id=DRC8XDXN7SEH4"><img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/_static/paypal_donate_button.png" width=250 alt="Donate with PayPal"></a>
 
 
 </div>
@@ -34,18 +34,18 @@ and the window colors either adapt to the system appearance or the manually set 
 (Windows, macOS). With Custom2kinter you'll get a consistent and modern look across all
 desktop platforms (Windows, macOS, Linux).
 
-This project was created to continue the development of [CustomTkinter](https://pypi.org/project/customtkinter), since the
-original author lost interest in it. The first release of this library is v5.3.0,
+This project was created to continue the development of [CustomTkinter](https://pypi.org/project/customtkinter),
+since the original author lost interest in it. The first release of this library is v5.3.0,
 which continues the old numeration, and it is fully compatible with the last released
 version of the original library.\
 They can't live together in the same environment, so be sure to uninstall ```customtkinter```
 before installing ```custom2kinter```. This library is still imported using the original
 name, so existing code doesn't need to be updated.
 
-![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/complex_example_dark_Windows.png)
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/_images/complex_example_dark_Windows.png)
 | _`complex_example.py` on Windows 11 with dark mode and 'blue' theme_
 
-![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/complex_example_light_macOS.png)
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/_images/complex_example_light_macOS.png)
 | _`complex_example.py` on macOS in light mode and standard 'blue' theme_
 ###
 
@@ -55,49 +55,47 @@ Install the module with [pip](https://pypi.org/project/custom2kinter/):
 ```
 pip3 install custom2kinter
 ```
-**Update existing installation:** ```pip3 install custom2kinter --upgrade```\
-(update as often as possible because this library is under active development)
 
 ## Documentation
 
-The **official** documentation can be found here:
-
-**➡️ https://customtkinter.tomschimansky.com/documentation**.
+The **official** documentation can be found on [Read the Docs](https://custom2kinter.readthedocs.io):
 
 ## Example Program
 To test custom2kinter you can try this simple example with only a single button:
 ```python
-import customtkinter
+import customtkinter as ctk
 
-customtkinter.set_appearance_mode("System")  # Modes: system (default), light, dark
-customtkinter.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
+ctk.set_appearance_mode("system")
+ctk.set_default_color_theme("blue")
 
-app = customtkinter.CTk()  # create CTk window like you do with the Tk window
+# Create CTk window like you do with the Tk window
+app = ctk.CTk()
 app.geometry("400x240")
 
-def button_function():
+def button_callback() -> None:
     print("button pressed")
 
-# Use CTkButton instead of tkinter Button
-button = customtkinter.CTkButton(master=app, text="CTkButton", command=button_function)
-button.place(relx=0.5, rely=0.5, anchor=customtkinter.CENTER)
+# Use CTkButton instead of tkinter.Button
+button = ctk.CTkButton(master=app, text="CTkButton", command=button_callback)
+button.place(relx=0.5, rely=0.5, anchor=ctk.CENTER)
 
 app.mainloop()
 ```
 which results in the following window on macOS:
 
-<img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/single_button_macOS.png" width="400"/>
+<img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/concepts/images/single_button_macOS.png" width="250"/>
 
 In the [examples folder](https://github.com/FedericoSpada/Custom2kinter/tree/master/examples), you
-can find more example programs and in the [Documentation](https://github.com/TomSchimansky/CustomTkinter/wiki)
+can find more example programs and in the [Documentation](https://custom2kinter.readthedocs.io)
 you can find further information on the appearance mode, scaling, themes and all widgets.
 
 ## More Examples and Showcase
 You can run the following code to show a simple App that displays all available widgets:
 ```python
-from customtkinter.showroom import run_showroom
-run_showroom()
+import customtkinter.utility.showroom as Showroom
+Showroom.run()
 ```
+<img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/concepts/images/showroom.png" width="350"/>
 
 ### Appearance mode change and scaling change
 
@@ -122,24 +120,12 @@ pass a PhotoImage object to the CTkButton with the ``image`` argument.
 If you want no text at all you have to set ``text=""`` or you specify
 how to position the text and image at once with the ``compound`` option:
 
-![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/image_example_dark_Windows.png)
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/_images/image_example_dark_Windows.png)
 | _`image_example.py` on Windows 11_
 ###
 
 ### Scrollable Frames
 Scrollable frames are possible in vertical or horizontal orientation and can be combined
 with any other widgets.
-![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/scrollable_frame_example_Windows.png)
+![](https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/_images/scrollable_frame_example_Windows.png)
 | _`scrollable_frame_example.py` on Windows 11_
-
-### Integration of TkinterMapView widget
-In the following example I used a TkinterMapView which integrates
-well with a Custom2kinter program. It's a tile based map widget which displays
-OpenStreetMap or other tile based maps:
-
-https://user-images.githubusercontent.com/66446067/204675835-1584a8da-5acc-4993-b4a9-e70f06fa14b0.mp4
-
-| _`examples/map_with_customtkinter.py` from TkinterMapView repository on Windows 11_
-
-You can find the TkinterMapView library and example program here:
-https://github.com/TomSchimansky/TkinterMapView
