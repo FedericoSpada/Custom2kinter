@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "custom2kinter"
-version = "5.3.0"
+version = "6.0.0"
 authors = [
    {name="Tom Schimansky"},
    {name="Federico Spada"},
@@ -60,7 +60,7 @@ packages = [
 github_url = "https://github.com/FedericoSpada/Custom2kinter"
 
 [tool.tbump.version]
-current = "5.3.0"
+current = "6.0.0"
 
 # Example of a semver regexp.
 # Make sure this matches current_version before

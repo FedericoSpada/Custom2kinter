@@ -1,4 +1,4 @@
-__version__ = "5.3.0"
+__version__ = "6.0.0"
 
 from tkinter import Variable, StringVar, IntVar, DoubleVar, BooleanVar, Event, TclError
 from tkinter.constants import *

@@ -9,8 +9,8 @@
 project = "Custom2kinter"
 copyright = "2026, Federico Spada"
 author = "Federico Spada"
-version = "5.3.0"
-release = "5.3.0"
+version = "6.0.0"
+release = "6.0.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
