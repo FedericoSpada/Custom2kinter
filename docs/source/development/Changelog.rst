@@ -13,8 +13,28 @@ Given a version number MAJOR.MINOR.PATCH, increment the:
 - PATCH version when a bug is fixed that doesn't break backward compatibility.
 
 
-[Unreleased]
-------------
+.. .. [Unreleased]
+   ------------
+
+   Added
+   ~~~~~
+
+
+
+   Changed
+   ~~~~~~~
+
+
+
+   Removed
+   ~~~~~~~
+
+
+
+
+
+[6.0.0] - 2026-10-15
+--------------------
 
 Added
 ~~~~~

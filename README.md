@@ -1,14 +1,14 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/CustomTkinter_logo_dark.png">
-    <img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/documentation_images/CustomTkinter_logo_light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/_static/CustomTkinter_logo_dark.png">
+    <img src="https://raw.githubusercontent.com/FedericoSpada/Custom2kinter/refs/heads/master/docs/source/_static/CustomTkinter_logo_light.png">
   </picture>
 </p>
 
 <div align="center">
 
 [![PyPI](https://img.shields.io/pypi/v/custom2kinter)](https://pypi.org/project/custom2kinter/)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/custom2kinter?color=green&label=downloads)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/custom2kinter?color=green&label=downloads)](https://pypistats.org/packages/custom2kinter)
 ![Total Downloads](https://static.pepy.tech/personalized-badge/custom2kinter?period=total&units=international_system&left_color=grey&right_color=green&left_text=total%20downloads)
 ![PyPI - License](https://img.shields.io/badge/license-MIT-blue)
 ![Minimum Python Version](https://shields.io/badge/Minimum_Python-3.9-blue)

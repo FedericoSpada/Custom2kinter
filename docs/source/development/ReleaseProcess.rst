@@ -19,7 +19,8 @@ After installing the ``tbump`` package::
 
    python -m pip install tbump
 
-you can run the command::
+you can run the command
+(add ``--dry-run`` or ``--only-patch`` for a test run without performing any permanent actions)::
 
    tbump X.X.X
 
@@ -37,6 +38,7 @@ Make sure you have the latest versions installed::
 
 Remove a previous build::
 
+   rmdir /s /q custom2kinter.egg-info
    rmdir /s /q dist
 
 Run the build command::
@@ -44,6 +46,10 @@ Run the build command::
    python -m build
 
 Upload the build
-(add ``--repository testpypi`` to update it to the TestPyPI server)::
+(add ``--repository testpypi`` to upload it to the TestPyPI server)::
 
    python -m twine upload dist/*
+
+To download the library from ``TestPyPI``, you can run::
+
+   python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ custom2kinter
