@@ -33,6 +33,20 @@ Given a version number MAJOR.MINOR.PATCH, increment the:
 
 
 
+[Unreleased]
+------------
+
+Changed
+~~~~~~~
+
+-  Improved widget creation speed (about 2.5 times faster with the ``"font"`` drawing method):
+   all shapes of the ``DrawEngine`` are now created directly at their final position and size.
+   This avoids reloading ``CustomTkinter_shapes_font`` for every rounded corner.
+
+
+
+
+
 [6.0.0] - 2026-10-15
 --------------------
 
