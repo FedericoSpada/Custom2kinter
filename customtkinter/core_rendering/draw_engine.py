@@ -239,40 +239,45 @@ class RoundedRect(BaseShape):
         requires_recoloring = False
         t = self._tags
 
+        if not split_mode:
+            tl_coordinates = (x_center_l, y_center_t,
+                              x_center_r, y_center_t,
+                              x_center_r, y_center_b,
+                              x_center_l, y_center_b)
+        else:
+            tl_coordinates = (x_center_l, y_center_t, x_center_l + 1, y_center_t + 1)
+            tr_coordinates = (x_center_r, y_center_t, x_center_r - 1, y_center_t + 1)
+            br_coordinates = (x_center_r, y_center_b, x_center_r - 1, y_center_b - 1)
+            bl_coordinates = (x_center_l, y_center_b, x_center_l + 1, y_center_b - 1)
+
         if not self.canvas.find_withtag(t["oval_tl_1"]):
-            self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+            self.canvas.create_polygon(tl_coordinates, joinstyle=tkinter.ROUND, width=corner_radius * 2, state=state,
                                        tags=(t["oval_tl_1"], t["top_left"], t["top"], t["left"], self._name))
             requires_recoloring = True
+        else:
+            self.canvas.coords(t["oval_tl_1"], *tl_coordinates)
+            self.canvas.itemconfig(t["oval_tl_1"], width=corner_radius * 2)
 
         if split_mode:
             if not self.canvas.find_withtag(t["oval_tr_1"]):
-                self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+                self.canvas.create_polygon(tr_coordinates, joinstyle=tkinter.ROUND, width=corner_radius * 2, state=state,
                                            tags=(t["oval_tr_1"], t["top_right"], t["top"], t["right"], self._name))
-                self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+                self.canvas.create_polygon(br_coordinates, joinstyle=tkinter.ROUND, width=corner_radius * 2, state=state,
                                            tags=(t["oval_br_1"], t["bottom_right"], t["bottom"], t["right"], self._name))
-                self.canvas.create_polygon((0, 0, 0, 0), joinstyle=tkinter.ROUND, state=state,
+                self.canvas.create_polygon(bl_coordinates, joinstyle=tkinter.ROUND, width=corner_radius * 2, state=state,
                                            tags=(t["oval_bl_1"], t["bottom_left"], t["bottom"], t["left"], self._name))
                 requires_recoloring = True
+            else:
+                self.canvas.coords(t["oval_tr_1"], *tr_coordinates)
+                self.canvas.coords(t["oval_br_1"], *br_coordinates)
+                self.canvas.coords(t["oval_bl_1"], *bl_coordinates)
+
+                self.canvas.itemconfig(t["oval_tr_1"], width=corner_radius * 2)
+                self.canvas.itemconfig(t["oval_br_1"], width=corner_radius * 2)
+                self.canvas.itemconfig(t["oval_bl_1"], width=corner_radius * 2)
         else:
             self.canvas.delete(t["oval_tr_1"], t["oval_br_1"], t["oval_bl_1"],
                                t["oval_tr_2"], t["oval_br_2"], t["oval_bl_2"])
-
-        if not split_mode:
-            self.canvas.coords(t["oval_tl_1"], x_center_l, y_center_t,
-                                               x_center_r, y_center_t,
-                                               x_center_r, y_center_b,
-                                               x_center_l, y_center_b)
-            self.canvas.itemconfig(t["oval_tl_1"], width=corner_radius * 2)
-        else:
-            self.canvas.coords(t["oval_tl_1"], x_center_l, y_center_t, x_center_l + 1, y_center_t + 1)
-            self.canvas.coords(t["oval_tr_1"], x_center_r, y_center_t, x_center_r - 1, y_center_t + 1)
-            self.canvas.coords(t["oval_br_1"], x_center_r, y_center_b, x_center_r - 1, y_center_b - 1)
-            self.canvas.coords(t["oval_bl_1"], x_center_l, y_center_b, x_center_l + 1, y_center_b - 1)
-
-            self.canvas.itemconfig(t["oval_tl_1"], width=corner_radius * 2)
-            self.canvas.itemconfig(t["oval_tr_1"], width=corner_radius * 2)
-            self.canvas.itemconfig(t["oval_br_1"], width=corner_radius * 2)
-            self.canvas.itemconfig(t["oval_bl_1"], width=corner_radius * 2)
 
         return requires_recoloring
 
@@ -306,13 +311,14 @@ class RoundedRect(BaseShape):
 
             if not already_drawn:
                 if not self.canvas.find_withtag(tags1[0]):
-                    self.canvas.create_aa_circle(0, 0, 0, tags=tags1, anchor=tkinter.CENTER)
-                    self.canvas.create_aa_circle(0, 0, 0, tags=tags2, anchor=tkinter.CENTER, angle=180)
+                    self.canvas.create_aa_circle(*coordinates, tags=tags1, anchor=tkinter.CENTER)
+                    self.canvas.create_aa_circle(*coordinates, tags=tags2, anchor=tkinter.CENTER, angle=180)
                     self.canvas.itemconfigure(tags1[0], state=state)
                     self.canvas.itemconfigure(tags2[0], state=state)
                     requires_recoloring = True
-                self.canvas.coords(tags1[0], *coordinates)
-                self.canvas.coords(tags2[0], *coordinates)
+                else:
+                    self.canvas.coords(tags1[0], *coordinates)
+                    self.canvas.coords(tags2[0], *coordinates)
             else:
                 self.canvas.delete(tags1[0], tags2[0])
 
@@ -348,9 +354,10 @@ class RoundedRect(BaseShape):
 
             if not already_drawn:
                 if not self.canvas.find_withtag(tags[0]):
-                    self.canvas.create_oval(0, 0, 0, 0, width=0, state=state, tags=tags)
+                    self.canvas.create_oval(coordinates, width=0, state=state, tags=tags)
                     requires_recoloring = True
-                self.canvas.coords(tags[0], *coordinates)
+                else:
+                    self.canvas.coords(tags[0], *coordinates)
             else:
                 self.canvas.delete(tags[0])
 
@@ -379,9 +386,10 @@ class RoundedRect(BaseShape):
             #if rect is at least 1-pixel high/wide
             if coordinates[2] > coordinates[0] and coordinates[3] > coordinates[1]:
                 if not self.canvas.find_withtag(tags[0]):
-                    self.canvas.create_rectangle((0, 0, 0, 0), width=0, state=state, tags=tags)
+                    self.canvas.create_rectangle(coordinates, width=0, state=state, tags=tags)
                     requires_recoloring = True
-                self.canvas.coords(tags[0], *coordinates)
+                else:
+                    self.canvas.coords(tags[0], *coordinates)
             else:
                 self.canvas.delete(tags[0])
 
@@ -547,27 +555,18 @@ class Arrow(BaseShape):
 
         if self.drawing_method == "font":
             if not self.canvas.find_withtag(self._name):
-                self.canvas.create_text(0, 0, text="Y",
+                self.canvas.create_text(x_position, y_position, text="Y",
                                         font=("CustomTkinter_shapes_font", -size),
                                         angle=180-angle,
                                         tags=self._name,
                                         anchor=tkinter.CENTER,
                                         state=state)
                 requires_recoloring = True
-
-            self.canvas.coords(self._name, x_position, y_position)
-            self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size), angle=180-angle)
+            else:
+                self.canvas.coords(self._name, x_position, y_position)
+                self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size), angle=180-angle)
 
         else:
-            if not self.canvas.find_withtag(self._name):
-                self.canvas.create_line(0, 0, 0, 0,
-                                        tags=self._name,
-                                        width=round(size / 4),
-                                        joinstyle=tkinter.ROUND,
-                                        capstyle=tkinter.ROUND,
-                                        state=state)
-                requires_recoloring = True
-
             #points for arrow centered in (0, 0) pointing up
             radius = size / 10
             points = ((- size / 2 + radius, + size * 0.2 - radius),
@@ -575,8 +574,17 @@ class Arrow(BaseShape):
                       (+ size / 2 - radius, + size * 0.2 - radius))
             points = rototranslation(points, angle, x_position, y_position)
 
-            self.canvas.coords(self._name, *collapse_points(points))
-            self.canvas.itemconfigure(self._name, width=round(radius * 2))
+            if not self.canvas.find_withtag(self._name):
+                self.canvas.create_line(*collapse_points(points),
+                                        tags=self._name,
+                                        width=round(radius * 2),
+                                        joinstyle=tkinter.ROUND,
+                                        capstyle=tkinter.ROUND,
+                                        state=state)
+                requires_recoloring = True
+            else:
+                self.canvas.coords(self._name, *collapse_points(points))
+                self.canvas.itemconfigure(self._name, width=round(radius * 2))
 
         return requires_recoloring
 
@@ -607,35 +615,35 @@ class Bar(BaseShape):
 
         if self.drawing_method == "font":
             if not self.canvas.find_withtag(self._name):
-                self.canvas.create_text(0, 0, text="X",
+                self.canvas.create_text(x_position, y_position, text="X",
                                         font=("CustomTkinter_shapes_font", -size),
                                         angle=90-angle,
                                         tags=self._name,
                                         anchor=tkinter.CENTER,
                                         state=state)
                 requires_recoloring = True
-
-            self.canvas.coords(self._name, x_position, y_position)
-            self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size), angle=90-angle)
+            else:
+                self.canvas.coords(self._name, x_position, y_position)
+                self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size), angle=90-angle)
 
         else:
-            if not self.canvas.find_withtag(self._name):
-                self.canvas.create_line(0, 0, 0, 0,
-                                        tags=self._name,
-                                        width=round(size / 6),
-                                        joinstyle=tkinter.ROUND,
-                                        capstyle=tkinter.ROUND,
-                                        state=state)
-                requires_recoloring = True
-
             #points for vertical line centered in (0, 0)
             radius = size / 10
             points = ((0, + size / 2 - radius),
                       (0, - size / 2 + radius))
             points = rototranslation(points, angle, x_position, y_position)
 
-            self.canvas.coords(self._name, *collapse_points(points))
-            self.canvas.itemconfigure(self._name, width=round(radius * 2))
+            if not self.canvas.find_withtag(self._name):
+                self.canvas.create_line(*collapse_points(points),
+                                        tags=self._name,
+                                        width=round(radius * 2),
+                                        joinstyle=tkinter.ROUND,
+                                        capstyle=tkinter.ROUND,
+                                        state=state)
+                requires_recoloring = True
+            else:
+                self.canvas.coords(self._name, *collapse_points(points))
+                self.canvas.itemconfigure(self._name, width=round(radius * 2))
 
         return requires_recoloring
 
@@ -661,31 +669,33 @@ class Checkmark(BaseShape):
 
         if self.drawing_method == "font":
             if not self.canvas.find_withtag(self._name):
-                self.canvas.create_text(0, 0, text="Z",
+                self.canvas.create_text(x_position, y_position, text="Z",
                                         font=("CustomTkinter_shapes_font", -size),
                                         tags=self._name,
                                         anchor=tkinter.CENTER,
                                         state=state)
                 requires_recoloring = True
-
-            self.canvas.coords(self._name, x_position, y_position)
-            self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size))
+            else:
+                self.canvas.coords(self._name, x_position, y_position)
+                self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size))
 
         else:
+            radius = size / 2.8
+            points = (x_position + radius    , y_position - radius,
+                      x_position - radius / 4, y_position + radius * 0.8,
+                      x_position - radius    , y_position + radius / 6)
+
             if not self.canvas.find_withtag(self._name):
-                self.canvas.create_line(0, 0, 0, 0,
+                self.canvas.create_line(*points,
                                         tags=self._name,
                                         width=round(size / 5),
                                         joinstyle=tkinter.MITER,
                                         capstyle=tkinter.ROUND,
                                         state=state)
                 requires_recoloring = True
-
-            radius = size / 2.8
-            self.canvas.coords(self._name, x_position + radius    , y_position - radius,
-                                           x_position - radius / 4, y_position + radius * 0.8,
-                                           x_position - radius    , y_position + radius / 6)
-            self.canvas.itemconfigure(self._name, width=round(size / 5))
+            else:
+                self.canvas.coords(self._name, *points)
+                self.canvas.itemconfigure(self._name, width=round(size / 5))
 
         return requires_recoloring
 
@@ -711,36 +721,23 @@ class Star(BaseShape):
 
         if self.drawing_method == "font":
             if not self.canvas.find_withtag(self._name):
-                self.canvas.create_text(0, 0, text="a",
+                self.canvas.create_text(x_position, y_position, text="a",
                                         font=("CustomTkinter_shapes_font", -size),
                                         tags=(self._name, f"{self._name}_left"),
                                         anchor=tkinter.CENTER,
                                         state=state)
-                self.canvas.create_text(0, 0, text="b",
+                self.canvas.create_text(x_position, y_position, text="b",
                                         font=("CustomTkinter_shapes_font", -size),
                                         tags=(self._name, f"{self._name}_right"),
                                         anchor=tkinter.CENTER,
                                         state=state)
                 requires_recoloring = True
-
-            for section in ("left", "right"):
-                self.canvas.coords(f"{self._name}_{section}", x_position, y_position)
-                self.canvas.itemconfigure(f"{self._name}_{section}", font=("CustomTkinter_shapes_font", -size))
+            else:
+                for section in ("left", "right"):
+                    self.canvas.coords(f"{self._name}_{section}", x_position, y_position)
+                    self.canvas.itemconfigure(f"{self._name}_{section}", font=("CustomTkinter_shapes_font", -size))
 
         else:
-            if not self.canvas.find_withtag(self._name):
-                self.canvas.create_polygon(0, 0, 0, 0,
-                                           width=0,
-                                           tags=(self._name, f"{self._name}_left"),
-                                           joinstyle=tkinter.MITER,
-                                           state=state)
-                self.canvas.create_polygon(0, 0, 0, 0,
-                                           width=0,
-                                           tags=(self._name, f"{self._name}_right"),
-                                           joinstyle=tkinter.MITER,
-                                           state=state)
-                requires_recoloring = True
-
             #points for the left half of a star centered in (0, 0)
             left_points = ((       0      , - size * 0.500),
                            (- size * 0.124, - size * 0.123),
@@ -753,8 +750,21 @@ class Star(BaseShape):
             left_points = rototranslation(left_points, 0, x_position, y_position)
             right_points = rototranslation(right_points, 0, x_position, y_position)
 
-            self.canvas.coords(f"{self._name}_left", *collapse_points(left_points))
-            self.canvas.coords(f"{self._name}_right", *collapse_points(right_points))
+            if not self.canvas.find_withtag(self._name):
+                self.canvas.create_polygon(*collapse_points(left_points),
+                                           width=0,
+                                           tags=(self._name, f"{self._name}_left"),
+                                           joinstyle=tkinter.MITER,
+                                           state=state)
+                self.canvas.create_polygon(*collapse_points(right_points),
+                                           width=0,
+                                           tags=(self._name, f"{self._name}_right"),
+                                           joinstyle=tkinter.MITER,
+                                           state=state)
+                requires_recoloring = True
+            else:
+                self.canvas.coords(f"{self._name}_left", *collapse_points(left_points))
+                self.canvas.coords(f"{self._name}_right", *collapse_points(right_points))
 
         return requires_recoloring
 
@@ -791,25 +801,18 @@ class Triangle(BaseShape):
 
         if self.drawing_method == "font":
             if not self.canvas.find_withtag(self._name):
-                self.canvas.create_text(0, 0, text="W",
+                self.canvas.create_text(x_position, y_position, text="W",
                                         font=("CustomTkinter_shapes_font", -size),
                                         angle=180-angle,
                                         tags=self._name,
                                         anchor=tkinter.CENTER,
                                         state=state)
                 requires_recoloring = True
-
-            self.canvas.coords(self._name, x_position, y_position)
-            self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size), angle=180-angle)
+            else:
+                self.canvas.coords(self._name, x_position, y_position)
+                self.canvas.itemconfigure(self._name, font=("CustomTkinter_shapes_font", -size), angle=180-angle)
 
         else:
-            if not self.canvas.find_withtag(self._name):
-                self.canvas.create_polygon(0, 0, 0, 0,
-                                           tags=self._name,
-                                           joinstyle=tkinter.ROUND,
-                                           state=state)
-                requires_recoloring = True
-
             #points for a triangle centered in (0, 0) pointing up
             radius = size / 10
             points = ((- size / 2 + radius, + size * 0.3 - radius),
@@ -817,8 +820,16 @@ class Triangle(BaseShape):
                       (+ size / 2 - radius, + size * 0.3 - radius))
             points = rototranslation(points, angle, x_position, y_position)
 
-            self.canvas.coords(self._name, *collapse_points(points))
-            self.canvas.itemconfigure(self._name, width=round(radius * 2))
+            if not self.canvas.find_withtag(self._name):
+                self.canvas.create_polygon(*collapse_points(points),
+                                           tags=self._name,
+                                           width=round(radius * 2),
+                                           joinstyle=tkinter.ROUND,
+                                           state=state)
+                requires_recoloring = True
+            else:
+                self.canvas.coords(self._name, *collapse_points(points))
+                self.canvas.itemconfigure(self._name, width=round(radius * 2))
 
         return requires_recoloring
 
