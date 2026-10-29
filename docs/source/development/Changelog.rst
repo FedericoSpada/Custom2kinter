@@ -36,6 +36,13 @@ Given a version number MAJOR.MINOR.PATCH, increment the:
 [Unreleased]
 ------------
 
+Added
+~~~~~
+
+-  Added cross-platform keyboard shortcuts (``Ctrl +``, ``Ctrl -``, ``Ctrl 0``, keypad equivalents, and macOS ``Cmd`` keys) to adjust UI scaling dynamically in ``examples/complex_example.py``.
+
+
+
 Changed
 ~~~~~~~
 
